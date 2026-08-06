@@ -1,0 +1,204 @@
+/* New Resident registration enhancements */
+.nr-page-hero {
+  background: linear-gradient(135deg, rgba(102, 16, 242, 0.08), rgba(13, 110, 253, 0.06));
+  border: 1px solid rgba(102, 16, 242, 0.12);
+  border-radius: 0.75rem;
+}
+
+.nr-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.nr-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #6c757d;
+  background: rgba(108, 117, 125, 0.12);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.nr-steps li:hover {
+  transform: translateY(-1px);
+}
+
+.nr-steps li.active {
+  color: #fff;
+  background: #6610f2;
+}
+
+.nr-steps li.done {
+  color: #198754;
+  background: rgba(25, 135, 84, 0.15);
+}
+
+.nr-steps .nr-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.nr-steps li:not(.active) .nr-step-num {
+  background: rgba(108, 117, 125, 0.25);
+}
+
+.nr-required::after {
+  content: " *";
+  color: #dc3545;
+  font-weight: 700;
+}
+
+.nr-age-badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(13, 110, 253, 0.12);
+  color: #0d6efd;
+}
+
+.nr-age-badge.is-minor {
+  background: rgba(255, 193, 7, 0.2);
+  color: #856404;
+}
+
+.nr-age-badge.is-senior {
+  background: rgba(25, 135, 84, 0.15);
+  color: #198754;
+}
+
+.nr-photo-hint {
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 0.5rem;
+}
+
+.nr-photo-wrap {
+  position: relative;
+  display: inline-block;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.nr-photo-wrap #image_residence {
+  width: 140px !important;
+  height: 140px !important;
+  max-width: 140px !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  border-radius: 50% !important;
+}
+
+.nr-photo-wrap::after {
+  content: "Change photo";
+  position: absolute;
+  left: 50%;
+  bottom: 0.4rem;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.nr-photo-wrap:hover::after {
+  opacity: 1;
+}
+
+.nr-tab-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.nr-preview-name {
+  min-height: 1.75rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.nr-preview-meta {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+#newResidenceForm .card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.nr-footer-hint {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.nr-duplicate-alert {
+  display: none;
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  background: rgba(220, 53, 69, 0.12);
+  color: #dc3545;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.nr-duplicate-alert.is-visible {
+  display: block;
+}
+
+.nr-duplicate-alert--warn {
+  border-color: rgba(255, 193, 7, 0.45);
+  background: rgba(255, 193, 7, 0.16);
+  color: #856404;
+}
+
+body.dark-mode .nr-page-hero,
+.barangay-portal.dark-mode .nr-page-hero {
+  background: linear-gradient(135deg, rgba(102, 16, 242, 0.18), rgba(13, 110, 253, 0.12));
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .nr-tab-nav,
+.barangay-portal.dark-mode .nr-tab-nav {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 575.98px) {
+  .nr-steps li span.nr-step-label {
+    display: none;
+  }
+}

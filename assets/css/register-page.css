@@ -1,0 +1,63 @@
+/**
+ * Register page — barangay picker & registration form
+ */
+#tailwind-scope.register-picker-scope {
+  font-family: var(--barangay-font, 'Source Sans 3'), system-ui, sans-serif;
+  color: #fff;
+}
+
+#tailwind-scope.register-picker-scope h1,
+#tailwind-scope.register-picker-scope h2,
+#tailwind-scope.register-picker-scope p,
+#tailwind-scope.register-picker-scope span,
+#tailwind-scope.register-picker-scope label,
+#tailwind-scope.register-picker-scope input {
+  color: inherit;
+}
+
+#tailwind-scope .register-card-name {
+  color: #fff !important;
+}
+
+#tailwind-scope .register-card {
+  color: #fff;
+}
+
+.register-form-page .content-wrapper:not(.public-portal-bg) {
+  background-color: #1a1d24 !important;
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(102, 16, 242, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(20, 184, 166, 0.1) 0%, transparent 45%),
+    linear-gradient(160deg, #12151f 0%, #1a1d24 45%, #0f1525 100%) !important;
+}
+
+.register-form-page .register-panel-card,
+.register-form-page .register-panel-card .card-body {
+  border: 10px solid rgba(20, 184, 166, 0.75) !important;
+  border-radius: 0;
+}
+
+.register-form-page .barangay-form-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid rgba(20, 184, 166, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.register-form-page.dark-mode .card {
+  background: #252b3b;
+  border-color: rgba(255, 255, 255, 0.06);
+  color: #e8eaef;
+}
+
+.register-form-page.dark-mode .card-header {
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.2) 0%, rgba(102, 16, 242, 0.12) 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.register-form-page.dark-mode label,
+.register-form-page.dark-mode .lead {
+  color: #e8eaef;
+}

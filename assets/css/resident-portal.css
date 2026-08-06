@@ -1,0 +1,122 @@
+/**
+ * Resident portal — mint green theme (dashboard, profile, certificates, etc.)
+ * Requires barangay.css loaded first for CSS variables.
+ */
+
+/* Welcome / hero card overlay */
+.resident-welcome-card,
+.card.resident-welcome-card {
+  background: linear-gradient(160deg, rgba(20, 184, 166, 0.78) 0%, rgba(13, 148, 136, 0.72) 100%) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: var(--barangay-radius, 12px);
+  box-shadow: var(--barangay-shadow-lg, 0 16px 40px rgba(0, 0, 0, 0.18));
+}
+
+.resident-panel-card,
+.card.resident-panel-card {
+  border: 10px solid rgba(20, 184, 166, 0.75) !important;
+  border-radius: 0;
+}
+
+.resident-profile-banner {
+  background: linear-gradient(160deg, rgba(20, 184, 166, 0.78) 0%, rgba(13, 148, 136, 0.72) 100%) !important;
+}
+
+/* Nav active/hover — white underline instead of red */
+body.hold-transition.layout-top-nav .main-header .rightBar {
+  border-bottom: 3px solid transparent !important;
+  transition: border-color var(--barangay-transition, 0.2s ease), background var(--barangay-transition, 0.2s ease);
+}
+
+body.hold-transition.layout-top-nav .main-header .rightBar:hover,
+body.hold-transition.layout-top-nav .main-header .rightBar.nav-active {
+  border-bottom-color: #fff !important;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Dashboard shortcut icons */
+.resident-welcome-card li {
+  list-style: none;
+  position: relative;
+  display: inline-block;
+  width: 100px;
+  height: 100px;
+}
+
+.resident-welcome-card .round {
+  display: block;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  padding-top: 30px;
+  text-decoration: none;
+  text-align: center;
+  font-size: 25px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  letter-spacing: -0.065em;
+  font-family: "Hammersmith One", sans-serif;
+  transition: all 0.25s ease-in-out;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, 0.2);
+  z-index: 1;
+  border-width: 4px;
+  border-style: solid;
+}
+
+.resident-welcome-card .round:hover {
+  width: 130%;
+  height: 130%;
+  left: -15%;
+  top: -15%;
+  font-size: 33px;
+  padding-top: 38px;
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+  transform: rotate(-360deg);
+}
+
+.resident-welcome-card a.round {
+  background-color: transparent;
+  color: #fff;
+}
+
+.resident-welcome-card a.green {
+  border-color: #2dd4bf;
+}
+
+.resident-welcome-card a.red {
+  border-color: #14b8a6;
+}
+
+.resident-welcome-card a.yellow {
+  border-color: #0d9488;
+}
+
+.resident-welcome-card a.round:hover {
+  color: #ccfbf1;
+}
+
+.resident-welcome-card .round span.round {
+  display: block;
+  opacity: 0;
+  transition: all 0.5s ease-in-out;
+  font-size: 1px;
+  border: none;
+  padding: 40% 20% 0 20%;
+  color: #fff;
+}
+
+.resident-welcome-card .round span:hover {
+  opacity: 0.85;
+  font-size: 16px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.resident-welcome-card .green span,
+.resident-welcome-card .red span,
+.resident-welcome-card .yellow span {
+  background: rgba(13, 148, 136, 0.85);
+  font-weight: 900;
+}

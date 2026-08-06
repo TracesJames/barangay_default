@@ -1,0 +1,1815 @@
+/**
+ * Barangay Nutrition Profiling System
+ */
+.nutrition-portal {
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-portal .content,
+.nutrition-portal .content-wrapper {
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-portal .nutrition-welcome h1,
+.nutrition-portal .nutrition-section-heading,
+.nutrition-portal .nutrition-page-title,
+.nutrition-portal .nutrition-stat-value,
+.nutrition-portal .nutrition-stat-label,
+.nutrition-portal .nutrition-workflow-card-title,
+.nutrition-portal .nutrition-workflow-card-desc,
+.nutrition-portal .nutrition-status-count,
+.nutrition-portal .nutrition-status-name,
+.nutrition-portal .card-title {
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-portal .nutrition-stat-label,
+.nutrition-portal .nutrition-workflow-card-desc,
+.nutrition-portal .nutrition-status-name,
+.nutrition-portal .nutrition-welcome p,
+.nutrition-portal .nutrition-date {
+  color: var(--portal-nutrition-text-muted);
+}
+
+.nutrition-portal .nutrition-section-heading {
+  color: var(--portal-nutrition-heading);
+}
+
+.nutrition-portal .nutrition-panel {
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-portal .nutrition-panel .card-header,
+.nutrition-portal .nutrition-panel .card-body {
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-portal a.nutrition-workflow-card,
+.nutrition-portal a.nutrition-stat,
+.nutrition-portal a.nutrition-status-chip {
+  color: #ecfdf5;
+}
+
+.nutrition-portal a.nutrition-workflow-card:hover,
+.nutrition-portal a.nutrition-stat:hover,
+.nutrition-portal a.nutrition-status-chip:hover {
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-portal .preloader {
+  display: none !important;
+}
+
+/* ── Portal shell background (overrides barangay.css purple theme) ───── */
+
+body.barangay-portal.nutrition-portal,
+body.barangay-portal.nutrition-portal .wrapper {
+  background: var(--portal-nutrition-bg, #0a1410);
+}
+
+body.barangay-portal.nutrition-portal .content-wrapper,
+.dark-mode.barangay-portal.nutrition-portal .content-wrapper,
+body.barangay-portal.nutrition-portal.dark-mode .content-wrapper {
+  background: var(--portal-nutrition-bg-shell) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-header.navbar,
+body.barangay-portal.nutrition-portal .nutrition-navbar {
+  background: var(--portal-nutrition-navbar) !important;
+  border-bottom: 1px solid var(--portal-nutrition-sidebar-border, rgba(0, 108, 53, 0.28)) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-sidebar,
+body.barangay-portal.nutrition-portal .nutrition-sidebar {
+  background: var(--portal-nutrition-sidebar) !important;
+  border-right: 1px solid var(--portal-nutrition-sidebar-border, rgba(0, 108, 53, 0.14)) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-sidebar .brand-link,
+body.barangay-portal.nutrition-portal .nutrition-brand-link {
+  background: var(--portal-nutrition-brand-bg, rgba(34, 197, 94, 0.07)) !important;
+  border-bottom: 1px solid var(--portal-nutrition-sidebar-border, rgba(0, 108, 53, 0.18)) !important;
+}
+
+body.barangay-portal.nutrition-portal .user-panel {
+  background: var(--portal-nutrition-user-panel, rgba(34, 197, 94, 0.06)) !important;
+  border: 1px solid var(--portal-nutrition-user-panel-border, rgba(0, 108, 53, 0.12)) !important;
+}
+
+body.barangay-portal.nutrition-portal .user-panel .info a {
+  color: #ffffff !important;
+}
+
+body.barangay-portal.nutrition-portal .card,
+body.barangay-portal.nutrition-portal .nutrition-panel {
+  background: var(--portal-nutrition-card, rgba(12, 24, 18, 0.82)) !important;
+  border: 1px solid var(--portal-nutrition-card-border, rgba(0, 108, 53, 0.14)) !important;
+  box-shadow: 0 2px 14px rgba(0, 108, 53, 0.08);
+}
+
+body.barangay-portal.nutrition-portal .card-header,
+body.barangay-portal.nutrition-portal .nutrition-panel .card-header {
+  background: var(--portal-nutrition-card-header) !important;
+  border-bottom: 1px solid var(--portal-nutrition-card-border, rgba(0, 108, 53, 0.16)) !important;
+}
+
+body.barangay-portal.nutrition-portal .card-body,
+body.barangay-portal.nutrition-portal .nutrition-panel .card-body {
+  background: transparent;
+}
+
+body.barangay-portal.nutrition-portal .main-footer {
+  background: var(--portal-nutrition-footer) !important;
+  border-top: 1px solid var(--portal-nutrition-card-border, rgba(0, 108, 53, 0.12)) !important;
+}
+
+.nutrition-portal .nutrition-navbar {
+  background: var(--portal-nutrition-navbar);
+  border-bottom: 1px solid var(--portal-nutrition-sidebar-border, rgba(0, 108, 53, 0.25));
+}
+
+.nutrition-portal .nutrition-sidebar {
+  background: var(--portal-nutrition-sidebar);
+}
+
+.nutrition-portal .nutrition-brand-link {
+  border-bottom: 1px solid rgba(0, 108, 53, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.nutrition-portal .super-user-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.nutrition-portal .nutrition-brand-logo {
+  float: none !important;
+  display: block !important;
+  width: 70px !important;
+  height: 70px !important;
+  min-width: 70px;
+  min-height: 70px;
+  max-width: 70px !important;
+  max-height: 70px !important;
+  margin: 0.5rem auto 0 !important;
+  padding: 0 !important;
+  object-fit: cover;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  border: 3px solid rgba(0, 108, 53, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+}
+
+.nutrition-portal .user-panel .image {
+  float: none !important;
+  padding-left: 0 !important;
+  display: flex;
+  justify-content: center;
+}
+
+.nutrition-portal .user-panel .image img,
+.nutrition-portal .super-user-avatar {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  margin: 0 auto;
+  padding: 0 !important;
+  object-fit: cover;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  border: 2px solid rgba(0, 108, 53, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
+}
+
+.nutrition-portal .super-user-avatar--fallback {
+  color: var(--portal-nutrition-primary-light);
+  font-size: 1.15rem;
+}
+
+.nutrition-portal .nav-sidebar .nav-link.active {
+  background: var(--portal-nutrition-nav-active, rgba(34, 197, 94, 0.22)) !important;
+  color: var(--portal-nutrition-heading, var(--portal-nutrition-heading)) !important;
+  border-left-color: var(--portal-nutrition-nav-active-border, var(--portal-nutrition-primary-light));
+}
+
+.nutrition-welcome {
+  background: var(--portal-nutrition-welcome);
+  border: 1px solid var(--portal-nutrition-card-border, rgba(0, 108, 53, 0.2));
+  border-radius: 1rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.nutrition-welcome h1 {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--portal-nutrition-text);
+  margin-bottom: 0.35rem;
+}
+
+.nutrition-welcome p,
+.nutrition-date {
+  color: var(--portal-nutrition-text-muted);
+}
+
+.nutrition-welcome-logo {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border: 3px solid rgba(0, 108, 53, 0.35);
+}
+
+.nutrition-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.nutrition-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.nutrition-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  background: rgba(12, 24, 18, 0.7);
+  border: 1px solid rgba(74, 222, 128, 0.14);
+  border-radius: 0.9rem;
+  padding: 1rem 1.1rem;
+  color: var(--portal-nutrition-text);
+  text-decoration: none;
+  box-shadow: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  min-height: 108px;
+}
+
+.nutrition-stat:hover {
+  transform: translateY(-2px);
+  text-decoration: none;
+  color: var(--portal-nutrition-text);
+  background: rgba(0, 108, 53, 0.08);
+  border-color: rgba(0, 108, 53, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.nutrition-stat-icon {
+  font-size: 1.15rem;
+  margin-bottom: 0;
+  line-height: 1;
+}
+
+.nutrition-stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--portal-nutrition-text-muted);
+  line-height: 1.3;
+}
+
+.nutrition-stat--children {
+  border-top: 3px solid #22c55e;
+}
+
+.nutrition-stat--children .nutrition-stat-icon {
+  color: var(--portal-nutrition-primary-light);
+}
+
+.nutrition-stat--assessed {
+  border-top: 3px solid #38bdf8;
+}
+
+.nutrition-stat--assessed .nutrition-stat-icon {
+  color: #38bdf8;
+}
+
+.nutrition-stat--pending {
+  border-top: 3px solid #f59e0b;
+}
+
+.nutrition-stat--pending .nutrition-stat-icon {
+  color: #fbbf24;
+}
+
+.nutrition-stat--risk {
+  border-top: 3px solid #ef4444;
+}
+
+.nutrition-stat--risk .nutrition-stat-icon {
+  color: #f87171;
+}
+
+.nutrition-stat--month {
+  border-top: 3px solid #a78bfa;
+}
+
+.nutrition-stat--month .nutrition-stat-icon {
+  color: #c4b5fd;
+}
+
+.nutrition-stat--pregnant {
+  border-top: 3px solid #f472b6;
+}
+
+.nutrition-stat--pregnant .nutrition-stat-icon {
+  color: #f9a8d4;
+}
+
+.nutrition-panel {
+  background: rgba(12, 24, 18, 0.82);
+  border: 1px solid rgba(74, 222, 128, 0.14);
+}
+
+.nutrition-panel .card-header {
+  border-bottom: 1px solid rgba(0, 108, 53, 0.12);
+}
+
+.nutrition-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+
+.nutrition-status-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 108, 53, 0.14);
+  background: rgba(12, 24, 18, 0.65);
+  color: #ecfdf5;
+  text-decoration: none;
+}
+
+.nutrition-status-chip:hover {
+  color: #fff;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.nutrition-status-count {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.nutrition-status-name {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+.nutrition-status-chip.is-normal { border-color: rgba(34, 197, 94, 0.45); }
+.nutrition-status-chip.is-underweight,
+.nutrition-status-chip.is-wasted { border-color: rgba(245, 158, 11, 0.45); }
+.nutrition-status-chip.is-severe,
+.nutrition-status-chip.is-stunted { border-color: rgba(239, 68, 68, 0.45); }
+.nutrition-status-chip.is-overweight { border-color: rgba(56, 189, 248, 0.45); }
+.nutrition-status-chip.is-obese { border-color: rgba(148, 163, 184, 0.45); }
+
+.nutrition-recent-table td,
+.nutrition-recent-table th {
+  vertical-align: middle;
+}
+
+.nutrition-filter-select {
+  min-width: 180px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--portal-nutrition-text);
+  border-color: rgba(0, 108, 53, 0.22);
+}
+
+/* Hub overrides — see portal-themes.css for shell colors */
+#tailwind-scope.hub-page.hub-page--nutrition .hub-card:hover {
+  border-color: rgba(0, 108, 53, 0.35);
+}
+
+#tailwind-scope.hub-page:not(.hub-page--nutrition) .hub-card:hover {
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.nutrition-profile-photo {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border: 3px solid rgba(0, 108, 53, 0.35);
+}
+
+.nutrition-report-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.nutrition-report-stat span {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--portal-nutrition-heading);
+}
+
+.nutrition-report-stat small {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.75;
+}
+
+.nutrition-input-narrow {
+  max-width: 7rem;
+}
+
+.nutrition-name-fields-row > [class*="col-"] {
+  display: flex;
+  flex-direction: column;
+}
+
+.nutrition-name-fields-row label {
+  min-height: 2.75rem;
+  line-height: 1.3;
+  margin-bottom: 0.5rem;
+}
+
+.nutrition-name-fields-row .form-control {
+  margin-top: auto;
+  width: 100%;
+  min-height: calc(1.5em + 0.75rem + 2px);
+}
+
+.nutrition-readonly-id {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--portal-nutrition-heading) !important;
+  font-family: Consolas, Monaco, monospace;
+  letter-spacing: 0.03em;
+}
+
+.nutrition-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1rem;
+}
+
+.nutrition-checkbox-grid .custom-control-label {
+  cursor: pointer;
+}
+
+.nutrition-member-badges .badge {
+  margin-right: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.nutrition-other-info-modal .modal-content {
+  border: 1px solid rgba(0, 108, 53, 0.2);
+}
+
+.nutrition-other-info-modal .modal-header,
+.nutrition-other-info-modal .modal-footer {
+  border-color: rgba(0, 108, 53, 0.12);
+}
+
+.nutrition-family-member-card {
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: rgba(15, 31, 20, 0.55);
+}
+
+.nutrition-member-extra-fields {
+  border-top: 1px solid rgba(0, 108, 53, 0.12);
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+}
+
+.nutrition-feeding-group .nutrition-other-specify:disabled {
+  opacity: 0.55;
+}
+
+.nutrition-growth-results > div {
+  margin-bottom: 0.35rem;
+}
+
+.nutrition-growth-results .badge {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.nutrition-child-anthro {
+  border: 1px solid rgba(0, 108, 53, 0.28);
+  border-radius: 0.65rem;
+  padding: 0.85rem 1rem 0.25rem;
+  margin-bottom: 0.75rem;
+  background: rgba(0, 108, 53, 0.08);
+}
+
+.nutrition-child-anthro-banner {
+  font-size: 0.875rem;
+  color: #d1fae5;
+}
+
+.nutrition-member-age-label {
+  min-height: calc(1.5em + 0.75rem + 2px);
+  padding-top: 0.375rem;
+  margin-bottom: 0;
+  color: var(--portal-nutrition-text) !important;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.nutrition-member-age-label.text-muted,
+.nutrition-member-age-label.is-empty {
+  color: rgba(236, 253, 245, 0.55) !important;
+  font-weight: 600;
+}
+
+.nutrition-consolidated-header h3 {
+  color: var(--portal-nutrition-text);
+  font-weight: 800;
+}
+
+.nutrition-consolidated-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.nutrition-consolidated-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.9rem;
+  padding: 1rem;
+  box-shadow: none;
+}
+
+.nutrition-consolidated-stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--portal-nutrition-text);
+}
+
+.nutrition-consolidated-stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-top: 0.35rem;
+  color: var(--portal-nutrition-text-muted);
+}
+
+.nutrition-consolidated-stat--households { border-top: 3px solid #22c55e; }
+.nutrition-consolidated-stat--members { border-top: 3px solid #38bdf8; }
+.nutrition-consolidated-stat--assessed { border-top: 3px solid #0ea5e9; }
+.nutrition-consolidated-stat--malnourished { border-top: 3px solid #f59e0b; }
+.nutrition-consolidated-stat--risk { border-top: 3px solid #ef4444; }
+.nutrition-consolidated-stat--pregnant { border-top: 3px solid #ec4899; }
+.nutrition-consolidated-stat--lactating { border-top: 3px solid #a78bfa; }
+
+.nutrition-consolidated-mini-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+  text-align: center;
+  box-shadow: none;
+}
+
+.nutrition-consolidated-mini-stat span {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--portal-nutrition-heading);
+}
+
+.nutrition-consolidated-mini-stat small {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--portal-nutrition-text-muted);
+  font-weight: 600;
+}
+
+.nutrition-consolidated-table .nutrition-consolidated-row--risk td:first-child + td {
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+
+.nutrition-consolidated-row--highlight td {
+  background: rgba(34, 197, 94, 0.14) !important;
+}
+
+.nutrition-consolidated-row--highlight td:nth-child(2) {
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.nutrition-consolidated-detail-wrap {
+  padding: 1rem 1.25rem 1.25rem;
+  background: rgba(15, 31, 20, 0.65);
+  border-top: 1px solid rgba(74, 222, 128, 0.15);
+}
+
+.nutrition-consolidated-toggle[aria-expanded="true"] i {
+  transform: rotate(180deg);
+}
+
+.nutrition-consolidated-toggle i {
+  transition: transform 0.15s ease;
+}
+
+.nutrition-household-header h3 {
+  color: var(--portal-nutrition-text);
+  font-weight: 800;
+}
+
+.nutrition-household-quickstats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.85rem;
+}
+
+.nutrition-household-quickstat {
+  background: rgba(15, 31, 20, 0.92);
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-top: 3px solid #22c55e;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  box-shadow: none;
+}
+
+.nutrition-household-quickstat span {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #ecfdf5;
+  line-height: 1.1;
+}
+
+.nutrition-household-quickstat small {
+  display: block;
+  margin-top: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(236, 253, 245, 0.65);
+}
+
+.nutrition-form-section {
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(0, 108, 53, 0.12);
+}
+
+.nutrition-form-section:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.nutrition-form-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--portal-nutrition-heading);
+  margin-bottom: 1rem;
+}
+
+.nutrition-checkbox-grid--inline {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.nutrition-prf-field {
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid rgba(0, 108, 53, 0.14);
+  border-radius: 0.65rem;
+  background: rgba(15, 31, 20, 0.38);
+}
+
+.nutrition-prf-field:last-child {
+  margin-bottom: 0;
+}
+
+.nutrition-prf-field-label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+  color: var(--portal-nutrition-heading);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.nutrition-prf-item-number {
+  display: inline-block;
+  min-width: 2.75rem;
+  margin-right: 0.35rem;
+  color: var(--portal-nutrition-primary-light);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.nutrition-prf-group-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--portal-nutrition-heading);
+  margin: 0 0 0.65rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid rgba(0, 108, 53, 0.18);
+}
+
+.nutrition-prf-living-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.nutrition-prf-living-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.nutrition-prf-living-full {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.nutrition-prf-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  height: 100%;
+}
+
+.nutrition-prf-suboptions {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nutrition-prf-options {
+  width: 100%;
+}
+
+.nutrition-prf-options .custom-control {
+  margin-bottom: 0;
+  min-height: 1.5rem;
+  padding-left: 1.65rem;
+}
+
+.nutrition-prf-options .custom-control-label {
+  line-height: 1.4;
+  color: rgba(236, 253, 245, 0.92);
+}
+
+.nutrition-prf-options--compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, max-content));
+  gap: 0.55rem 1.5rem;
+  align-items: start;
+}
+
+.nutrition-prf-options--wrap {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 1rem;
+  align-items: start;
+}
+
+.nutrition-prf-options--stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.nutrition-prf-options--stacked .custom-control {
+  width: 100%;
+}
+
+.nutrition-prf-options--stacked .custom-control-label {
+  white-space: normal;
+}
+
+@media (max-width: 992px) {
+  .nutrition-prf-living-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .nutrition-prf-options--wrap,
+  .nutrition-prf-options--compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nutrition-family-empty {
+  border: 1px dashed rgba(74, 222, 128, 0.25);
+  border-radius: 0.75rem;
+  background: rgba(15, 31, 20, 0.45);
+  color: rgba(236, 253, 245, 0.75);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.nutrition-family-empty .btn-outline-success,
+.nutrition-family-empty .btn-outline-light {
+  color: #bbf7d0 !important;
+  border-color: rgba(74, 222, 128, 0.45) !important;
+  background: transparent !important;
+}
+
+.nutrition-family-empty .btn-outline-success:hover,
+.nutrition-family-empty .btn-outline-light:hover {
+  color: #052e16 !important;
+  background: #86efac !important;
+  border-color: #4ade80 !important;
+}
+
+.nutrition-household-search .input-group-text {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.nutrition-household-search .form-control {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ecfdf5;
+}
+
+.nutrition-household-search .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ── Navigation & page chrome ─────────────────────────────────────────── */
+
+.nutrition-portal .nav-sidebar .nav-header {
+  color: rgba(187, 247, 208, 0.45);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  padding-top: 0.85rem;
+}
+
+.nutrition-portal .nav-sidebar .nav-link {
+  border-radius: 0.5rem;
+  margin: 0.1rem 0.5rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nutrition-portal .nav-sidebar .nav-link:hover {
+  background: rgba(34, 197, 94, 0.12);
+  color: #d1fae5;
+}
+
+.nutrition-portal .nav-sidebar .nav-link.active {
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.nutrition-breadcrumb {
+  margin-bottom: 0.85rem;
+}
+
+.nutrition-breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.78rem;
+}
+
+.nutrition-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  color: rgba(236, 253, 245, 0.55);
+}
+
+.nutrition-breadcrumb-item:not(:last-child)::after {
+  content: '/';
+  margin-left: 0.5rem;
+  opacity: 0.45;
+}
+
+.nutrition-breadcrumb-item a {
+  color: var(--portal-nutrition-heading);
+  text-decoration: none;
+}
+
+.nutrition-breadcrumb-item a:hover {
+  color: var(--portal-nutrition-heading);
+  text-decoration: underline;
+}
+
+.nutrition-breadcrumb-item.is-active span {
+  color: var(--portal-nutrition-text);
+  font-weight: 600;
+}
+
+.nutrition-page-header {
+  padding-bottom: 0.25rem;
+}
+
+.nutrition-page-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--portal-nutrition-text);
+  margin-bottom: 0.35rem;
+}
+
+.nutrition-page-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.65rem;
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  font-size: 1rem;
+}
+
+.nutrition-page-description {
+  color: var(--portal-nutrition-text-muted);
+  font-size: 0.92rem;
+  max-width: 52rem;
+}
+
+.nutrition-page-actions .btn {
+  white-space: nowrap;
+}
+
+.nutrition-section-heading {
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(187, 247, 208, 0.75);
+  margin-bottom: 0.85rem;
+}
+
+/* ── Dark glass stat cards (portal) ───────────────────────────────────── */
+
+.nutrition-portal .nutrition-household-quickstat,
+.nutrition-portal .nutrition-consolidated-stat,
+.nutrition-portal .nutrition-consolidated-mini-stat,
+.nutrition-portal .nutrition-report-stat {
+  background: rgba(15, 31, 20, 0.92) !important;
+  border: 1px solid rgba(74, 222, 128, 0.18) !important;
+  box-shadow: none;
+  backdrop-filter: blur(6px);
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .nutrition-household-quickstat span,
+.nutrition-portal .nutrition-consolidated-stat-value,
+.nutrition-portal .nutrition-report-stat span {
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .nutrition-household-quickstat small,
+.nutrition-portal .nutrition-consolidated-stat-label,
+.nutrition-portal .nutrition-consolidated-mini-stat small,
+.nutrition-portal .nutrition-report-stat small {
+  color: rgba(236, 253, 245, 0.65) !important;
+}
+
+.nutrition-portal .nutrition-consolidated-mini-stat span {
+  color: #bbf7d0 !important;
+}
+
+.nutrition-portal .nutrition-family-empty {
+  background: rgba(15, 31, 20, 0.45) !important;
+  border-color: rgba(74, 222, 128, 0.25) !important;
+  color: rgba(236, 253, 245, 0.8) !important;
+}
+
+.nutrition-portal .text-muted,
+.nutrition-portal .nutrition-form-section .text-muted,
+.nutrition-portal .alert-secondary,
+.nutrition-portal p.text-muted {
+  color: rgba(236, 253, 245, 0.55) !important;
+}
+
+/* ── Workflow shortcut cards ──────────────────────────────────────────── */
+
+.nutrition-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.nutrition-workflow-card { /* dark */
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1.15rem 1.15rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(0, 108, 53, 0.14);
+  background: rgba(12, 24, 18, 0.72);
+  color: var(--portal-nutrition-text) !important;
+  text-decoration: none !important;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  min-height: 132px;
+}
+
+.nutrition-workflow-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 108, 53, 0.4);
+  background: rgba(0, 108, 53, 0.1);
+  color: var(--portal-nutrition-text) !important;
+  text-decoration: none !important;
+}
+
+.nutrition-workflow-card-icon {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  flex-shrink: 0;
+}
+
+.nutrition-workflow-card-title {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--portal-nutrition-text);
+  line-height: 1.3;
+}
+
+.nutrition-workflow-card-desc {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--portal-nutrition-text-muted);
+  line-height: 1.45;
+  margin-top: auto;
+}
+
+@media (max-width: 1199.98px) {
+  .nutrition-workflow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ── Form stepper & sticky actions ────────────────────────────────────── */
+
+.nutrition-form-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  padding: 0.65rem;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nutrition-form-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--portal-nutrition-text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.nutrition-form-step:hover {
+  color: var(--portal-nutrition-text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nutrition-form-step.is-active {
+  color: #052e16;
+  background: #86efac;
+  border-color: var(--portal-nutrition-primary-light);
+}
+
+.nutrition-form-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.nutrition-form-step.is-active .nutrition-form-step-num {
+  background: rgba(5, 46, 22, 0.15);
+  color: #052e16;
+}
+
+.nutrition-form-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin: 0 -1.25rem -1.25rem;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(180deg, rgba(15, 31, 20, 0.85) 0%, rgba(10, 20, 16, 0.98) 100%);
+  border-top: 1px solid rgba(74, 222, 128, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.nutrition-portal .form-control:focus,
+.nutrition-portal .custom-control-input:focus ~ .custom-control-label::before {
+  border-color: rgba(74, 222, 128, 0.55);
+  box-shadow: 0 0 0 0.15rem rgba(34, 197, 94, 0.2);
+}
+
+.nutrition-portal .form-control {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #ecfdf5;
+}
+
+.nutrition-portal .form-control-plaintext {
+  color: #ecfdf5;
+}
+
+.nutrition-portal .form-control::placeholder {
+  color: rgba(236, 253, 245, 0.4);
+}
+
+.nutrition-portal select.form-control option {
+  background: #0f1f14;
+  color: #ecfdf5;
+}
+
+.nutrition-portal label {
+  color: rgba(236, 253, 245, 0.88);
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.nutrition-portal .text-muted {
+  color: rgba(236, 253, 245, 0.55) !important;
+}
+
+.nutrition-portal .card-footer {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Tables & mobile cards ────────────────────────────────────────────── */
+
+.nutrition-portal .table-dark {
+  background: transparent;
+}
+
+.nutrition-portal .table-dark thead th {
+  border-bottom-color: rgba(0, 108, 53, 0.2);
+  color: var(--portal-nutrition-heading);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.nutrition-portal .table-dark td {
+  border-top-color: rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+
+.nutrition-table-action-btn {
+  white-space: nowrap;
+}
+
+.nutrition-mobile-records {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .nutrition-table-desktop {
+    display: none !important;
+  }
+
+  .nutrition-mobile-records {
+    display: block;
+  }
+
+  .nutrition-mobile-record {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid rgba(0, 108, 53, 0.12);
+  }
+
+  .nutrition-mobile-record:last-child {
+    border-bottom: 0;
+  }
+
+  .nutrition-mobile-record-title {
+    font-weight: 700;
+    color: var(--portal-nutrition-text);
+    margin-bottom: 0.25rem;
+  }
+
+  .nutrition-mobile-record-meta {
+    font-size: 0.8rem;
+    color: rgba(236, 253, 245, 0.55);
+    margin-bottom: 0.5rem;
+  }
+
+  .nutrition-form-stepper {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nutrition-form-step {
+    flex-shrink: 0;
+  }
+
+  .nutrition-workflow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nutrition-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nutrition-page-actions {
+    width: 100%;
+  }
+
+  .nutrition-page-actions .btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .nutrition-consolidated-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 479.98px) {
+  .nutrition-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Hub nutrition enhancements ───────────────────────────────────────── */
+
+#tailwind-scope .hub-nutrition-tips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 2rem;
+}
+
+#tailwind-scope .hub-nutrition-tip {
+  border-radius: 0.9rem;
+  border: 1px solid rgba(0, 108, 53, 0.18);
+  background: rgba(34, 197, 94, 0.08);
+  padding: 0.9rem 1rem;
+}
+
+#tailwind-scope .hub-nutrition-tip strong {
+  display: block;
+  color: var(--portal-nutrition-heading);
+  font-size: 0.82rem;
+  margin-bottom: 0.25rem;
+}
+
+#tailwind-scope .hub-nutrition-tip span {
+  color: var(--portal-nutrition-text-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+#tailwind-scope .hub-stat-card--nutrition-hint {
+  cursor: help;
+}
+
+#tailwind-scope .hub-card--nutrition .hub-open-btn--nutrition {
+  margin-top: auto;
+}
+
+#tailwind-scope .hub-nutrition-quicklinks {
+  gap: 0.5rem;
+}
+
+#tailwind-scope .hub-nutrition-quicklink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 108, 53, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: #dcfce7;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+#tailwind-scope .hub-nutrition-quicklink:hover {
+  background: rgba(34, 197, 94, 0.28);
+  border-color: rgba(0, 108, 53, 0.55);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+#tailwind-scope .hub-nutrition-filters {
+  padding: 0.15rem 0 0.35rem;
+}
+
+#tailwind-scope .hub-nutrition-filter {
+  border-radius: 999px;
+  border: 1px solid rgba(74, 222, 128, 0.28);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ecfdf5;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: all 0.15s ease;
+}
+
+#tailwind-scope .hub-nutrition-filter:hover {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(34, 197, 94, 0.14);
+  color: #fff;
+}
+
+#tailwind-scope .hub-nutrition-filter.is-active {
+  border-color: rgba(74, 222, 128, 0.55);
+  background: rgba(34, 197, 94, 0.28);
+  color: #bbf7d0;
+}
+
+#tailwind-scope .hub-nutrition-card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+#tailwind-scope .hub-nutrition-card-stat {
+  border-radius: 0.65rem;
+  border: 1px solid rgba(74, 222, 128, 0.14);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.4rem 0.2rem;
+}
+
+#tailwind-scope .hub-nutrition-card-stat span {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #ecfdf5;
+  line-height: 1.1;
+}
+
+#tailwind-scope .hub-nutrition-card-stat small {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(236, 253, 245, 0.55);
+}
+
+#tailwind-scope .hub-nutrition-coverage-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.3rem;
+  font-size: 0.65rem;
+  color: rgba(236, 253, 245, 0.55);
+}
+
+#tailwind-scope .hub-nutrition-coverage-meta strong {
+  color: #bbf7d0;
+  font-size: 0.72rem;
+}
+
+#tailwind-scope .hub-nutrition-coverage-track {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+#tailwind-scope .hub-nutrition-coverage-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #16a34a 0%, #4ade80 100%);
+  transition: width 0.35s ease;
+}
+
+#tailwind-scope .hub-nutrition-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+#tailwind-scope .hub-picker-banner--rich {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 420px) {
+  #tailwind-scope .hub-nutrition-card-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.nutrition-info-callout {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.08);
+  color: rgba(236, 253, 245, 0.88);
+  font-size: 0.86rem;
+  margin-bottom: 1.25rem;
+}
+
+.nutrition-info-callout i {
+  color: #38bdf8;
+  margin-top: 0.15rem;
+}
+
+.nutrition-empty-state {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  color: rgba(236, 253, 245, 0.55);
+}
+
+.nutrition-empty-state i {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.45;
+}
+
+/* Issues & Recommendations panel (city super dashboard) */
+.nutrition-recommendations-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.nutrition-recommendation {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 108, 53, 0.14);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.nutrition-recommendation-icon {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.nutrition-recommendation-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.2rem;
+}
+
+.nutrition-recommendation-detail {
+  font-size: 0.86rem;
+  opacity: 0.85;
+  line-height: 1.45;
+}
+
+.nutrition-recommendation-action {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #86efac;
+}
+
+.nutrition-recommendation-action:hover {
+  color: var(--portal-nutrition-heading);
+  text-decoration: underline;
+}
+
+.nutrition-recommendation.is-danger {
+  border-color: rgba(248, 113, 113, 0.35);
+  background: rgba(127, 29, 29, 0.22);
+}
+.nutrition-recommendation.is-danger .nutrition-recommendation-icon {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.15);
+}
+
+.nutrition-recommendation.is-warning {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(120, 53, 15, 0.22);
+}
+.nutrition-recommendation.is-warning .nutrition-recommendation-icon {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.nutrition-recommendation.is-info {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(12, 74, 110, 0.22);
+}
+.nutrition-recommendation.is-info .nutrition-recommendation-icon {
+  color: #7dd3fc;
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.nutrition-recommendation.is-success {
+  border-color: rgba(0, 108, 53, 0.3);
+  background: rgba(20, 83, 45, 0.22);
+}
+.nutrition-recommendation.is-success .nutrition-recommendation-icon {
+  color: #86efac;
+  background: rgba(0, 108, 53, 0.14);
+}
+
+body[data-accent^="pastel-"] .nutrition-recommendation {
+  background: color-mix(in srgb, var(--pastel-base) 18%, #ffffff);
+  border-color: color-mix(in srgb, var(--pastel-dark) 22%, transparent);
+}
+body[data-accent^="pastel-"] .nutrition-recommendation-title {
+  color: var(--pastel-heading);
+}
+body[data-accent^="pastel-"] .nutrition-recommendation-detail {
+  color: var(--pastel-ink);
+  opacity: 0.9;
+}
+body[data-accent^="pastel-"] .nutrition-recommendation-action {
+  color: var(--pastel-heading);
+}
+
+/* Nutrition hub dark green theme */
+#tailwind-scope.hub-page--nutrition .hub-card-name {
+  color: #ecfdf5 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-filter {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(74, 222, 128, 0.3) !important;
+  color: #ecfdf5 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-filter:hover {
+  background: rgba(34, 197, 94, 0.16) !important;
+  color: #ffffff !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-filter.is-active {
+  background: rgba(34, 197, 94, 0.3) !important;
+  border-color: rgba(74, 222, 128, 0.55) !important;
+  color: #bbf7d0 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-card-stat {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(74, 222, 128, 0.16) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-card-stat span {
+  color: #ecfdf5 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-card-stat small {
+  color: rgba(236, 253, 245, 0.55) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-coverage-meta,
+#tailwind-scope.hub-page--nutrition .hub-nutrition-coverage-meta span {
+  color: rgba(236, 253, 245, 0.55) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-coverage-meta strong {
+  color: #bbf7d0 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-coverage-track {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-coverage-fill {
+  background: linear-gradient(90deg, #16a34a 0%, #4ade80 100%) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-card--nutrition,
+#tailwind-scope.hub-page--nutrition .hub-stat-card {
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #fff !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-open-btn--nutrition {
+  color: #ecfdf5 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-quicklink {
+  background: rgba(34, 197, 94, 0.12) !important;
+  border-color: rgba(74, 222, 128, 0.35) !important;
+  color: #dcfce7 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-tip {
+  background: rgba(34, 197, 94, 0.08) !important;
+  border-color: rgba(74, 222, 128, 0.18) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-tip strong {
+  color: #bbf7d0 !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-nutrition-tip span {
+  color: rgba(236, 253, 245, 0.65) !important;
+}
+
+/* ── Lock Nutrition Portal to dark green (wins over pastel/a11y remaps) ─ */
+
+body.barangay-portal.nutrition-portal {
+  --portal-nutrition-bg: #0a1410;
+  --portal-nutrition-bg-shell:
+    radial-gradient(ellipse 85% 55% at 100% 0%, rgba(34, 197, 94, 0.16) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 45% at 0% 100%, rgba(22, 101, 52, 0.22) 0%, transparent 52%),
+    linear-gradient(180deg, #0f1f14 0%, #0a1410 42%, #07110d 100%);
+  --portal-nutrition-text: #ecfdf5;
+  --portal-nutrition-text-muted: rgba(236, 253, 245, 0.72);
+  --portal-nutrition-heading: #bbf7d0;
+  --portal-nutrition-card: rgba(12, 24, 18, 0.92);
+  --portal-nutrition-card-header: linear-gradient(90deg, rgba(22, 101, 52, 0.32) 0%, rgba(15, 31, 20, 0.45) 100%);
+  --portal-nutrition-card-border: rgba(74, 222, 128, 0.14);
+}
+
+body.barangay-portal.nutrition-portal .nutrition-household-quickstat,
+body.barangay-portal.nutrition-portal .nutrition-consolidated-stat,
+body.barangay-portal.nutrition-portal .nutrition-consolidated-mini-stat,
+body.barangay-portal.nutrition-portal .nutrition-report-stat {
+  background: rgba(15, 31, 20, 0.95) !important;
+  border: 1px solid rgba(74, 222, 128, 0.2) !important;
+  color: #ecfdf5 !important;
+}
+
+body.barangay-portal.nutrition-portal .nutrition-household-quickstat span,
+body.barangay-portal.nutrition-portal .nutrition-consolidated-stat-value,
+body.barangay-portal.nutrition-portal .nutrition-report-stat span {
+  color: #ecfdf5 !important;
+}
+
+body.barangay-portal.nutrition-portal .nutrition-household-quickstat small,
+body.barangay-portal.nutrition-portal .nutrition-consolidated-stat-label,
+body.barangay-portal.nutrition-portal .nutrition-consolidated-mini-stat small,
+body.barangay-portal.nutrition-portal .nutrition-report-stat small {
+  color: rgba(236, 253, 245, 0.7) !important;
+}
+
+body.barangay-portal.nutrition-portal .nutrition-family-empty {
+  background: rgba(15, 31, 20, 0.55) !important;
+  border: 1px dashed rgba(74, 222, 128, 0.28) !important;
+  color: rgba(236, 253, 245, 0.8) !important;
+}
+
+body.barangay-portal.nutrition-portal .nutrition-family-member-card {
+  background: rgba(15, 31, 20, 0.55) !important;
+  border-color: rgba(74, 222, 128, 0.18) !important;
+}
+
+body.barangay-portal.nutrition-portal .nutrition-form-sticky-bar,
+body.barangay-portal.nutrition-portal .card-footer.nutrition-form-sticky-bar {
+  background: linear-gradient(180deg, rgba(15, 31, 20, 0.9) 0%, rgba(10, 20, 16, 0.98) 100%) !important;
+  border-top-color: rgba(74, 222, 128, 0.2) !important;
+}
+
+body.barangay-portal.nutrition-portal label,
+body.barangay-portal.nutrition-portal .text-muted,
+body.barangay-portal.nutrition-portal .small.text-muted,
+body.barangay-portal.nutrition-portal p.text-muted,
+body.barangay-portal.nutrition-portal small.text-muted {
+  color: rgba(236, 253, 245, 0.62) !important;
+}
+
+body.barangay-portal.nutrition-portal label {
+  color: rgba(236, 253, 245, 0.9) !important;
+}
+
+/* Select2 (assessment / household search) on dark green */
+.nutrition-portal .select2-container--bootstrap4 .select2-selection,
+.nutrition-portal .select2-container--default .select2-selection--single,
+.nutrition-portal .select2-container--default .select2-selection--multiple {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered,
+.nutrition-portal .select2-container--default .select2-selection--single .select2-selection__rendered {
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4 .select2-selection--single .select2-selection__placeholder,
+.nutrition-portal .select2-container--default .select2-selection__placeholder {
+  color: rgba(236, 253, 245, 0.4) !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow b,
+.nutrition-portal .select2-container--default .select2-selection--single .select2-selection__arrow b {
+  border-color: rgba(236, 253, 245, 0.65) transparent transparent transparent;
+}
+
+.nutrition-portal .select2-dropdown,
+.nutrition-portal .select2-container--bootstrap4 .select2-dropdown {
+  background-color: #0f1f14 !important;
+  border-color: rgba(74, 222, 128, 0.28) !important;
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4 .select2-results__option,
+.nutrition-portal .select2-container--default .select2-results__option {
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4 .select2-results__option--highlighted,
+.nutrition-portal .select2-container--default .select2-results__option--highlighted[aria-selected],
+.nutrition-portal .select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] {
+  background-color: rgba(34, 197, 94, 0.28) !important;
+  color: #bbf7d0 !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4 .select2-search--dropdown .select2-search__field,
+.nutrition-portal .select2-container--default .select2-search--dropdown .select2-search__field {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #ecfdf5 !important;
+}
+
+.nutrition-portal .select2-container--bootstrap4.select2-container--focus .select2-selection,
+.nutrition-portal .select2-container--default.select2-container--focus .select2-selection--single,
+.nutrition-portal .select2-container--default.select2-container--open .select2-selection--single {
+  border-color: rgba(74, 222, 128, 0.55) !important;
+  box-shadow: 0 0 0 0.15rem rgba(34, 197, 94, 0.2);
+}
+
+.nutrition-portal .card-footer {
+  background: transparent !important;
+  border-top-color: rgba(74, 222, 128, 0.14) !important;
+}

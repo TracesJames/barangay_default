@@ -1,0 +1,38 @@
+# Secrets / local env
+.env
+.env.*
+*.pem
+*.key
+credentials*.txt
+credentials*.json
+
+# Dependencies
+/vendor/
+/node_modules/
+composer.phar
+
+# Runtime uploads & backups
+/backup/
+/assets/uploads/
+/_update_backup_*/
+*.sql.gz
+*.zip
+
+# Logs & junk
+*.log
+*.bak
+*.tmp
+*.swp
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE / tooling
+.cursor/
+.qodo/
+.vscode/
+.idea/
+*.code-workspace
+
+# PHP / Apache local
+.phpunit.result.cache

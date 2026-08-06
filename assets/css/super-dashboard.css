@@ -1,0 +1,702 @@
+/**
+ * Super admin dashboard — aligned with Barangay / Nutrition portal colors
+ */
+.barangay-super-dashboard .content-header {
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.barangay-super-dashboard:not(.nutrition-portal) .content-wrapper {
+  background: var(--portal-barangay-bg-shell) !important;
+}
+
+.barangay-super-dashboard:not(.nutrition-portal) .main-header.navbar {
+  background: var(--portal-barangay-navbar) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22) !important;
+}
+
+.barangay-super-dashboard:not(.nutrition-portal) .main-footer {
+  background: var(--portal-barangay-footer) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Welcome banner — Barangay Hub palette */
+.barangay-super-dashboard .super-dashboard-welcome,
+.barangay-super-dashboard .dashboard-welcome {
+  background: var(--portal-barangay-welcome);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(20, 184, 166, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.barangay-super-dashboard .super-dashboard-welcome::before,
+.barangay-super-dashboard .dashboard-welcome::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -5%;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.barangay-super-dashboard .super-dashboard-welcome h1,
+.barangay-super-dashboard .dashboard-welcome h1 {
+  font-size: 1.65rem;
+  font-weight: 800;
+  margin: 0 0 0.35rem;
+  color: #fff !important;
+  letter-spacing: 0.01em;
+}
+
+.barangay-super-dashboard .super-dashboard-welcome p,
+.barangay-super-dashboard .dashboard-welcome p {
+  margin: 0;
+  opacity: 0.88;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.barangay-super-dashboard .dashboard-date {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin-top: 0.5rem;
+}
+
+.barangay-super-dashboard .super-dashboard-actions,
+.barangay-super-dashboard .dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.barangay-super-dashboard .super-dashboard-actions .btn,
+.barangay-super-dashboard .dashboard-actions .btn {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.barangay-super-dashboard .super-dashboard-actions .btn:hover,
+.barangay-super-dashboard .dashboard-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.barangay-super-dashboard .super-dashboard-actions .btn i,
+.barangay-super-dashboard .dashboard-actions .btn i {
+  margin-right: 0.35rem;
+}
+
+.barangay-super-dashboard .barangay-logo-sm {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.barangay-super-dashboard .super-barangay-table td,
+.barangay-super-dashboard .dashboard-panel .table td {
+  vertical-align: middle !important;
+}
+
+/* Quick action cards (Nutrition-style) */
+.barangay-super-dashboard .super-section-heading {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  margin: 0 0 0.85rem;
+}
+
+.barangay-super-dashboard .super-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.barangay-super-dashboard .super-workflow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 1.15rem 1.1rem;
+  border-radius: 14px;
+  text-decoration: none !important;
+  color: #e8eaef !important;
+  background: linear-gradient(160deg, rgba(37, 43, 59, 0.95) 0%, rgba(30, 36, 51, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  min-height: 140px;
+}
+
+.barangay-super-dashboard .super-workflow-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(45, 212, 191, 0.45);
+  box-shadow: 0 12px 28px rgba(20, 184, 166, 0.18);
+  color: #fff !important;
+}
+
+.barangay-super-dashboard .super-workflow-card-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.35), rgba(102, 16, 242, 0.35));
+  color: #fff;
+  font-size: 1rem;
+}
+
+.barangay-super-dashboard .super-workflow-card-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.barangay-super-dashboard .super-workflow-card-desc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(232, 234, 239, 0.72);
+  margin: 0;
+}
+
+.barangay-super-dashboard .super-workflow-card--nutrition .super-workflow-card-icon {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+}
+
+.barangay-super-dashboard .super-workflow-card--barangay .super-workflow-card-icon {
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+}
+
+.barangay-super-dashboard .super-workflow-card--accounts .super-workflow-card-icon {
+  background: linear-gradient(135deg, #6610f2, #4a0eb8);
+}
+
+.barangay-super-dashboard .super-workflow-card--system .super-workflow-card-icon {
+  background: linear-gradient(135deg, #17a2b8, #0d9488);
+}
+
+/* ---- Super admin sidebar (match portal) ---- */
+.barangay-super-dashboard .main-sidebar {
+  background: var(--portal-barangay-sidebar) !important;
+  border-right: 1px solid var(--portal-barangay-sidebar-border);
+}
+
+.barangay-super-dashboard .main-sidebar .brand-link.super-brand-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.75rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(0, 0, 0, 0.15);
+  white-space: normal;
+  overflow: hidden;
+  height: auto;
+  text-align: center;
+}
+
+.barangay-super-dashboard .main-sidebar .super-brand-link .super-brand-logo {
+  float: none !important;
+  position: static !important;
+  display: block !important;
+  width: 70px !important;
+  height: 70px !important;
+  min-width: 70px;
+  min-height: 70px;
+  max-width: 70px !important;
+  max-height: 70px !important;
+  margin: 0 auto 0.5rem !important;
+  padding: 0 !important;
+  object-fit: cover;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+  line-height: normal;
+  box-sizing: border-box;
+}
+
+.barangay-super-dashboard .main-sidebar .super-brand-link .brand-text {
+  float: none !important;
+  position: static !important;
+  display: block !important;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #e8eaef;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.barangay-super-dashboard .main-sidebar .super-brand-link small {
+  color: var(--portal-barangay-primary-light) !important;
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  margin: 0.75rem 0.5rem 1rem;
+  padding: 0.85rem 0.65rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-panel .image {
+  float: none !important;
+  padding-left: 0 !important;
+  margin-bottom: 0.55rem;
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border: 2px solid rgba(45, 212, 191, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-avatar--fallback {
+  color: #2dd4bf;
+  font-size: 1.15rem;
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-panel .info {
+  overflow: visible;
+  padding: 0;
+  line-height: 1.35;
+}
+
+.barangay-super-dashboard.barangay-portal .main-sidebar .super-user-panel .info a,
+.barangay-super-dashboard .main-sidebar .super-user-panel .info a {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #e8eaef !important;
+  text-decoration: none;
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-panel .info a:hover {
+  color: #2dd4bf !important;
+}
+
+.barangay-super-dashboard .main-sidebar .super-user-panel .badge {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+}
+
+.barangay-super-dashboard .main-sidebar .nav-header {
+  color: rgba(165, 180, 252, 0.75);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  padding: 0.85rem 1rem 0.35rem;
+}
+
+.barangay-super-dashboard .main-sidebar .nav-sidebar .nav-link {
+  border-radius: 0 28px 28px 0;
+  margin: 0.1rem 0.5rem 0.1rem 0;
+  padding: 0.55rem 1rem;
+  transition: background 0.2s ease, padding-left 0.2s ease, color 0.2s ease;
+}
+
+.barangay-super-dashboard .main-sidebar .nav-sidebar .nav-link:hover {
+  background: rgba(255, 255, 255, 0.07);
+  padding-left: 1.15rem;
+}
+
+.barangay-super-dashboard .main-sidebar .nav-sidebar .nav-link.active,
+.barangay-super-dashboard .main-sidebar .nav-sidebar .nav-link.bg-indigo {
+  background: var(--portal-barangay-nav-active) !important;
+  border-left: 3px solid var(--portal-barangay-nav-active-border);
+  font-weight: 700;
+  color: #fff !important;
+  box-shadow: inset 0 0 20px rgba(20, 184, 166, 0.1);
+}
+
+.barangay-super-dashboard .main-sidebar .nav-sidebar .nav-icon {
+  font-size: 1rem;
+  width: 1.4rem;
+  text-align: center;
+}
+
+.barangay-super-dashboard .main-sidebar .nav-sidebar .nav-link p {
+  white-space: normal;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.barangay-super-dashboard .main-sidebar,
+.barangay-super-dashboard .main-sidebar .sidebar,
+.nutrition-super-dashboard .main-sidebar,
+.nutrition-super-dashboard .main-sidebar .sidebar {
+  overflow-x: hidden !important;
+}
+
+.barangay-super-dashboard .main-sidebar .sidebar nav,
+.nutrition-super-dashboard .main-sidebar .sidebar nav {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.barangay-super-dashboard .main-sidebar .nav-sidebar,
+.nutrition-super-dashboard .main-sidebar .nav-sidebar {
+  width: 100%;
+  max-width: 100%;
+}
+
+.barangay-super-dashboard .main-sidebar .sidebar::-webkit-scrollbar:horizontal,
+.nutrition-super-dashboard .main-sidebar .sidebar::-webkit-scrollbar:horizontal {
+  display: none;
+  height: 0;
+}
+
+@media (min-width: 992px) {
+  .barangay-super-dashboard.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover):not(.sidebar-focused) .super-brand-link {
+    padding: 0.65rem 0.35rem;
+  }
+
+  .barangay-super-dashboard.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover):not(.sidebar-focused) .super-brand-link .super-brand-logo {
+    width: 36px !important;
+    height: 36px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .barangay-super-dashboard.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover):not(.sidebar-focused) .super-brand-link .brand-text,
+  .barangay-super-dashboard.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover):not(.sidebar-focused) .super-brand-link small {
+    display: none !important;
+  }
+
+  .barangay-super-dashboard.sidebar-mini.sidebar-collapse .main-sidebar:not(:hover):not(.sidebar-focused) .super-user-panel .info {
+    display: none;
+  }
+}
+
+/* Stat cards — same colors as Barangay Dashboard */
+.barangay-super-dashboard .dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.barangay-super-dashboard .dashboard-stat {
+  border-radius: 14px;
+  padding: 1.15rem 1.1rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.barangay-super-dashboard .dashboard-stat::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.barangay-super-dashboard .dashboard-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.barangay-super-dashboard .dashboard-stat-icon {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  font-size: 1.6rem;
+  opacity: 0.35;
+}
+
+.barangay-super-dashboard .dashboard-stat-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.barangay-super-dashboard .dashboard-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.92;
+  line-height: 1.3;
+}
+
+.barangay-super-dashboard .dashboard-stat--population { background: linear-gradient(135deg, #20c997, #17a2b8); }
+.barangay-super-dashboard .dashboard-stat--voters { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.barangay-super-dashboard .dashboard-stat--senior { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.barangay-super-dashboard .dashboard-stat--children { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+.barangay-super-dashboard .dashboard-stat--pwd { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.barangay-super-dashboard .dashboard-stat--blotter { background: linear-gradient(135deg, #6610f2, #4a0eb8); }
+.barangay-super-dashboard .dashboard-stat--single { background: linear-gradient(135deg, #e83e8c, #c2185b); }
+.barangay-super-dashboard .dashboard-stat--ip { background: linear-gradient(135deg, #8d6e63, #5d4037); }
+.barangay-super-dashboard .dashboard-stat--barangays { background: linear-gradient(135deg, #0d9488, #14b8a6); }
+
+.barangay-super-dashboard .dashboard-panel {
+  background: var(--portal-barangay-card);
+}
+
+.barangay-super-dashboard .dashboard-panel .card-header {
+  background: var(--portal-barangay-card-header);
+}
+
+.barangay-super-dashboard .dashboard-panel .card-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+  color: #e8eaef;
+}
+
+.barangay-super-dashboard .dashboard-panel .card-title i {
+  color: #a5b4fc;
+  margin-right: 0.4rem;
+}
+
+.barangay-super-dashboard .dashboard-panel .btn-primary {
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  border-color: transparent;
+}
+
+.barangay-super-dashboard .dashboard-panel .btn-outline-primary {
+  color: #2dd4bf;
+  border-color: rgba(45, 212, 191, 0.45);
+}
+
+.barangay-super-dashboard .dashboard-panel .btn-outline-primary:hover {
+  background: rgba(20, 184, 166, 0.2);
+  color: #fff;
+  border-color: #2dd4bf;
+}
+
+.barangay-super-dashboard .preloader {
+  transition: height 0.3s ease;
+  background: linear-gradient(135deg, #1e2433, #0d9488);
+}
+
+@media (max-width: 1200px) {
+  .barangay-super-dashboard .super-workflow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1400px) {
+  .barangay-super-dashboard .dashboard-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 992px) {
+  .barangay-super-dashboard .dashboard-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 576px) {
+  .barangay-super-dashboard .super-workflow-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .barangay-super-dashboard .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .barangay-super-dashboard .super-dashboard-welcome,
+  .barangay-super-dashboard .dashboard-welcome {
+    padding: 1.25rem;
+  }
+
+  .barangay-super-dashboard .super-dashboard-welcome h1,
+  .barangay-super-dashboard .dashboard-welcome h1 {
+    font-size: 1.35rem;
+  }
+}
+
+/* Nutrition super admin dashboard (green theme, same layout as barangay super dashboard) */
+.nutrition-super-dashboard .nutrition-panel .table-dark {
+  background: transparent;
+}
+
+.nutrition-super-dashboard .nutrition-panel .table-dark thead th {
+  border-color: rgba(74, 222, 128, 0.18);
+  color: #bbf7d0;
+}
+
+.nutrition-super-dashboard .nutrition-panel .table-dark td {
+  border-color: rgba(74, 222, 128, 0.1);
+  vertical-align: middle;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .nav-header {
+  color: rgba(187, 247, 208, 0.65);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  padding: 0.85rem 1rem 0.35rem;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .nutrition-brand-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.75rem 0.85rem;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.18) !important;
+  background: rgba(34, 197, 94, 0.07);
+  white-space: normal;
+  overflow: hidden;
+  height: auto;
+  text-align: center;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .nutrition-brand-logo {
+  float: none !important;
+  position: static !important;
+  display: block !important;
+  width: 70px !important;
+  height: 70px !important;
+  min-width: 70px;
+  min-height: 70px;
+  max-width: 70px !important;
+  max-height: 70px !important;
+  margin: 0 auto 0.5rem !important;
+  padding: 0 !important;
+  object-fit: cover;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  border: 3px solid rgba(74, 222, 128, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+  line-height: normal;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .nutrition-brand-link .brand-text {
+  float: none !important;
+  position: static !important;
+  display: block !important;
+  width: 100%;
+  margin: 0 !important;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #ecfdf5;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: rgba(34, 197, 94, 0.06);
+  border-radius: 8px;
+  margin: 0.75rem 0.5rem 1rem;
+  padding: 0.85rem 0.65rem !important;
+  border: 1px solid rgba(74, 222, 128, 0.12);
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-panel .image {
+  float: none !important;
+  padding-left: 0 !important;
+  margin-bottom: 0.55rem;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px !important;
+  max-height: 48px !important;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border: 2px solid rgba(74, 222, 128, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  box-sizing: border-box;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-avatar--fallback {
+  color: #4ade80;
+  font-size: 1.15rem;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-panel .info {
+  overflow: visible;
+  padding: 0;
+  line-height: 1.35;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-panel .info a {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #bbf7d0 !important;
+  text-decoration: none;
+}
+
+.nutrition-super-dashboard .super-nutrition-sidebar .super-user-panel .info a:hover {
+  color: #4ade80 !important;
+}

@@ -1,0 +1,389 @@
+/**
+ * Portal theme tokens — sourced from Barangay Hub & Nutrition Hub
+ */
+:root {
+  /* Barangay Hub (teal + indigo accent) */
+  --portal-barangay-bg: #1a1d24;
+  --portal-barangay-bg-shell:
+    radial-gradient(circle at 100% 0%, rgba(102, 16, 242, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(20, 184, 166, 0.1) 0%, transparent 45%),
+    #1a1d24;
+  --portal-barangay-primary: #14b8a6;
+  --portal-barangay-primary-dark: #0d9488;
+  --portal-barangay-primary-light: #2dd4bf;
+  --portal-barangay-accent: #6610f2;
+  --portal-barangay-accent-soft: rgba(102, 16, 242, 0.18);
+  --portal-barangay-text: #e8eaef;
+  --portal-barangay-text-muted: rgba(232, 234, 239, 0.72);
+  --portal-barangay-heading: #a5b4fc;
+  --portal-barangay-navbar: linear-gradient(90deg, #0d9488 0%, #14b8a6 55%, #2dd4bf 100%);
+  --portal-barangay-sidebar: linear-gradient(180deg, #1e2433 0%, #171b26 100%);
+  --portal-barangay-sidebar-border: rgba(255, 255, 255, 0.05);
+  --portal-barangay-brand-bg: rgba(0, 0, 0, 0.15);
+  --portal-barangay-user-panel: rgba(255, 255, 255, 0.04);
+  --portal-barangay-user-panel-border: rgba(255, 255, 255, 0.06);
+  --portal-barangay-nav-hover: rgba(255, 255, 255, 0.07);
+  --portal-barangay-nav-active: linear-gradient(90deg, rgba(20, 184, 166, 0.35) 0%, rgba(102, 16, 242, 0.18) 100%);
+  --portal-barangay-nav-active-border: #2dd4bf;
+  --portal-barangay-card: #252b3b;
+  --portal-barangay-card-header: linear-gradient(90deg, rgba(20, 184, 166, 0.35) 0%, rgba(102, 16, 242, 0.2) 100%);
+  --portal-barangay-card-border: rgba(255, 255, 255, 0.06);
+  --portal-barangay-footer: linear-gradient(90deg, #1a1f2e, #252b3b);
+  --portal-barangay-welcome: linear-gradient(135deg, #1e2433 0%, #0d9488 55%, #6610f2 100%);
+  --portal-barangay-btn: linear-gradient(180deg, rgba(45, 212, 191, 0.22) 0%, rgba(20, 184, 166, 0.18) 100%);
+  --portal-barangay-btn-border: rgba(45, 212, 191, 0.45);
+  --portal-barangay-btn-hover: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 100%);
+  --portal-barangay-picker-banner: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(0, 0, 0, 0.6) 100%);
+  --portal-barangay-picker-border: rgba(45, 212, 191, 0.3);
+
+  /* Nutrition Hub (dark green — original default) */
+  --portal-nutrition-bg: #0a1410;
+  --portal-nutrition-bg-shell:
+    radial-gradient(ellipse 85% 55% at 100% 0%, rgba(34, 197, 94, 0.1) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 45% at 0% 100%, rgba(22, 163, 74, 0.08) 0%, transparent 52%),
+    linear-gradient(180deg, #0c1812 0%, #0f1f14 42%, #0a1410 100%);
+  --portal-nutrition-primary: #16a34a;
+  --portal-nutrition-primary-dark: #14532d;
+  --portal-nutrition-primary-mid: #166534;
+  --portal-nutrition-primary-deep: #052e16;
+  --portal-nutrition-primary-light: #4ade80;
+  --portal-nutrition-text: #ecfdf5;
+  --portal-nutrition-text-muted: rgba(236, 253, 245, 0.72);
+  --portal-nutrition-heading: #bbf7d0;
+  --portal-nutrition-navbar: linear-gradient(90deg, #14532d 0%, #166534 55%, #052e16 100%);
+  --portal-nutrition-sidebar: linear-gradient(180deg, #0f1f14 0%, #0a1410 100%);
+  --portal-nutrition-sidebar-border: rgba(74, 222, 128, 0.14);
+  --portal-nutrition-brand-bg: rgba(34, 197, 94, 0.07);
+  --portal-nutrition-user-panel: rgba(34, 197, 94, 0.06);
+  --portal-nutrition-user-panel-border: rgba(74, 222, 128, 0.12);
+  --portal-nutrition-nav-hover: rgba(34, 197, 94, 0.12);
+  --portal-nutrition-nav-active: rgba(34, 197, 94, 0.22);
+  --portal-nutrition-nav-active-border: #4ade80;
+  --portal-nutrition-card: rgba(12, 24, 18, 0.82);
+  --portal-nutrition-card-header: linear-gradient(90deg, rgba(22, 101, 52, 0.32) 0%, rgba(15, 31, 20, 0.45) 100%);
+  --portal-nutrition-card-border: rgba(74, 222, 128, 0.14);
+  --portal-nutrition-footer: linear-gradient(90deg, #0a1410, #0f1f14);
+  --portal-nutrition-welcome: linear-gradient(135deg, rgba(22, 101, 52, 0.35) 0%, rgba(15, 31, 20, 0.95) 100%);
+  --portal-nutrition-btn: linear-gradient(180deg, rgba(74, 222, 128, 0.22) 0%, rgba(22, 163, 74, 0.18) 100%);
+  --portal-nutrition-btn-border: rgba(74, 222, 128, 0.45);
+  --portal-nutrition-btn-hover: #16a34a;
+  --portal-nutrition-picker-banner: linear-gradient(135deg, rgba(34, 197, 94, 0.14) 0%, rgba(0, 0, 0, 0.6) 100%);
+  --portal-nutrition-picker-border: rgba(74, 222, 128, 0.3);
+}
+
+/* ── Barangay portal shell (AdminLTE pages) ─────────────────────────── */
+body.barangay-portal:not(.nutrition-portal).dark-mode .content-wrapper,
+.dark-mode.barangay-portal:not(.nutrition-portal) .content-wrapper {
+  background: var(--portal-barangay-bg-shell) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .main-header.navbar {
+  background: var(--portal-barangay-navbar) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.22) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .main-sidebar {
+  background: var(--portal-barangay-sidebar) !important;
+  border-right: 1px solid var(--portal-barangay-sidebar-border) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .main-sidebar .brand-link {
+  background: var(--portal-barangay-brand-bg) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .user-panel,
+body.barangay-portal:not(.nutrition-portal) .super-user-panel {
+  background: var(--portal-barangay-user-panel) !important;
+  border: 1px solid var(--portal-barangay-user-panel-border) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .user-panel .info a,
+body.barangay-portal:not(.nutrition-portal) .super-user-panel .info a {
+  color: var(--portal-barangay-text) !important;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
+body.barangay-portal:not(.nutrition-portal) .user-panel small,
+body.barangay-portal:not(.nutrition-portal) .super-user-panel small {
+  color: var(--portal-barangay-primary-light) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-header {
+  color: var(--portal-barangay-heading);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  opacity: 0.85;
+}
+
+body.barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-link:hover {
+  background: var(--portal-barangay-nav-hover) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-link.active,
+body.barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-link.bg-indigo {
+  background: var(--portal-barangay-nav-active) !important;
+  border-left: 3px solid var(--portal-barangay-nav-active-border) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 20px rgba(20, 184, 166, 0.1);
+}
+
+body.barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-treeview .nav-link.active {
+  color: var(--portal-barangay-primary-light) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal).dark-mode .card,
+body.barangay-portal:not(.nutrition-portal) .dashboard-panel {
+  background: var(--portal-barangay-card) !important;
+  border-color: var(--portal-barangay-card-border) !important;
+  color: var(--portal-barangay-text);
+}
+
+body.barangay-portal:not(.nutrition-portal).dark-mode .card-header,
+body.barangay-portal:not(.nutrition-portal) .dashboard-panel .card-header {
+  background: var(--portal-barangay-card-header) !important;
+  border-bottom-color: var(--portal-barangay-card-border) !important;
+  color: var(--portal-barangay-text) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .main-footer {
+  background: var(--portal-barangay-footer) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .preloader {
+  background: linear-gradient(135deg, #1e2433, var(--portal-barangay-primary-dark)) !important;
+}
+
+/* ── Nutrition portal shell ─────────────────────────────────────────── */
+body.barangay-portal.nutrition-portal,
+body.barangay-portal.nutrition-portal .wrapper {
+  background: var(--portal-nutrition-bg);
+}
+
+body.barangay-portal.nutrition-portal .content-wrapper,
+.dark-mode.barangay-portal.nutrition-portal .content-wrapper {
+  background: var(--portal-nutrition-bg-shell) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-header.navbar,
+body.barangay-portal.nutrition-portal .nutrition-navbar {
+  background: var(--portal-nutrition-navbar) !important;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.28) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-sidebar,
+body.barangay-portal.nutrition-portal .nutrition-sidebar {
+  background: var(--portal-nutrition-sidebar) !important;
+  border-right: 1px solid var(--portal-nutrition-sidebar-border) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-sidebar .brand-link,
+body.barangay-portal.nutrition-portal .nutrition-brand-link {
+  background: var(--portal-nutrition-brand-bg) !important;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.18) !important;
+}
+
+body.barangay-portal.nutrition-portal .user-panel,
+body.barangay-portal.nutrition-portal .super-user-panel {
+  background: var(--portal-nutrition-user-panel) !important;
+  border: 1px solid var(--portal-nutrition-user-panel-border) !important;
+}
+
+body.barangay-portal.nutrition-portal .user-panel .info a,
+body.barangay-portal.nutrition-portal .super-user-panel .info a {
+  color: var(--portal-nutrition-heading) !important;
+}
+
+body.barangay-portal.nutrition-portal .nav-sidebar .nav-header,
+body.barangay-portal.nutrition-portal .super-nutrition-sidebar .nav-header {
+  color: rgba(187, 247, 208, 0.75);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+}
+
+body.barangay-portal.nutrition-portal .nav-sidebar .nav-link:hover {
+  background: var(--portal-nutrition-nav-hover) !important;
+}
+
+body.barangay-portal.nutrition-portal .nav-sidebar .nav-link.active,
+body.barangay-portal.nutrition-portal .nav-sidebar .nav-link.bg-indigo {
+  background: var(--portal-nutrition-nav-active) !important;
+  border-left: 3px solid var(--portal-nutrition-nav-active-border) !important;
+  color: var(--portal-nutrition-heading) !important;
+  box-shadow: inset 0 0 20px rgba(34, 197, 94, 0.08);
+}
+
+body.barangay-portal.nutrition-portal .card,
+body.barangay-portal.nutrition-portal .nutrition-panel {
+  background: var(--portal-nutrition-card) !important;
+  border: 1px solid var(--portal-nutrition-card-border) !important;
+  color: var(--portal-nutrition-text);
+}
+
+body.barangay-portal.nutrition-portal .card-header,
+body.barangay-portal.nutrition-portal .nutrition-panel .card-header {
+  background: var(--portal-nutrition-card-header) !important;
+  border-bottom: 1px solid rgba(74, 222, 128, 0.16) !important;
+  color: var(--portal-nutrition-text) !important;
+}
+
+body.barangay-portal.nutrition-portal .main-footer {
+  background: var(--portal-nutrition-footer) !important;
+  border-top: 1px solid rgba(74, 222, 128, 0.12) !important;
+}
+
+body.barangay-portal.nutrition-portal .preloader {
+  background: linear-gradient(135deg, var(--portal-nutrition-primary-dark), var(--portal-nutrition-primary)) !important;
+}
+
+body.barangay-portal.nutrition-portal .btn-primary,
+body.barangay-portal.nutrition-portal .bg-blue:not(.small-box) {
+  background: linear-gradient(180deg, var(--portal-nutrition-primary-light), var(--portal-nutrition-primary)) !important;
+  border-color: var(--portal-nutrition-primary-dark) !important;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
+}
+
+body.barangay-portal.nutrition-portal .btn-primary:hover,
+body.barangay-portal.nutrition-portal .bg-blue.btn:hover {
+  background: var(--portal-nutrition-btn-hover) !important;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4);
+}
+
+body.barangay-portal.nutrition-portal .page-item.active .page-link,
+body.barangay-portal.nutrition-portal .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+body.barangay-portal.nutrition-portal .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+  background: linear-gradient(180deg, var(--portal-nutrition-primary-light), var(--portal-nutrition-primary)) !important;
+  border-color: var(--portal-nutrition-primary) !important;
+}
+
+/* ── Barangay Hub page (Tailwind scope) ─────────────────────────────── */
+#tailwind-scope.hub-page {
+  background: var(--portal-barangay-bg-shell);
+}
+
+#tailwind-scope .hub-topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(26, 29, 36, 0.92);
+}
+
+#tailwind-scope .hub-picker-banner {
+  background: var(--portal-barangay-picker-banner);
+  border: 1px solid var(--portal-barangay-picker-border);
+}
+
+#tailwind-scope .hub-open-btn {
+  background: var(--portal-barangay-btn);
+  border-color: var(--portal-barangay-btn-border);
+  color: #ecfdf5 !important;
+}
+
+#tailwind-scope .hub-open-btn:hover {
+  background: var(--portal-barangay-btn-hover);
+  border-color: var(--portal-barangay-primary-light);
+}
+
+#tailwind-scope .hub-system-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+#tailwind-scope .hub-system-switch:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+#tailwind-scope .hub-system-switch.is-active {
+  border-color: rgba(45, 212, 191, 0.45);
+  background: rgba(20, 184, 166, 0.18);
+  color: var(--portal-barangay-primary-light);
+}
+
+#tailwind-scope.hub-page--nutrition {
+  background: var(--portal-nutrition-bg-shell);
+}
+
+#tailwind-scope.hub-page--nutrition .hub-topbar {
+  border-bottom-color: rgba(74, 222, 128, 0.14);
+  background: rgba(10, 20, 16, 0.92);
+}
+
+#tailwind-scope.hub-page--nutrition .hub-picker-banner,
+#tailwind-scope .hub-picker-banner--nutrition {
+  background: var(--portal-nutrition-picker-banner);
+  border-color: var(--portal-nutrition-picker-border);
+}
+
+#tailwind-scope .hub-open-btn--nutrition {
+  background: var(--portal-nutrition-btn);
+  border-color: var(--portal-nutrition-btn-border);
+}
+
+#tailwind-scope .hub-open-btn--nutrition:hover {
+  background: var(--portal-nutrition-btn-hover);
+  border-color: var(--portal-nutrition-primary);
+}
+
+#tailwind-scope.hub-page--nutrition .hub-system-switch.is-active {
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(34, 197, 94, 0.18);
+  color: var(--portal-nutrition-heading);
+}
+
+#tailwind-scope.hub-page--nutrition .hub-glow-a {
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+
+#tailwind-scope.hub-page--nutrition .hub-glow-b {
+  background: rgba(22, 163, 74, 0.1) !important;
+}
+
+#tailwind-scope.hub-page:not(.hub-page--nutrition) .hub-glow-a,
+#tailwind-scope.hub-page:not(.hub-page--nutrition) .hub-glow-b {
+  background: rgba(20, 184, 166, 0.1) !important;
+}
+
+/* ── Legacy AdminLTE indigo → portal accent ─────────────────────────── */
+body.barangay-portal:not(.nutrition-portal) .bg-indigo:not(.nav-link),
+body.barangay-portal:not(.nutrition-portal) thead.bg-indigo,
+body.barangay-portal:not(.nutrition-portal) .badge.bg-indigo,
+body.barangay-portal:not(.nutrition-portal) .input-group-text.bg-indigo,
+body.barangay-portal:not(.nutrition-portal) .btn.bg-indigo:not(.nav-link) {
+  background: linear-gradient(135deg, var(--portal-barangay-primary-dark), var(--portal-barangay-primary)) !important;
+  border-color: rgba(45, 212, 191, 0.35) !important;
+  color: #fff !important;
+}
+
+body.barangay-portal.nutrition-portal .bg-indigo:not(.nav-link),
+body.barangay-portal.nutrition-portal thead.bg-indigo,
+body.barangay-portal.nutrition-portal .badge.bg-indigo,
+body.barangay-portal.nutrition-portal .input-group-text.bg-indigo,
+body.barangay-portal.nutrition-portal .btn.bg-indigo:not(.nav-link) {
+  background: linear-gradient(135deg, var(--portal-nutrition-primary-dark), var(--portal-nutrition-primary)) !important;
+  border-color: rgba(0, 108, 53, 0.35) !important;
+  color: #ffffff !important;
+}
+
+body.barangay-portal:not(.nutrition-portal) .swal2-styled.swal2-confirm {
+  background-color: var(--portal-barangay-primary) !important;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.35) !important;
+}
+
+body.barangay-portal.nutrition-portal .swal2-styled.swal2-confirm,
+#tailwind-scope.hub-page--nutrition ~ .swal2-container .swal2-styled.swal2-confirm {
+  background-color: var(--portal-nutrition-primary) !important;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35) !important;
+}

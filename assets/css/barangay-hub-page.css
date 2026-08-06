@@ -1,0 +1,135 @@
+/**
+ * Barangay Hub — portal dark theme (aligned with barangay.css)
+ */
+#tailwind-scope.hub-page {
+  font-family: var(--barangay-font, 'Source Sans 3'), system-ui, sans-serif;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(102, 16, 242, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(20, 184, 166, 0.1) 0%, transparent 45%),
+    #1a1d24;
+  color: #fff;
+}
+
+#tailwind-scope.hub-page h1,
+#tailwind-scope.hub-page h2,
+#tailwind-scope.hub-page h5,
+#tailwind-scope.hub-page h6,
+#tailwind-scope.hub-page p,
+#tailwind-scope.hub-page span,
+#tailwind-scope.hub-page label,
+#tailwind-scope.hub-page input,
+#tailwind-scope.hub-page button,
+#tailwind-scope.hub-page code {
+  color: inherit;
+}
+
+#tailwind-scope .hub-card-name {
+  color: #fff !important;
+  letter-spacing: 0.02em;
+}
+
+#tailwind-scope .hub-stat-card {
+  color: #fff;
+}
+
+#tailwind-scope .hub-topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(26, 29, 36, 0.92);
+  backdrop-filter: blur(12px);
+  color: #fff;
+}
+
+#tailwind-scope .hub-picker-banner {
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.12) 0%, rgba(0, 0, 0, 0.6) 100%);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  color: #fff;
+}
+
+#tailwind-scope .hub-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -1.25rem 1.5rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(26, 29, 36, 0.94);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+#tailwind-scope .hub-card {
+  min-height: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+#tailwind-scope .hub-card--picker {
+  padding-top: 1.75rem;
+}
+
+#tailwind-scope .hub-card-logo {
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+#tailwind-scope .hub-open-btn {
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.22) 0%, rgba(20, 184, 166, 0.18) 100%);
+  border-color: rgba(45, 212, 191, 0.45);
+  color: #ecfdf5 !important;
+}
+
+#tailwind-scope .hub-open-btn:hover {
+  background: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 100%);
+  border-color: #2dd4bf;
+  color: #fff !important;
+  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.35);
+}
+
+#tailwind-scope .hub-stat-card {
+  min-height: 4.5rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#tailwind-scope a.hub-stat-card--clickable {
+  text-decoration: none;
+  color: inherit;
+}
+
+#tailwind-scope .hub-stat-card--clickable {
+  cursor: pointer;
+}
+
+#tailwind-scope .hub-stat-card--clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+#tailwind-scope .hub-stat-card--clickable:focus-visible {
+  outline: 2px solid rgba(45, 212, 191, 0.8);
+  outline-offset: 2px;
+}
+
+#tailwind-scope .hub-account-chip {
+  max-width: 100%;
+}
+
+#tailwind-scope .hub-input {
+  color: #fff !important;
+}
+
+#tailwind-scope .hub-modal .relative.z-10 {
+  color: #fff;
+}
+
+@media (max-width: 639px) {
+  #tailwind-scope .hub-toolbar {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  #tailwind-scope .hub-card-wrap {
+    grid-column: span 1;
+  }
+}

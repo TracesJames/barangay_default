@@ -1,0 +1,526 @@
+/**
+ * Barangay hub — launcher grid
+ */
+.barangay-hub-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(102, 16, 242, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(20, 184, 166, 0.2) 0%, transparent 45%),
+    linear-gradient(160deg, #12151f 0%, #1a1f2e 40%, #0f1525 100%);
+}
+
+.barangay-hub-header {
+  text-align: center;
+  padding: 2.5rem 1rem 1.5rem;
+  color: #fff;
+}
+
+.barangay-hub-header h1 {
+  font-size: 1.85rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+  letter-spacing: 0.02em;
+}
+
+.barangay-hub-header p {
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.barangay-hub-totals-wrap {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  padding: 0 1.25rem;
+}
+
+.barangay-hub-totals-title {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 0.85rem;
+  text-align: center;
+}
+
+.barangay-hub-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.barangay-hub-total {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.9rem 0.5rem;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.barangay-hub-total > i {
+  display: block;
+  font-size: 1.1rem;
+  opacity: 0.45;
+  margin-bottom: 0.35rem;
+}
+
+.barangay-hub-total-value {
+  display: block;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 0.2rem;
+}
+
+.barangay-hub-total-label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  line-height: 1.2;
+}
+
+.barangay-hub-barangays {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.25rem 3rem;
+}
+
+.barangay-hub-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.barangay-hub-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.barangay-hub-section-title {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.barangay-hub-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(32, 201, 151, 0.2);
+  border: 1px solid rgba(32, 201, 151, 0.45);
+  color: #20c997;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.barangay-hub-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.barangay-hub-search {
+  position: relative;
+  min-width: 260px;
+}
+
+.barangay-hub-search > i {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.barangay-hub-search-input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.85rem;
+  padding: 0.55rem 1rem 0.55rem 2.35rem;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.barangay-hub-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.barangay-hub-search-input:focus {
+  border-color: rgba(102, 16, 242, 0.65);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.barangay-hub-add-btn {
+  border: 1px solid rgba(32, 201, 151, 0.55);
+  border-radius: 999px;
+  background: rgba(32, 201, 151, 0.15);
+  color: #20c997;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.barangay-hub-add-btn:hover {
+  background: rgba(32, 201, 151, 0.85);
+  color: #fff;
+}
+
+.barangay-hub-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 2.5rem 1rem;
+}
+
+.barangay-hub-empty > i {
+  display: block;
+  font-size: 2rem;
+  opacity: 0.35;
+  margin-bottom: 0.75rem;
+}
+
+.barangay-hub-empty > p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.barangay-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.barangay-select-form {
+  margin: 0;
+  width: 100%;
+}
+
+.barangay-hub-total--population { border-top: 3px solid #20c997; }
+.barangay-hub-total--voters { border-top: 3px solid #28a745; }
+.barangay-hub-total--nonvoters { border-top: 3px solid #ffc107; }
+.barangay-hub-total--senior { border-top: 3px solid #e74c3c; }
+.barangay-hub-total--children { border-top: 3px solid #00bcd4; }
+.barangay-hub-total--pwd { border-top: 3px solid #0037af; }
+.barangay-hub-total--single { border-top: 3px solid #e83e8c; }
+.barangay-hub-total--ip { border-top: 3px solid #8d6e63; }
+.barangay-hub-total--blotter { border-top: 3px solid #6610f2; }
+
+.barangay-hub-card-wrap.d-none {
+  display: none !important;
+}
+
+.barangay-hub-card-wrap {
+  display: flex;
+}
+
+.barangay-hub-card {
+  width: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1.5rem 1rem 1.25rem;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.barangay-hub-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(102, 16, 242, 0.6);
+  background: rgba(102, 16, 242, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.barangay-hub-card.is-active {
+  border-color: #20c997;
+  box-shadow: 0 0 0 1px #20c997, 0 12px 32px rgba(32, 201, 151, 0.2);
+}
+
+.barangay-hub-logo-wrap {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.barangay-hub-logo-edit {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #1e2433;
+  background: linear-gradient(180deg, #6610f2, #0037af);
+  color: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  z-index: 2;
+}
+
+.barangay-hub-logo-edit:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(102, 16, 242, 0.5);
+}
+
+.barangay-hub-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(220, 53, 69, 0.45);
+  background: rgba(220, 53, 69, 0.15);
+  color: #ff8a98;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+  z-index: 2;
+}
+
+.barangay-hub-delete:hover {
+  transform: scale(1.08);
+  background: rgba(220, 53, 69, 0.85);
+  color: #fff;
+}
+
+.barangay-hub-open-btn {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.barangay-hub-open-btn:hover {
+  background: rgba(102, 16, 242, 0.35);
+  border-color: rgba(102, 16, 242, 0.6);
+  color: #fff;
+}
+
+a.barangay-register-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+a.barangay-register-card:hover {
+  text-decoration: none;
+  color: #fff;
+}
+
+.barangay-register-card .barangay-hub-open-btn {
+  pointer-events: none;
+}
+
+.barangay-form-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+}
+
+.barangay-hub-page .barangay-form-logo {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.barangay-hub-logo-edit-preview {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 55, 175, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.barangay-hub-logo {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  margin-bottom: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.barangay-hub-name {
+  font-size: 1rem;
+  font-weight: 800;
+  margin: 0 0 0.25rem;
+  line-height: 1.3;
+}
+
+.barangay-hub-meta {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+}
+
+.barangay-hub-stat {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+}
+
+.barangay-hub-create {
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: transparent;
+}
+
+.barangay-hub-create:hover {
+  border-color: rgba(32, 201, 151, 0.7);
+  background: rgba(32, 201, 151, 0.08);
+}
+
+.barangay-hub-create-icon {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 2rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.barangay-hub-topbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem 0;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.barangay-hub-topbar a {
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.barangay-hub-topbar a:hover {
+  color: #fff;
+}
+
+.barangay-hub-modal .modal-content {
+  border-radius: 14px;
+}
+
+@media (max-width: 992px) {
+  .barangay-hub-totals {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .barangay-hub-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .barangay-hub-toolbar-right {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .barangay-hub-search {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .barangay-hub-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .barangay-hub-total-value {
+    font-size: 1.2rem;
+  }
+
+  .barangay-hub-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .barangay-hub-toolbar-right {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .barangay-hub-add-btn {
+    width: 100%;
+  }
+
+  .barangay-hub-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+  }
+
+  .barangay-hub-logo,
+  .barangay-hub-create-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .barangay-hub-name {
+    font-size: 0.85rem;
+  }
+}

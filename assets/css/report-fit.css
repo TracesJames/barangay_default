@@ -1,0 +1,113 @@
+/* Shared printable-report viewport fit (screen only; print stays full size). */
+
+html {
+  width: 100%;
+  max-width: 100%;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body.report-fit-page,
+body:has(.report-viewport),
+body:has([id$="PrintRoot"]),
+body:has([data-report-fit="root"]),
+body:has(.certificate-document) {
+  overflow-x: hidden;
+}
+
+.report-viewport {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 28px;
+}
+
+.report-scale-wrap {
+  transform-origin: top center;
+  will-change: transform;
+  overflow: hidden;
+}
+
+.report-paper,
+[data-report-fit="root"],
+[id$="PrintRoot"] {
+  box-sizing: border-box;
+  background: #fff;
+}
+
+body.is-pdf-capture,
+body.is-pdf-capture .report-viewport,
+body.is-pdf-capture .report-scale-wrap,
+body.is-pdf-capture .report-paper,
+body.is-pdf-capture [data-report-fit="root"],
+body.is-pdf-capture [id$="PrintRoot"] {
+  transform: none !important;
+  height: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+}
+
+@media screen {
+  .report-paper,
+  [id$="PrintRoot"],
+  [data-report-fit="root"] {
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+  }
+
+  @media (max-width: 900px) {
+    .mellpi-grid,
+    .nutrition-report-stats,
+    .stats {
+      grid-template-columns: 1fr 1fr !important;
+    }
+    .bnp-header-banner--city,
+    .bnp-header-banner--barangay {
+      grid-template-columns: 1fr !important;
+      justify-items: center;
+      text-align: center;
+    }
+    .bnp-logo-side-left,
+    .bnp-logo-side-right {
+      justify-content: center !important;
+    }
+    .bnp-sign,
+    .nutrition-signature-grid,
+    .city-sign-block {
+      grid-template-columns: 1fr !important;
+      flex-direction: column !important;
+      align-items: center !important;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .mellpi-grid,
+    .nutrition-report-stats,
+    .stats {
+      grid-template-columns: 1fr !important;
+    }
+  }
+}
+
+@media print {
+  .report-viewport {
+    display: block !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .report-scale-wrap,
+  .report-paper,
+  [data-report-fit="root"],
+  [id$="PrintRoot"] {
+    transform: none !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+}

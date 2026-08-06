@@ -1,0 +1,376 @@
+/**
+ * Admin dashboard — layout & components
+ */
+.barangay-dashboard .content-header {
+  padding: 0;
+  margin-bottom: 0;
+}
+
+.barangay-dashboard .dashboard-welcome {
+  background: var(--portal-barangay-welcome);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  margin-bottom: 1.5rem;
+  color: #fff;
+  box-shadow: 0 12px 40px rgba(20, 184, 166, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.barangay-dashboard .dashboard-welcome::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  right: -5%;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.barangay-dashboard .dashboard-welcome h1 {
+  font-size: 1.65rem;
+  font-weight: 800;
+  margin: 0 0 0.35rem;
+  color: #fff !important;
+  letter-spacing: 0.01em;
+}
+
+.barangay-dashboard .dashboard-welcome p {
+  margin: 0;
+  opacity: 0.88;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.barangay-dashboard .dashboard-welcome .dashboard-date {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin-top: 0.5rem;
+}
+
+.barangay-dashboard .dashboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+.barangay-dashboard .dashboard-actions .btn {
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.barangay-dashboard .dashboard-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.barangay-dashboard .dashboard-actions .btn i {
+  margin-right: 0.35rem;
+}
+
+/* Stat cards grid */
+.barangay-dashboard .dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.barangay-dashboard .dashboard-stat {
+  border-radius: 14px;
+  padding: 1.15rem 1.1rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.barangay-dashboard a.dashboard-stat-link {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.barangay-dashboard .dashboard-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.barangay-dashboard .dashboard-stat::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  right: -20px;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.barangay-dashboard .dashboard-stat-icon {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  font-size: 1.6rem;
+  opacity: 0.35;
+}
+
+.barangay-dashboard .dashboard-stat-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.barangay-dashboard .dashboard-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.92;
+  line-height: 1.3;
+}
+
+.barangay-dashboard .dashboard-stat--population { background: linear-gradient(135deg, #20c997, #17a2b8); }
+.barangay-dashboard .dashboard-stat--voters { background: linear-gradient(135deg, #28a745, #1e7e34); }
+.barangay-dashboard .dashboard-stat--nonvoters { background: linear-gradient(135deg, #ffc107, #d39e00); }
+.barangay-dashboard .dashboard-stat--senior { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.barangay-dashboard .dashboard-stat--children { background: linear-gradient(135deg, #00bcd4, #0097a7); }
+.barangay-dashboard .dashboard-stat--pwd { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.barangay-dashboard .dashboard-stat--blotter { background: linear-gradient(135deg, #14b8a6, #6610f2); }
+.barangay-dashboard .dashboard-stat--single { background: linear-gradient(135deg, #e83e8c, #c2185b); }
+.barangay-dashboard .dashboard-stat--ip { background: linear-gradient(135deg, #8d6e63, #5d4037); }
+
+/* Panel cards */
+.barangay-dashboard .dashboard-panel {
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  margin-bottom: 1.5rem;
+  background: #252b3b;
+}
+
+.barangay-dashboard .dashboard-panel .card-header {
+  background: linear-gradient(90deg, rgba(20, 184, 166, 0.35) 0%, rgba(102, 16, 242, 0.2) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 1rem 1.25rem;
+}
+
+.barangay-dashboard .dashboard-panel .card-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 0;
+  color: #e8eaef;
+}
+
+.barangay-dashboard .dashboard-panel .card-title i {
+  color: #a5b4fc;
+  margin-right: 0.4rem;
+}
+
+.barangay-dashboard .dashboard-panel .badge-count {
+  background: rgba(102, 16, 242, 0.5);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 0.35em 0.65em;
+  border-radius: 999px;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.barangay-dashboard .dashboard-panel .card-body {
+  padding: 1.25rem;
+}
+
+/* Officials grid */
+.barangay-dashboard .officials-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.barangay-dashboard .officials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.85rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.barangay-dashboard .official-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1rem 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.barangay-dashboard .official-card:hover {
+  background: rgba(102, 16, 242, 0.15);
+  border-color: rgba(102, 16, 242, 0.4);
+  transform: translateY(-2px);
+}
+
+.barangay-dashboard .official-card img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 50%;
+  margin-bottom: 0.65rem;
+  border: 3px solid transparent;
+}
+
+.barangay-dashboard .official-card.is-active img {
+  border-color: #20c997;
+  box-shadow: 0 0 12px rgba(32, 201, 151, 0.35);
+}
+
+.barangay-dashboard .official-card.is-inactive img {
+  border-color: #e74c3c;
+  opacity: 0.85;
+}
+
+.barangay-dashboard .official-card-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #e8eaef;
+  margin: 0 0 0.25rem;
+  line-height: 1.25;
+}
+
+.barangay-dashboard .official-card-role {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a5b4fc;
+  display: block;
+}
+
+.barangay-dashboard .officials-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: #8b93a7;
+}
+
+.barangay-dashboard .officials-empty i {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.barangay-dashboard .officials-empty p {
+  margin: 0 0 1rem;
+  font-weight: 500;
+}
+
+.barangay-dashboard .user-panel small {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+}
+
+.barangay-dashboard .user-panel .image {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.barangay-dashboard .user-panel .image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.barangay-dashboard .user-panel .info a {
+  font-size: 0.82rem;
+  color: #e8eaef !important;
+}
+
+/* Chart panels */
+.barangay-dashboard .chart-panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 1rem;
+  height: 100%;
+}
+
+.barangay-dashboard .chart-panel-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8b93a7;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.barangay-dashboard .chart-wrap {
+  position: relative;
+  height: 260px;
+}
+
+.barangay-dashboard .officials-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.barangay-dashboard .officials-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+  .barangay-dashboard .dashboard-welcome {
+    padding: 1.25rem 1.25rem;
+  }
+
+  .barangay-dashboard .dashboard-welcome h1 {
+    font-size: 1.35rem;
+  }
+
+  .barangay-dashboard .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .barangay-dashboard .dashboard-stat-value {
+    font-size: 1.5rem;
+  }
+
+  .barangay-dashboard .officials-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .barangay-dashboard .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+}

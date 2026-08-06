@@ -1,0 +1,10 @@
+# Harden webroot: block dumps, scripts, backups, and directory listing.
+Options -Indexes
+
+<FilesMatch "(?i)\.(sql|bak|env|ini|log|md)$">
+  Require all denied
+</FilesMatch>
+
+<FilesMatch "(?i)^(composer\.(json|lock)|package(-lock)?\.json|\.gitignore|\.gitattributes)$">
+  Require all denied
+</FilesMatch>

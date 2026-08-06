@@ -1,0 +1,191 @@
+/**
+ * Coolors pastel palette themes.
+ * Default accent (teal/green) stays in portal-themes.css — unchanged.
+ *
+ * Each pastel gets its own ink colors so fonts feel matched:
+ *   --pastel-ink        body text
+ *   --pastel-ink-muted  secondary / muted
+ *   --pastel-heading    titles & nav emphasis
+ */
+
+/* ── Per-palette tokens ─────────────────────────────────────────────── */
+
+body[data-accent="pastel-red"] {
+  --pastel-base: #ffadad;
+  --pastel-dark: #c45c5c;
+  --pastel-mid: #f08888;
+  --pastel-deep: #9f3d3d;
+  --pastel-bg: #fff5f5;
+  --pastel-bg-light: #fffafa;
+  --pastel-ink: #5c2a2a;
+  --pastel-ink-muted: rgba(92, 42, 42, 0.72);
+  --pastel-heading: #8b3030;
+}
+
+body[data-accent="pastel-orange"] {
+  --pastel-base: #ffd6a5;
+  --pastel-dark: #c99550;
+  --pastel-mid: #f0c080;
+  --pastel-deep: #8a5a18;
+  --pastel-bg: #fffaf3;
+  --pastel-bg-light: #fffcf7;
+  --pastel-ink: #5c3d18;
+  --pastel-ink-muted: rgba(92, 61, 24, 0.72);
+  --pastel-heading: #7a4e14;
+}
+
+body[data-accent="pastel-yellow"] {
+  --pastel-base: #fdffb6;
+  --pastel-dark: #a8a848;
+  --pastel-mid: #e0e070;
+  --pastel-deep: #6b6b20;
+  --pastel-bg: #fefff5;
+  --pastel-bg-light: #fffffa;
+  --pastel-ink: #4a4a1a;
+  --pastel-ink-muted: rgba(74, 74, 26, 0.72);
+  --pastel-heading: #5c5c18;
+}
+
+body[data-accent="pastel-green"] {
+  --pastel-base: #caffbf;
+  --pastel-dark: #5aa852;
+  --pastel-mid: #98d890;
+  --pastel-deep: #2f6b28;
+  --pastel-bg: #f5fff3;
+  --pastel-bg-light: #fafff9;
+  --pastel-ink: #1e4a1a;
+  --pastel-ink-muted: rgba(30, 74, 26, 0.72);
+  --pastel-heading: #2a6b24;
+}
+
+body[data-accent="pastel-cyan"] {
+  --pastel-base: #9bf6ff;
+  --pastel-dark: #3aa0b0;
+  --pastel-mid: #6ed0dc;
+  --pastel-deep: #1e6a78;
+  --pastel-bg: #f0fdff;
+  --pastel-bg-light: #f7feff;
+  --pastel-ink: #164a54;
+  --pastel-ink-muted: rgba(22, 74, 84, 0.72);
+  --pastel-heading: #1c6a78;
+}
+
+body[data-accent="pastel-blue"] {
+  --pastel-base: #a0c4ff;
+  --pastel-dark: #5a82c8;
+  --pastel-mid: #88b0f0;
+  --pastel-deep: #2f528a;
+  --pastel-bg: #f3f8ff;
+  --pastel-bg-light: #f9fbff;
+  --pastel-ink: #1e3a5f;
+  --pastel-ink-muted: rgba(30, 58, 95, 0.72);
+  --pastel-heading: #2a5080;
+}
+
+body[data-accent="pastel-purple"] {
+  --pastel-base: #bdb2ff;
+  --pastel-dark: #7a6ec4;
+  --pastel-mid: #a898f0;
+  --pastel-deep: #4a3e8a;
+  --pastel-bg: #f8f6ff;
+  --pastel-bg-light: #fcfaff;
+  --pastel-ink: #2e2460;
+  --pastel-ink-muted: rgba(46, 36, 96, 0.72);
+  --pastel-heading: #43348a;
+}
+
+body[data-accent="pastel-pink"] {
+  --pastel-base: #ffc6ff;
+  --pastel-dark: #c070c0;
+  --pastel-mid: #e8a0e8;
+  --pastel-deep: #8a408a;
+  --pastel-bg: #fff5ff;
+  --pastel-bg-light: #fffaff;
+  --pastel-ink: #5a205a;
+  --pastel-ink-muted: rgba(90, 32, 90, 0.72);
+  --pastel-heading: #7a3080;
+}
+
+/* ── Shared pastel → portal token mapping ───────────────────────────── */
+
+body[data-accent^="pastel-"] {
+  --barangay-primary: var(--pastel-dark);
+  --barangay-primary-light: var(--pastel-mid);
+  --barangay-primary-dark: var(--pastel-deep);
+  --barangay-primary-text: var(--pastel-heading);
+  --barangay-accent: var(--pastel-dark);
+  --barangay-accent-soft: color-mix(in srgb, var(--pastel-base) 28%, transparent);
+
+  --portal-barangay-bg: var(--pastel-bg);
+  --portal-barangay-bg-shell:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--pastel-base) 45%, transparent) 0%, transparent 42%),
+    radial-gradient(circle at 0% 100%, color-mix(in srgb, var(--pastel-base) 32%, transparent) 0%, transparent 48%),
+    var(--pastel-bg-light);
+  --portal-barangay-primary: var(--pastel-dark);
+  --portal-barangay-primary-dark: var(--pastel-deep);
+  --portal-barangay-primary-light: var(--pastel-mid);
+  --portal-barangay-accent: var(--pastel-dark);
+  --portal-barangay-accent-soft: color-mix(in srgb, var(--pastel-base) 28%, transparent);
+  --portal-barangay-text: var(--pastel-ink);
+  --portal-barangay-text-muted: var(--pastel-ink-muted);
+  --portal-barangay-heading: var(--pastel-heading);
+  --portal-barangay-navbar: linear-gradient(90deg, var(--pastel-base) 0%, color-mix(in srgb, var(--pastel-base) 82%, #ffffff) 55%, var(--pastel-bg-light) 100%);
+  --portal-barangay-sidebar: linear-gradient(180deg, color-mix(in srgb, var(--pastel-base) 55%, #ffffff) 0%, var(--pastel-bg) 100%);
+  --portal-barangay-sidebar-border: color-mix(in srgb, var(--pastel-dark) 22%, transparent);
+  --portal-barangay-brand-bg: color-mix(in srgb, var(--pastel-base) 35%, transparent);
+  --portal-barangay-user-panel: color-mix(in srgb, var(--pastel-base) 28%, transparent);
+  --portal-barangay-user-panel-border: color-mix(in srgb, var(--pastel-dark) 18%, transparent);
+  --portal-barangay-nav-hover: color-mix(in srgb, var(--pastel-base) 38%, transparent);
+  --portal-barangay-nav-active: linear-gradient(90deg, color-mix(in srgb, var(--pastel-base) 55%, transparent) 0%, color-mix(in srgb, var(--pastel-base) 28%, transparent) 100%);
+  --portal-barangay-nav-active-border: var(--pastel-dark);
+  --portal-barangay-card: #ffffff;
+  --portal-barangay-card-header: linear-gradient(90deg, color-mix(in srgb, var(--pastel-base) 50%, transparent) 0%, color-mix(in srgb, var(--pastel-base) 18%, #ffffff) 100%);
+  --portal-barangay-card-border: color-mix(in srgb, var(--pastel-dark) 18%, transparent);
+  --portal-barangay-footer: linear-gradient(90deg, var(--pastel-bg), color-mix(in srgb, var(--pastel-base) 35%, #ffffff));
+  --portal-barangay-welcome: linear-gradient(135deg, #ffffff 0%, var(--pastel-base) 55%, var(--pastel-mid) 100%);
+  --portal-barangay-btn: linear-gradient(180deg, color-mix(in srgb, var(--pastel-base) 45%, transparent) 0%, color-mix(in srgb, var(--pastel-base) 28%, transparent) 100%);
+  --portal-barangay-btn-border: color-mix(in srgb, var(--pastel-dark) 35%, transparent);
+  --portal-barangay-btn-hover: linear-gradient(180deg, var(--pastel-mid) 0%, var(--pastel-dark) 100%);
+  --portal-barangay-picker-banner: linear-gradient(135deg, color-mix(in srgb, var(--pastel-base) 40%, transparent) 0%, rgba(255, 255, 255, 0.92) 100%);
+  --portal-barangay-picker-border: color-mix(in srgb, var(--pastel-dark) 28%, transparent);
+}
+
+/*
+ * Pastel remaps for Nutrition shell ONLY when not on a nutrition-portal page.
+ * Nutrition Portal keeps its dark forest-green theme; pastels tint accents only
+ * (see appearance-accessibility.css).
+ */
+body[data-accent^="pastel-"]:not(.nutrition-portal) {
+  --portal-nutrition-bg: var(--pastel-bg);
+  --portal-nutrition-bg-shell:
+    radial-gradient(ellipse 85% 55% at 100% 0%, color-mix(in srgb, var(--pastel-base) 50%, transparent) 0%, transparent 58%),
+    radial-gradient(ellipse 70% 45% at 0% 100%, color-mix(in srgb, var(--pastel-base) 38%, transparent) 0%, transparent 52%),
+    linear-gradient(180deg, var(--pastel-bg-light) 0%, color-mix(in srgb, var(--pastel-base) 22%, #ffffff) 42%, var(--pastel-bg) 100%);
+  --portal-nutrition-primary: var(--pastel-dark);
+  --portal-nutrition-primary-dark: var(--pastel-deep);
+  --portal-nutrition-primary-mid: var(--pastel-dark);
+  --portal-nutrition-primary-deep: var(--pastel-deep);
+  --portal-nutrition-primary-light: var(--pastel-mid);
+  --portal-nutrition-text: var(--pastel-ink);
+  --portal-nutrition-text-muted: var(--pastel-ink-muted);
+  --portal-nutrition-heading: var(--pastel-heading);
+  --portal-nutrition-navbar: linear-gradient(90deg, var(--pastel-base) 0%, color-mix(in srgb, var(--pastel-base) 82%, #ffffff) 55%, var(--pastel-bg-light) 100%);
+  --portal-nutrition-sidebar: linear-gradient(180deg, color-mix(in srgb, var(--pastel-base) 55%, #ffffff) 0%, var(--pastel-bg) 100%);
+  --portal-nutrition-sidebar-border: color-mix(in srgb, var(--pastel-dark) 22%, transparent);
+  --portal-nutrition-brand-bg: color-mix(in srgb, var(--pastel-base) 35%, transparent);
+  --portal-nutrition-user-panel: color-mix(in srgb, var(--pastel-base) 28%, transparent);
+  --portal-nutrition-user-panel-border: color-mix(in srgb, var(--pastel-dark) 18%, transparent);
+  --portal-nutrition-nav-hover: color-mix(in srgb, var(--pastel-base) 38%, transparent);
+  --portal-nutrition-nav-active: color-mix(in srgb, var(--pastel-base) 48%, transparent);
+  --portal-nutrition-nav-active-border: var(--pastel-dark);
+  --portal-nutrition-card: #ffffff;
+  --portal-nutrition-card-header: linear-gradient(90deg, color-mix(in srgb, var(--pastel-base) 50%, transparent) 0%, color-mix(in srgb, var(--pastel-base) 18%, #ffffff) 100%);
+  --portal-nutrition-card-border: color-mix(in srgb, var(--pastel-dark) 18%, transparent);
+  --portal-nutrition-footer: linear-gradient(90deg, var(--pastel-bg), color-mix(in srgb, var(--pastel-base) 35%, #ffffff));
+  --portal-nutrition-welcome: linear-gradient(135deg, #ffffff 0%, var(--pastel-base) 100%);
+  --portal-nutrition-btn: linear-gradient(180deg, color-mix(in srgb, var(--pastel-base) 45%, transparent) 0%, color-mix(in srgb, var(--pastel-base) 28%, transparent) 100%);
+  --portal-nutrition-btn-border: color-mix(in srgb, var(--pastel-dark) 35%, transparent);
+  --portal-nutrition-btn-hover: var(--pastel-deep);
+  --portal-nutrition-picker-banner: linear-gradient(135deg, color-mix(in srgb, var(--pastel-base) 40%, transparent) 0%, rgba(255, 255, 255, 0.92) 100%);
+  --portal-nutrition-picker-border: color-mix(in srgb, var(--pastel-dark) 28%, transparent);
+}

@@ -1,0 +1,475 @@
+﻿/**
+ * User appearance (accent themes) + accessibility.
+ * Applied via body[data-accent], body.a11y-* classes set by appearance-prefs.js
+ */
+
+:root {
+  --a11y-font-scale: 1;
+  --a11y-contrast-boost: 0;
+}
+
+html {
+  font-size: calc(16px * var(--a11y-font-scale));
+}
+
+/* ── Accent presets — pastel palette in pastel-themes.css ──────────── */
+
+/* Pastel palette themes — see pastel-themes.css (Default stays in portal-themes.css) */
+
+
+/* Keep default teal/green when data-accent="default" or unset */
+
+/* Shared theme aliases used by global remaps below */
+body[data-accent]:not([data-accent=""]),
+body[data-accent]:not([data-accent="default"]) {
+  --theme-primary: var(--barangay-primary);
+  --theme-primary-light: var(--barangay-primary-light);
+  --theme-primary-dark: var(--barangay-primary-dark);
+  --theme-accent: var(--barangay-accent);
+}
+
+body.nutrition-portal[data-accent]:not([data-accent=""]),
+body.nutrition-portal[data-accent]:not([data-accent="default"]) {
+  --theme-primary: var(--portal-nutrition-primary);
+  --theme-primary-light: var(--portal-nutrition-primary-light);
+  --theme-primary-dark: var(--portal-nutrition-primary-dark);
+  --theme-accent: var(--portal-nutrition-primary-light);
+}
+
+/* Pastels on Nutrition Portal: tint accents only; shell stays dark green */
+body.nutrition-portal[data-accent^="pastel-"] {
+  --theme-primary: var(--pastel-dark);
+  --theme-primary-light: var(--pastel-mid);
+  --theme-primary-dark: var(--pastel-deep);
+  --theme-accent: var(--pastel-mid);
+  --portal-nutrition-primary: var(--pastel-dark);
+  --portal-nutrition-primary-light: var(--pastel-mid);
+  --portal-nutrition-primary-dark: var(--pastel-deep);
+  --portal-nutrition-nav-active-border: var(--pastel-dark);
+  --portal-nutrition-btn-border: color-mix(in srgb, var(--pastel-dark) 55%, transparent);
+}
+
+body.nutrition-portal .nutrition-navbar,
+body.nutrition-portal .main-header.navbar {
+  border-bottom: 3px solid var(--user-accent-color, var(--portal-nutrition-primary, #16a34a)) !important;
+}
+
+body.nutrition-portal .nav-sidebar .nav-link.active {
+  border-left-color: var(--user-accent-color, var(--portal-nutrition-nav-active-border, #4ade80)) !important;
+}
+
+body.nutrition-portal[data-accent^="pastel-"] .btn-success,
+body.nutrition-portal[data-accent^="pastel-"] .btn-primary {
+  background-color: var(--theme-primary) !important;
+  background-image: none !important;
+  border-color: var(--theme-primary-dark) !important;
+  color: #fff !important;
+}
+
+/* â”€â”€ Global remaps: buttons, badges, links, progress, common utilities â”€
+   When accent changes, these update across dashboards without reload. */
+
+body[data-accent]:not([data-accent="default"]) .btn-primary,
+body[data-accent]:not([data-accent="default"]) .btn-success,
+body[data-accent]:not([data-accent="default"]) .btn-info,
+body[data-accent]:not([data-accent="default"]) .btn-outline-success:hover,
+body[data-accent]:not([data-accent="default"]) .btn-outline-primary:hover {
+  background-color: var(--theme-primary) !important;
+  background-image: none !important;
+  border-color: var(--theme-primary-dark) !important;
+  color: #fff !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .btn-outline-success,
+body[data-accent]:not([data-accent="default"]) .btn-outline-primary,
+body[data-accent]:not([data-accent="default"]) .btn-outline-info {
+  color: var(--theme-primary-light) !important;
+  border-color: var(--theme-primary) !important;
+  background: transparent !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .bg-primary,
+body[data-accent]:not([data-accent="default"]) .bg-success,
+body[data-accent]:not([data-accent="default"]) .bg-info,
+body[data-accent]:not([data-accent="default"]) .bg-teal,
+body[data-accent]:not([data-accent="default"]) .bg-indigo,
+body[data-accent]:not([data-accent="default"]) .badge-primary,
+body[data-accent]:not([data-accent="default"]) .badge-success,
+body[data-accent]:not([data-accent="default"]) .badge-info,
+body[data-accent]:not([data-accent="default"]) .badge-teal {
+  background-color: var(--theme-primary) !important;
+  background-image: none !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .text-primary,
+body[data-accent]:not([data-accent="default"]) .text-success,
+body[data-accent]:not([data-accent="default"]) .text-info,
+body[data-accent]:not([data-accent="default"]) .text-teal,
+body[data-accent]:not([data-accent="default"]) .text-indigo {
+  color: var(--theme-primary-light) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .border-primary,
+body[data-accent]:not([data-accent="default"]) .border-success,
+body[data-accent]:not([data-accent="default"]) .border-teal {
+  border-color: var(--theme-primary) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .progress-bar,
+body[data-accent]:not([data-accent="default"]) .progress-bar.bg-success,
+body[data-accent]:not([data-accent="default"]) .progress-bar.bg-primary {
+  background-color: var(--theme-primary) !important;
+  background-image: none !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .page-item.active .page-link,
+body[data-accent]:not([data-accent="default"]) .nav-pills .nav-link.active,
+body[data-accent]:not([data-accent="default"]) .custom-control-input:checked ~ .custom-control-label::before {
+  background-color: var(--theme-primary) !important;
+  border-color: var(--theme-primary-dark) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .custom-range::-webkit-slider-thumb {
+  background: var(--theme-primary) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) a.text-success,
+body[data-accent]:not([data-accent="default"]) .sidebar a:hover > p,
+body[data-accent]:not([data-accent="default"]) .brand-text {
+  /* keep readable; brand accents via variables already */
+}
+
+/* Tailwind-ish hub utilities used on barangayHub */
+body[data-accent]:not([data-accent="default"]) .text-teal-200,
+body[data-accent]:not([data-accent="default"]) .text-teal-300,
+body[data-accent]:not([data-accent="default"]) .text-teal-400,
+body[data-accent]:not([data-accent="default"]) .text-green-200,
+body[data-accent]:not([data-accent="default"]) .text-green-300,
+body[data-accent]:not([data-accent="default"]) .text-green-400 {
+  color: var(--theme-primary-light) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .bg-teal-400\/10,
+body[data-accent]:not([data-accent="default"]) .bg-teal-400\/15,
+body[data-accent]:not([data-accent="default"]) .bg-teal-500\/15,
+body[data-accent]:not([data-accent="default"]) .bg-green-400\/15,
+body[data-accent]:not([data-accent="default"]) [class*="bg-teal-"],
+body[data-accent]:not([data-accent="default"]) [class*="bg-green-400"],
+body[data-accent]:not([data-accent="default"]) [class*="bg-green-500"] {
+  background-color: color-mix(in srgb, var(--theme-primary) 18%, transparent) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .border-teal-400,
+body[data-accent]:not([data-accent="default"]) .border-teal-400\/40,
+body[data-accent]:not([data-accent="default"]) .border-teal-400\/50,
+body[data-accent]:not([data-accent="default"]) .border-green-400,
+body[data-accent]:not([data-accent="default"]) .border-green-400\/40,
+body[data-accent]:not([data-accent="default"]) [class*="border-teal-"],
+body[data-accent]:not([data-accent="default"]) [class*="border-green-"] {
+  border-color: color-mix(in srgb, var(--theme-primary) 55%, transparent) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .bg-teal-500,
+body[data-accent]:not([data-accent="default"]) .hover\:bg-teal-500:hover,
+body[data-accent]:not([data-accent="default"]) .hover\:bg-teal-600:hover,
+body[data-accent]:not([data-accent="default"]) .bg-green-500,
+body[data-accent]:not([data-accent="default"]) button.bg-teal-500,
+body[data-accent]:not([data-accent="default"]) button[class*="bg-teal-"] {
+  background-color: var(--theme-primary) !important;
+  background-image: none !important;
+  color: #fff !important;
+}
+
+/* Super / barangay dashboard stat tiles with hardcoded gradients */
+body[data-accent]:not([data-accent="default"]) .barangay-dashboard .dashboard-stat--pwd,
+body[data-accent]:not([data-accent="default"]) .barangay-dashboard .dashboard-stat--blotter,
+body[data-accent]:not([data-accent="default"]) .super-stat,
+body[data-accent]:not([data-accent="default"]) .super-stat-card,
+body[data-accent]:not([data-accent="default"]) [class*="dashboard-stat--"] {
+  background: linear-gradient(135deg, var(--theme-primary-light), var(--theme-primary-dark)) !important;
+}
+
+body[data-accent]:not([data-accent="default"]) .nutrition-welcome,
+body[data-accent]:not([data-accent="default"]) .super-welcome,
+body[data-accent]:not([data-accent="default"]) .barangay-welcome {
+  /* welcome banners already use CSS variables on most pages */
+}
+
+/* Tables / DataTables header accents */
+body[data-accent]:not([data-accent="default"]) thead.bg-indigo,
+body[data-accent]:not([data-accent="default"]) .bg-indigo,
+body[data-accent]:not([data-accent="default"]) table thead th.bg-indigo {
+  background-color: var(--theme-primary-dark) !important;
+  background-image: none !important;
+}
+
+/* Switches / focus */
+body[data-accent]:not([data-accent="default"]) .slider,
+body[data-accent]:not([data-accent="default"]) input:checked + .slider {
+  background-color: var(--theme-primary) !important;
+}
+
+/* ── Pastel themes: matched ink colors per swatch (Barangay Hub only) ── */
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal),
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .content-wrapper,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .card,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .card-body,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-sidebar,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-sidebar .nav-link,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-sidebar .nav-link p,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .user-panel .info a,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-footer,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) label,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .table,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .nutrition-welcome p,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .nutrition-date {
+  color: var(--pastel-ink) !important;
+}
+
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .content-header h1,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .content-header h3,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .content-header .m-0,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .card-title,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .brand-text,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .nutrition-welcome h1,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) h1,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) h2,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) h3,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) h4,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) h5 {
+  color: var(--pastel-heading) !important;
+}
+
+body[data-accent^="pastel-"]:not(.nutrition-portal) .text-muted,
+body[data-accent^="pastel-"]:not(.nutrition-portal) .small,
+body[data-accent^="pastel-"]:not(.nutrition-portal) small {
+  color: var(--pastel-ink-muted) !important;
+}
+
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-header.navbar,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-header .nav-link,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .main-header .navbar-nav h5.nav-link {
+  color: var(--pastel-heading) !important;
+}
+
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-link.active,
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .nav-sidebar .nav-link.active p {
+  color: var(--pastel-heading) !important;
+}
+
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .form-control {
+  background: #ffffff !important;
+  border-color: color-mix(in srgb, var(--pastel-dark) 28%, transparent) !important;
+  color: var(--pastel-ink) !important;
+}
+
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) .form-control::placeholder {
+  color: var(--pastel-ink-muted) !important;
+}
+
+body[data-accent^="pastel-"].barangay-portal:not(.nutrition-portal) select.form-control option {
+  background: #ffffff;
+  color: var(--pastel-ink);
+}
+
+body[data-accent^="pastel-"] .btn-primary,
+body[data-accent^="pastel-"] .btn-success,
+body[data-accent^="pastel-"] .btn-info,
+body[data-accent^="pastel-"] .badge-primary,
+body[data-accent^="pastel-"] .badge-success {
+  color: #ffffff !important;
+}
+
+body[data-accent^="pastel-"] .btn-outline-primary,
+body[data-accent^="pastel-"] .btn-outline-success,
+body[data-accent^="pastel-"] .btn-outline-info {
+  color: var(--pastel-heading) !important;
+  border-color: var(--pastel-dark) !important;
+}
+
+body[data-accent^="pastel-"] a:not(.btn):not(.nav-link):not(.dropdown-item) {
+  color: var(--pastel-heading);
+}
+
+/* Light swatches need a visible ring */
+.appearance-panel .accent-swatch[data-accent-choice="pastel-yellow"] .accent-swatch-dot,
+.appearance-panel .accent-swatch[data-accent-choice="pastel-green"] .accent-swatch-dot {
+  border-color: rgba(31, 41, 55, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(31, 41, 55, 0.15);
+}
+
+/* ── Accessibility: larger text ─────────────────────────────────────── */
+
+body.a11y-text-large {
+  --a11y-font-scale: 1.12;
+}
+
+body.a11y-text-xlarge {
+  --a11y-font-scale: 1.25;
+}
+
+body.a11y-text-large .content-wrapper,
+body.a11y-text-xlarge .content-wrapper {
+  font-size: 1.05em;
+}
+
+body.a11y-text-large .nav-sidebar .nav-link p,
+body.a11y-text-xlarge .nav-sidebar .nav-link p,
+body.a11y-text-large .card-title,
+body.a11y-text-xlarge .card-title {
+  font-size: 1.05em;
+}
+
+body.a11y-text-large .table,
+body.a11y-text-xlarge .table,
+body.a11y-text-large .form-control,
+body.a11y-text-xlarge .form-control {
+  font-size: 1.05rem;
+}
+
+/* â”€â”€ Accessibility: high contrast â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+body.a11y-contrast {
+  --portal-barangay-text: #ffffff;
+  --portal-barangay-text-muted: #f1f5f9;
+  --portal-barangay-card-border: rgba(255, 255, 255, 0.35);
+  --portal-barangay-sidebar-border: rgba(255, 255, 255, 0.3);
+  --portal-nutrition-text: #ffffff;
+  --portal-nutrition-text-muted: #f0fdf4;
+  --portal-nutrition-card-border: rgba(255, 255, 255, 0.35);
+  --portal-nutrition-sidebar-border: rgba(255, 255, 255, 0.3);
+}
+
+body.a11y-contrast .card,
+body.a11y-contrast .dashboard-panel,
+body.a11y-contrast .nutrition-panel {
+  border-width: 2px !important;
+}
+
+body.a11y-contrast .nav-sidebar .nav-link {
+  border: 1px solid transparent;
+}
+
+body.a11y-contrast .nav-sidebar .nav-link.active,
+body.a11y-contrast .nav-sidebar .nav-link:hover {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+body.a11y-contrast .form-control,
+body.a11y-contrast .custom-select,
+body.a11y-contrast select.form-control {
+  border-width: 2px !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+}
+
+body.a11y-contrast a:focus,
+body.a11y-contrast button:focus,
+body.a11y-contrast .btn:focus,
+body.a11y-contrast .nav-link:focus,
+body.a11y-contrast .form-control:focus {
+  outline: 3px solid #fde047 !important;
+  outline-offset: 2px !important;
+}
+
+/* â”€â”€ Accessibility: reduced motion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+body.a11y-reduce-motion *,
+body.a11y-reduce-motion *::before,
+body.a11y-reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* â”€â”€ Appearance settings panel UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.appearance-panel .accent-swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 0.75rem;
+}
+
+.appearance-panel .appearance-accent-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--user-accent-color, #16a34a);
+  color: #052e16;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.appearance-panel .accent-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 0.4rem;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.appearance-panel .accent-swatch:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.appearance-panel .accent-swatch.is-active {
+  border-color: #fde047;
+  box-shadow: 0 0 0 1px rgba(253, 224, 71, 0.4);
+}
+
+.appearance-panel .accent-swatch-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.appearance-panel .accent-swatch-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.appearance-panel .a11y-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  margin-bottom: 0.65rem;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.appearance-panel .a11y-option label {
+  margin: 0;
+  cursor: pointer;
+  flex: 1;
+}
+
+.appearance-panel .a11y-option small {
+  display: block;
+  opacity: 0.75;
+  margin-top: 0.2rem;
+}
+
+.appearance-panel .appearance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
