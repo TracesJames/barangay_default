@@ -551,7 +551,11 @@ if (!function_exists('barangay_count_children')) {
         }
 
         $stmt->execute();
-        $row = $stmt->get_result()->fetch_assoc();
+        $result = $stmt->get_result();
+        if ($result === false) {
+            return 0;
+        }
+        $row = $result->fetch_assoc();
 
         return (int) ($row['total'] ?? 0);
     }
@@ -1209,6 +1213,7 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
                 'nutritionMellpiCityProfile.php', 'saveNutritionMellpiCityProfile.php',
                 'nutritionSuperPrintReport.php', 'nutritionHubGuidePrint.php',
                 'nutritionSuperPregnantFamiliesPrint.php',
+                'nutritionProcessFormPrint.php', 'cityReportPack.php',
                 'staffAccounts.php', 'saveStaffAccount.php', 'deleteStaffAccount.php',
                 'staffAccountsTable.php', 'viewStaffAccount.php', 'resetStaffAccountPassword.php',
             ], true) && barangay_session_id() === null) {
@@ -1269,13 +1274,16 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
             if (!in_array($script, [
                 'barangayHub.php', 'selectBarangay.php', 'myProfile.php',
                 'nutritionDashboard.php', 'nutritionAccountProfile.php',
-                'nutritionHouseholdSurvey.php', 'nutritionHouseholdSurveyForm.php',
-                'nutritionHouseholdSurveyFormExcel.php',
                 'nutritionBarangaySurvey.php', 'nutritionBarangaySurveyPrint.php',
                 'nutritionPregnantFamiliesReport.php', 'nutritionPregnantFamiliesPrint.php',
                 'nutritionBnpReport.php', 'nutritionBnpPrint.php',
-                'nutritionReport.php', 'nutritionPrintReport.php', 'nutritionSettings.php',
-                'nutritionProfiles.php', 'nutritionAssess.php',
+                'nutritionReport.php', 'nutritionPrintReport.php',
+                'nutritionProfiles.php',
+                'nutritionSuperDashboard.php',
+                'nutritionSuperPrintReport.php', 'nutritionHubGuidePrint.php',
+                'nutritionSuperPregnantFamiliesPrint.php',
+                'nutritionProcessFormPrint.php', 'cityReportPack.php',
+                'nutritionMellpiCityProfile.php',
             ], true)
                 && barangay_session_id() === null) {
                 header('Location: barangayHub.php?picker=1&system=nutrition');
@@ -1292,6 +1300,40 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
             $assignedBarangayId = barangay_user_barangay_id($con, $userId);
             if ($assignedBarangayId !== null) {
                 barangay_set_active($assignedBarangayId);
+            }
+            return;
+        }
+
+        if ($staffRole === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+            if ($script === 'myProfile.php') {
+                header('Location: nutritionAccountProfile.php');
+                exit;
+            }
+            if (!barangay_cnpc_can_access_script($script)) {
+                header('Location: nutritionSuperDashboard.php');
+                exit;
+            }
+            $assignedIds = function_exists('staff_assigned_barangay_ids')
+                ? staff_assigned_barangay_ids($con, $userId)
+                : [];
+            if ($script === 'selectBarangay.php' || ($script === 'barangayHub.php' && $isNutritionHubPicker)) {
+                return;
+            }
+            if (in_array($script, ['nutritionSuperDashboard.php', 'nutritionAccountProfile.php', 'saveProfile.php'], true)) {
+                return;
+            }
+            $activeId = barangay_session_id();
+            if ($activeId === null) {
+                if (count($assignedIds) === 1) {
+                    barangay_set_active($assignedIds[0]);
+                } else {
+                    header('Location: nutritionSuperDashboard.php');
+                    exit;
+                }
+            } elseif ($assignedIds !== [] && !in_array($activeId, $assignedIds, true)) {
+                barangay_clear_active();
+                header('Location: nutritionSuperDashboard.php');
+                exit;
             }
             return;
         }

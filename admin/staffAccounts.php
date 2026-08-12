@@ -28,20 +28,34 @@ $isSuperAdmin = staff_account_actor_is_super_admin($con) || $isSsa;
 $staffRole = barangay_user_staff_role($con, (string) $user_id);
 $staffRoleLabel = staff_role_label($staffRole);
 $actorBarangayId = staff_account_actor_barangay_id($con);
-$creatableRoles = staff_account_creatable_roles($con);
 $barangayOptions = barangay_list_all($con);
 $defaultBarangayId = barangay_session_id() ?? '';
 $activeRoleFilter = trim((string) ($_GET['role'] ?? ''));
+$hubContext = trim((string) ($_GET['hub'] ?? ''));
+$nutritionRoleFilters = [
+    STAFF_ROLE_NUTRITION_SUPER_ADMIN,
+    STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+    STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
+    STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
+];
+$isNutritionStaffUi = $isNutritionPortalAdmin
+    || ($isSsa && (
+        $hubContext === 'nutrition'
+        || in_array($activeRoleFilter, $nutritionRoleFilters, true)
+    ));
 $canAssignBarangay = $isSsa || $isBarangayHubSa || $isNutritionPortalAdmin;
 
-if ($isNutritionPortalAdmin) {
-    $allowedNutritionRoles = [
-        STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
-        STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
-    ];
-    $creatableRoles = array_values(array_intersect($creatableRoles, $allowedNutritionRoles));
+$creatableRoles = staff_account_creatable_roles($con);
+
+if ($isNutritionStaffUi) {
+    $allowedNutritionRoles = staff_account_nutrition_manageable_roles($con);
+    $creatableRoles = staff_account_nutrition_creatable_roles($con);
     if ($activeRoleFilter === '' || !in_array($activeRoleFilter, $allowedNutritionRoles, true)) {
-        header('Location: staffAccounts.php?role=' . urlencode(STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR));
+        $defaultRole = $isSsa
+            ? STAFF_ROLE_NUTRITION_SUPER_ADMIN
+            : STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR;
+        $redirect = 'staffAccounts.php?hub=nutrition&role=' . urlencode($defaultRole);
+        header('Location: ' . $redirect);
         exit;
     }
 } elseif ($isBarangayHubSa && !$isSsa) {
@@ -55,14 +69,24 @@ if ($isNutritionPortalAdmin) {
         header('Location: staffAccounts.php');
         exit;
     }
+    // Barangay Hub SA cannot create Nutrition roles.
+    $creatableRoles = array_values(array_diff($creatableRoles, $nutritionRoleFilters));
 }
 
 $isBnsFilter = $activeRoleFilter === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR;
 $isBnsAdminFilter = $activeRoleFilter === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN;
-$useNutritionSidebar = $isBnsFilter || $isBnsAdminFilter || $isNutritionPortalAdmin
-    || $activeRoleFilter === STAFF_ROLE_NUTRITION_SUPER_ADMIN;
-$activePage = $isBnsFilter ? 'bns' : ($isBnsAdminFilter ? 'bns_admin' : 'staff_accounts');
+$isCnpcFilter = $activeRoleFilter === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR;
+$isNutritionSaFilter = $activeRoleFilter === STAFF_ROLE_NUTRITION_SUPER_ADMIN;
+$useNutritionSidebar = $isNutritionStaffUi || $isBnsFilter || $isBnsAdminFilter || $isCnpcFilter || $isNutritionSaFilter;
+$activePage = $isBnsFilter
+    ? 'bns'
+    : ($isBnsAdminFilter
+        ? 'bns_admin'
+        : ($isCnpcFilter
+            ? 'cnpc'
+            : ($isNutritionSaFilter ? 'nutrition_sa' : 'staff_accounts')));
 $brandLogo = $sidebarLogo ?? barangay_default_logo_url('../');
+$staffAccountsHubQuery = $isNutritionStaffUi ? '&hub=nutrition' : '';
 
 ?>
 <!DOCTYPE html>
@@ -131,6 +155,13 @@ $brandLogo = $sidebarLogo ?? barangay_default_logo_url('../');
               <div class="col-md-4">
                 <label class="mb-1">Filter by Role</label>
                 <select id="role_filter" class="form-control">
+                  <?php if ($isNutritionStaffUi) : ?>
+                  <?php foreach (staff_account_nutrition_manageable_roles($con) as $nutritionRoleOption) : ?>
+                  <option value="<?= barangay_h($nutritionRoleOption) ?>" <?= $activeRoleFilter === $nutritionRoleOption ? 'selected' : '' ?>>
+                    <?= barangay_h(staff_account_role_label($nutritionRoleOption)) ?>
+                  </option>
+                  <?php endforeach; ?>
+                  <?php else : ?>
                   <option value="">All Roles</option>
                   <?php if ($isSsa) : ?>
                   <optgroup label="System · Both Hubs">
@@ -147,14 +178,14 @@ $brandLogo = $sidebarLogo ?? barangay_default_logo_url('../');
                     <option value="<?= STAFF_ROLE_BARANGAY_STAFF ?>" <?= $activeRoleFilter === STAFF_ROLE_BARANGAY_STAFF ? 'selected' : '' ?>>Barangay Staff</option>
                   </optgroup>
                   <?php endif; ?>
-                  <?php if ($isSsa || $isNutritionPortalAdmin) : ?>
+                  <?php if ($isSsa) : ?>
                   <optgroup label="Nutrition Hub">
-                    <?php if ($isSsa) : ?>
-                    <option value="<?= STAFF_ROLE_NUTRITION_SUPER_ADMIN ?>" <?= $activeRoleFilter === STAFF_ROLE_NUTRITION_SUPER_ADMIN ? 'selected' : '' ?>>Super Admin (SA)</option>
-                    <?php endif; ?>
-                    <option value="<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN ?>" <?= $activeRoleFilter === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN ? 'selected' : '' ?>>Admin (A)</option>
+                    <option value="<?= STAFF_ROLE_NUTRITION_SUPER_ADMIN ?>" <?= $activeRoleFilter === STAFF_ROLE_NUTRITION_SUPER_ADMIN ? 'selected' : '' ?>>Nutrition Super Admin (SA)</option>
+                    <option value="<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN ?>" <?= $activeRoleFilter === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN ? 'selected' : '' ?>>Nutrition Admin (A)</option>
+                    <option value="<?= STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR ?>" <?= $activeRoleFilter === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR ? 'selected' : '' ?>>CNPC</option>
                     <option value="<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>" <?= $activeRoleFilter === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ? 'selected' : '' ?>>BNS (per Barangay)</option>
                   </optgroup>
+                  <?php endif; ?>
                   <?php endif; ?>
                 </select>
               </div>
@@ -225,7 +256,7 @@ $brandLogo = $sidebarLogo ?? barangay_default_logo_url('../');
     <div class="modal-content">
       <form id="createStaffAccountForm" autocomplete="off">
         <div class="modal-header">
-          <h5 class="modal-title"><?= $isNutritionPortalAdmin ? 'New Nutrition Hub Account' : 'New Staff Account' ?></h5>
+          <h5 class="modal-title"><?= $isNutritionStaffUi ? 'New Nutrition Portal Account' : 'New Staff Account' ?></h5>
           <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
         </div>
         <div class="modal-body">
@@ -247,6 +278,28 @@ $brandLogo = $sidebarLogo ?? barangay_default_logo_url('../');
               <option value="<?= barangay_h($brgy['id']) ?>"><?= barangay_h($brgy['barangay']) ?></option>
               <?php endforeach; ?>
             </select>
+          </div>
+          <div class="form-group" id="create_cnpc_barangay_group" style="display:none;">
+            <label>Assigned barangays <small class="text-muted">(CNPC — select one or many)</small></label>
+            <div id="create_barangay_ids" class="cnpc-barangay-checklist border rounded p-2" style="max-height: 220px; overflow-y: auto;">
+              <div class="custom-control custom-checkbox mb-1">
+                <input type="checkbox" class="custom-control-input" id="cnpc_select_all">
+                <label class="custom-control-label font-weight-bold" for="cnpc_select_all">Select all</label>
+              </div>
+              <hr class="my-2">
+              <?php foreach ($barangayOptions as $i => $brgy): ?>
+              <?php $cid = 'cnpc_brgy_' . preg_replace('/\W+/', '_', (string) $brgy['id']); ?>
+              <div class="custom-control custom-checkbox">
+                <input type="checkbox"
+                       class="custom-control-input cnpc-barangay-check"
+                       name="barangay_ids[]"
+                       id="<?= barangay_h($cid) ?>"
+                       value="<?= barangay_h($brgy['id']) ?>">
+                <label class="custom-control-label" for="<?= barangay_h($cid) ?>"><?= barangay_h($brgy['barangay']) ?></label>
+              </div>
+              <?php endforeach; ?>
+            </div>
+            <small class="form-text text-muted">Tick one or more barangays this CNPC can monitor and edit.</small>
           </div>
           <?php else: ?>
           <input type="hidden" name="barangay_id" value="<?= barangay_h($actorBarangayId ?? '') ?>">
@@ -324,9 +377,24 @@ $(function () {
     var needsBarangay = role === '<?= STAFF_ROLE_BARANGAY_STAFF ?>'
       || role === '<?= STAFF_ROLE_BARANGAY_ADMIN ?>'
       || role === '<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>';
+    var needsCnpc = role === '<?= STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR ?>';
     $('#create_barangay_group').toggle(needsBarangay);
     $('#create_barangay_id').prop('required', needsBarangay);
+    $('#create_cnpc_barangay_group').toggle(needsCnpc);
+    if (!needsCnpc) {
+      $('#cnpc_select_all, .cnpc-barangay-check').prop('checked', false);
+    }
   }).trigger('change');
+
+  $('#cnpc_select_all').on('change', function () {
+    $('.cnpc-barangay-check').prop('checked', $(this).is(':checked'));
+  });
+
+  $(document).on('change', '.cnpc-barangay-check', function () {
+    var total = $('.cnpc-barangay-check').length;
+    var checked = $('.cnpc-barangay-check:checked').length;
+    $('#cnpc_select_all').prop('checked', total > 0 && checked === total);
+  });
 
   function staffAccountsTable() {
     return $('#staffAccountsTable').DataTable({
@@ -355,12 +423,29 @@ $(function () {
 
   var table = staffAccountsTable();
 
-  $('#role_filter, #barangay_filter').on('change', function () {
+  $('#role_filter').on('change', function () {
+    var role = $('#role_filter').val() || '';
+    var hub = <?= $isNutritionStaffUi ? "'nutrition'" : "''" ?>;
+    var url = 'staffAccounts.php';
+    var params = [];
+    if (hub) params.push('hub=' + encodeURIComponent(hub));
+    if (role) params.push('role=' + encodeURIComponent(role));
+    if (params.length) url += '?' + params.join('&');
+    window.location.href = url;
+  });
+
+  $('#barangay_filter').on('change', function () {
     table.ajax.reload();
   });
 
   $('#createStaffAccountForm').on('submit', function (e) {
     e.preventDefault();
+    var role = $('#create_staff_role').val();
+    if (role === '<?= STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR ?>'
+        && $('.cnpc-barangay-check:checked').length === 0) {
+      Swal.fire('Required', 'Select at least one barangay for CNPC.', 'warning');
+      return;
+    }
     $.ajax({
       url: 'saveStaffAccount.php',
       type: 'POST',

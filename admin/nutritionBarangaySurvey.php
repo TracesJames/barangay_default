@@ -45,7 +45,11 @@ $nutritionPageScript .= <<<'HTML'
 </script>
 HTML;
 
-if (nutrition_user_can_manage_household_surveys($con, (string) $user_id)) {
+$sessionUserId = (string) $user_id;
+$canEditHouseholdSurveyNames = nutrition_user_can_edit_household_survey_names($con, $sessionUserId);
+$canDeleteHouseholdSurveys = nutrition_user_can_delete_household_surveys($con, $sessionUserId);
+
+if ($canEditHouseholdSurveyNames || $canDeleteHouseholdSurveys) {
     $nutritionPageScript .= <<<'HTML'
 <script>
 function nutritionPostJson(url, data, onSuccess, onError) {
@@ -73,7 +77,13 @@ function nutritionDataAttr($el, name) {
   var value = $el.attr('data-' + name);
   return value === undefined || value === null ? '' : String(value);
 }
+</script>
+HTML;
+}
 
+if ($canEditHouseholdSurveyNames) {
+    $nutritionPageScript .= <<<'HTML'
+<script>
 $(document).on('click', '.nutrition-edit-head-btn', function () {
   var $btn = $(this);
   $('#nutritionEditHeadSurveyId').val(nutritionDataAttr($btn, 'survey-id'));
@@ -122,7 +132,13 @@ $('#nutritionEditMemberForm').on('submit', function (e) {
     Swal.fire({ title: 'Updated', text: res.message || 'Family member name saved.', type: 'success' });
   });
 });
+</script>
+HTML;
+}
 
+if ($canDeleteHouseholdSurveys) {
+    $nutritionPageScript .= <<<'HTML'
+<script>
 $(document).on('click', '.nutrition-delete-survey-btn', function () {
   var $btn = $(this);
   var surveyId = nutritionDataAttr($btn, 'survey-id');

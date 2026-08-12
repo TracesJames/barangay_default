@@ -20,6 +20,7 @@ $isSuperAdmin = barangay_user_is_super_admin($con, (string) $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, (string) $user_id);
 $isBnsAdmin = barangay_user_is_bns_admin($con, (string) $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, (string) $user_id);
+$isCnpc = barangay_user_is_cnpc($con, (string) $user_id);
 $canPickAllBarangays = $isSuperAdmin || $isCityAdmin || $isBnsAdmin || $isNutritionPortalAdmin;
 $isPickerMode = isset($_GET['picker']) && $_GET['picker'] !== '' && $_GET['picker'] !== '0';
 
@@ -28,7 +29,12 @@ if ($isNutritionPortalAdmin && !$hubIsNutrition) {
     exit;
 }
 
-if ($hubIsNutrition && $isPickerMode && !$hubForcePicker && ($isSuperAdmin || $isBnsAdmin) && !$isNutritionPortalAdmin) {
+if ($isCnpc && !$hubIsNutrition) {
+    header('Location: barangayHub.php?picker=1&system=nutrition&view=picker');
+    exit;
+}
+
+if ($hubIsNutrition && $isPickerMode && !$hubForcePicker && ($isSuperAdmin || $isBnsAdmin) && !$isNutritionPortalAdmin && !$isCnpc) {
     header('Location: nutritionSuperDashboard.php');
     exit;
 }
@@ -39,7 +45,23 @@ if ($isBnsAdmin && !$hubIsNutrition) {
 }
 
 $barangays = [];
-if (!$canPickAllBarangays) {
+if ($isCnpc) {
+    $assignedIds = staff_assigned_barangay_ids($con, (string) $user_id);
+    $assignedLookup = array_fill_keys($assignedIds, true);
+    $barangays = array_values(array_filter(
+        barangay_list_all($con),
+        static fn (array $row): bool => isset($assignedLookup[(string) ($row['id'] ?? '')])
+    ));
+    if (!$isPickerMode && count($barangays) === 1) {
+        barangay_set_active($barangays[0]['id']);
+        header('Location: nutritionDashboard.php');
+        exit;
+    }
+    if (!$isPickerMode && count($barangays) !== 1) {
+        header('Location: barangayHub.php?picker=1&system=nutrition&view=picker');
+        exit;
+    }
+} elseif (!$canPickAllBarangays) {
     if (!$isPickerMode) {
         if (barangay_load_active($con) !== null) {
             header('Location: dashboard.php');

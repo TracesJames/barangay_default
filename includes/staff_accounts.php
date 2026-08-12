@@ -48,6 +48,18 @@ if (!function_exists('staff_accounts_ensure_schema')) {
              WHERE staff_role = 'super_admin'
                AND (barangay_id IS NULL OR barangay_id = '')"
         );
+
+        $tableCheck = $con->query("SHOW TABLES LIKE 'staff_barangay_assignment'");
+        if ($tableCheck && $tableCheck->num_rows === 0) {
+            $con->query(
+                "CREATE TABLE `staff_barangay_assignment` (
+                    `user_id` VARCHAR(64) NOT NULL,
+                    `barangay_id` VARCHAR(64) NOT NULL,
+                    PRIMARY KEY (`user_id`, `barangay_id`),
+                    KEY `idx_sba_barangay` (`barangay_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+        }
     }
 }
 
@@ -95,6 +107,7 @@ if (!function_exists('staff_account_role_badge')) {
             STAFF_ROLE_BARANGAY_STAFF => 'badge-info',
             STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR => 'badge-success',
             STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN => 'badge-dark',
+            STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR => 'badge-info',
             default => 'badge-secondary',
         };
 
@@ -166,6 +179,7 @@ if (!function_exists('staff_account_creatable_roles')) {
                 STAFF_ROLE_NUTRITION_SUPER_ADMIN,
                 STAFF_ROLE_ADMIN,
                 STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
                 STAFF_ROLE_BARANGAY_ADMIN,
                 STAFF_ROLE_BARANGAY_STAFF,
                 STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
@@ -173,8 +187,11 @@ if (!function_exists('staff_account_creatable_roles')) {
         }
 
         if (staff_account_actor_is_nutrition_sa($con)) {
+            // Nutrition Portal SA may create Nutrition Admin (A), BNS, and CNPC only.
+            // Nutrition SA itself is created only by SSA.
             return [
                 STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
                 STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
             ];
         }
@@ -184,6 +201,78 @@ if (!function_exists('staff_account_creatable_roles')) {
                 STAFF_ROLE_ADMIN,
                 STAFF_ROLE_BARANGAY_ADMIN,
                 STAFF_ROLE_BARANGAY_STAFF,
+            ];
+        }
+
+        return [];
+    }
+}
+
+if (!function_exists('staff_account_assignable_roles_on_edit')) {
+    /**
+     * Roles the current actor may assign when editing an existing account.
+     * SSA may change any staff account to any system role.
+     *
+     * @return array<int, string>
+     */
+    function staff_account_assignable_roles_on_edit(mysqli $con): array
+    {
+        if (staff_account_actor_is_ssa($con)) {
+            return staff_account_creatable_roles($con);
+        }
+
+        return [];
+    }
+}
+
+if (!function_exists('staff_account_nutrition_creatable_roles')) {
+    /**
+     * Nutrition Portal create rules:
+     * - SSA → Nutrition SA only
+     * - Nutrition SA → Nutrition Admin (A), BNS, CNPC
+     *
+     * @return array<int, string>
+     */
+    function staff_account_nutrition_creatable_roles(mysqli $con): array
+    {
+        if (staff_account_actor_is_ssa($con)) {
+            return [STAFF_ROLE_NUTRITION_SUPER_ADMIN];
+        }
+
+        if (staff_account_actor_is_nutrition_sa($con)) {
+            return [
+                STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
+                STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
+            ];
+        }
+
+        return [];
+    }
+}
+
+if (!function_exists('staff_account_nutrition_manageable_roles')) {
+    /**
+     * Roles visible/manageable in Nutrition Portal staff UI for the actor.
+     *
+     * @return array<int, string>
+     */
+    function staff_account_nutrition_manageable_roles(mysqli $con): array
+    {
+        if (staff_account_actor_is_ssa($con)) {
+            return [
+                STAFF_ROLE_NUTRITION_SUPER_ADMIN,
+                STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
+                STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
+            ];
+        }
+
+        if (staff_account_actor_is_nutrition_sa($con)) {
+            return [
+                STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
+                STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
             ];
         }
 
@@ -241,6 +330,7 @@ if (!function_exists('staff_account_can_manage')) {
                 return in_array($targetRole, [
                     STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
                     STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                    STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
                 ], true) && $targetId !== $actorId;
             }
 
@@ -255,6 +345,7 @@ if (!function_exists('staff_account_can_manage')) {
             return in_array($targetRole, [
                 STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
                 STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+                STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
             ], true);
         }
 
@@ -353,7 +444,25 @@ if (!function_exists('staff_account_create')) {
         }
 
         $barangayId = trim((string) ($data['barangay_id'] ?? ''));
-        if (staff_role_requires_barangay($role)) {
+        $assignmentIds = [];
+        if (isset($data['barangay_ids']) && is_array($data['barangay_ids'])) {
+            foreach ($data['barangay_ids'] as $id) {
+                $id = trim((string) $id);
+                if ($id !== '') {
+                    $assignmentIds[] = $id;
+                }
+            }
+        }
+
+        if ($role === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+            if ($assignmentIds === [] && $barangayId !== '') {
+                $assignmentIds = [$barangayId];
+            }
+            if ($assignmentIds === []) {
+                return ['ok' => false, 'error' => 'Assign at least one barangay for CNPC.'];
+            }
+            $barangayId = '';
+        } elseif (staff_role_requires_barangay($role)) {
             if ($barangayId === '') {
                 return ['ok' => false, 'error' => 'Barangay is required for this role.'];
             }
@@ -436,6 +545,10 @@ if (!function_exists('staff_account_create')) {
             return ['ok' => false, 'error' => 'Unable to create account.'];
         }
 
+        if ($role === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+            staff_set_barangay_assignments($con, $userId, $assignmentIds);
+        }
+
         $roleLabel = staff_account_role_label($role);
         staff_account_log_activity(
             $con,
@@ -461,6 +574,24 @@ if (!function_exists('staff_account_update')) {
 
         if (!staff_account_can_manage($con, $target, 'edit')) {
             return ['ok' => false, 'error' => 'You are not allowed to edit this account.'];
+        }
+
+        $actorId = (string) ($_SESSION['user_id'] ?? '');
+        $currentRole = staff_account_resolve_role($target);
+        $assignableRoles = staff_account_assignable_roles_on_edit($con);
+        $requestedRole = trim((string) ($data['staff_role'] ?? ''));
+        $newRole = $currentRole;
+        $roleChanged = false;
+
+        if ($requestedRole !== '' && $requestedRole !== $currentRole) {
+            if ($assignableRoles === [] || !in_array($requestedRole, $assignableRoles, true)) {
+                return ['ok' => false, 'error' => 'You are not allowed to change this account role.'];
+            }
+            if ($userId === $actorId) {
+                return ['ok' => false, 'error' => 'You cannot change your own role. Ask another Super Super Admin.'];
+            }
+            $newRole = $requestedRole;
+            $roleChanged = true;
         }
 
         $firstName = trim((string) ($data['first_name'] ?? $target['first_name']));
@@ -489,29 +620,110 @@ if (!function_exists('staff_account_update')) {
         $image = (string) ($target['image'] ?? '');
         $imagePath = (string) ($target['image_path'] ?? '');
 
-        $stmt = $con->prepare(
-            'UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?, password = ?, contact_number = ?, image = ?, image_path = ? WHERE id = ?'
-        );
-        if (!$stmt) {
-            return ['ok' => false, 'error' => 'Unable to update account.'];
+        $barangayId = trim((string) ($target['barangay_id'] ?? ''));
+        $assignmentIds = [];
+        if (isset($data['barangay_ids']) && is_array($data['barangay_ids'])) {
+            foreach ($data['barangay_ids'] as $id) {
+                $id = trim((string) $id);
+                if ($id !== '') {
+                    $assignmentIds[] = $id;
+                }
+            }
         }
-        $stmt->bind_param(
-            'sssssssss',
-            $firstName,
-            $middleName,
-            $lastName,
-            $username,
-            $password,
-            $contact,
-            $image,
-            $imagePath,
-            $userId
-        );
+        if (array_key_exists('barangay_id', $data)) {
+            $postedBarangay = trim((string) $data['barangay_id']);
+            if ($postedBarangay !== '') {
+                $barangayId = $postedBarangay;
+            }
+        }
+
+        if ($roleChanged || $newRole === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR || staff_role_requires_barangay($newRole)) {
+            if ($newRole === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+                if ($assignmentIds === [] && $barangayId !== '') {
+                    $assignmentIds = [$barangayId];
+                }
+                if ($assignmentIds === []) {
+                    $assignmentIds = staff_assigned_barangay_ids($con, $userId);
+                }
+                if ($assignmentIds === []) {
+                    return ['ok' => false, 'error' => 'Assign at least one barangay for CNPC.'];
+                }
+                $barangayId = '';
+            } elseif (staff_role_requires_barangay($newRole)) {
+                if ($barangayId === '') {
+                    return ['ok' => false, 'error' => 'Barangay is required for this role.'];
+                }
+                $assignmentIds = [];
+            } else {
+                $barangayId = '';
+                $assignmentIds = [];
+            }
+        }
+
+        if ($newRole === STAFF_ROLE_BARANGAY_ADMIN
+            && $barangayId !== ''
+            && staff_account_barangay_admin_exists($con, $barangayId, $userId)) {
+            return ['ok' => false, 'error' => 'This barangay already has an admin account.'];
+        }
+
+        $userType = staff_account_user_type_for_role($newRole);
+
+        if (staff_role_column_exists($con) && barangay_column_exists($con, 'users', 'barangay_id')) {
+            $stmt = $con->prepare(
+                'UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?, password = ?,
+                 contact_number = ?, image = ?, image_path = ?, staff_role = ?, user_type = ?, barangay_id = ?
+                 WHERE id = ?'
+            );
+            if (!$stmt) {
+                return ['ok' => false, 'error' => 'Unable to update account.'];
+            }
+            $stmt->bind_param(
+                'ssssssssssss',
+                $firstName,
+                $middleName,
+                $lastName,
+                $username,
+                $password,
+                $contact,
+                $image,
+                $imagePath,
+                $newRole,
+                $userType,
+                $barangayId,
+                $userId
+            );
+        } else {
+            $stmt = $con->prepare(
+                'UPDATE users SET first_name = ?, middle_name = ?, last_name = ?, username = ?, password = ?, contact_number = ?, image = ?, image_path = ? WHERE id = ?'
+            );
+            if (!$stmt) {
+                return ['ok' => false, 'error' => 'Unable to update account.'];
+            }
+            $stmt->bind_param(
+                'sssssssss',
+                $firstName,
+                $middleName,
+                $lastName,
+                $username,
+                $password,
+                $contact,
+                $image,
+                $imagePath,
+                $userId
+            );
+        }
         $stmt->execute();
 
+        if ($newRole === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+            staff_set_barangay_assignments($con, $userId, $assignmentIds);
+        } elseif ($roleChanged || array_key_exists('barangay_ids', $data)) {
+            staff_set_barangay_assignments($con, $userId, []);
+        }
+
+        $roleNote = $roleChanged ? (' | ROLE ' . $currentRole . ' → ' . $newRole) : '';
         staff_account_log_activity(
             $con,
-            strtoupper('ADMIN') . ': UPDATED STAFF ACCOUNT - ' . $userId . ' | ' . $firstName . ' ' . $lastName,
+            strtoupper('ADMIN') . ': UPDATED STAFF ACCOUNT - ' . $userId . ' | ' . $firstName . ' ' . $lastName . $roleNote,
             'update'
         );
 
@@ -544,6 +756,8 @@ if (!function_exists('staff_account_delete')) {
         if ($stmt->affected_rows <= 0) {
             return ['ok' => false, 'error' => 'Account could not be deleted.'];
         }
+
+        staff_set_barangay_assignments($con, $userId, []);
 
         staff_account_log_activity(
             $con,
@@ -611,7 +825,7 @@ if (!function_exists('staff_account_scope_where')) {
         }
 
         if (staff_account_actor_is_nutrition_sa($con)) {
-            $sql .= " AND u.staff_role IN ('barangay_nutrition_scholar','barangay_nutrition_scholar_admin','nutrition_super_admin')";
+            $sql .= " AND u.staff_role IN ('barangay_nutrition_scholar','barangay_nutrition_scholar_admin','nutrition_super_admin','city_nutrition_program_coordinator')";
 
             return ['sql' => $sql, 'types' => $types, 'params' => $params];
         }

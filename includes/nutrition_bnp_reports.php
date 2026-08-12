@@ -644,21 +644,21 @@ if (!function_exists('nutrition_bnp_all_hh_report')) {
         $ip623 = 0;
         $actualHouseholds = count($households);
         $actualPopulation = barangay_count_residents($con, $barangayId);
-        if ($actualPopulation < 1) {
-            foreach ($households as $survey) {
-                $surveyId = (string) ($survey['survey_id'] ?? '');
-                $members = $membersBySurvey[$surveyId] ?? [];
-                $size = (int) ($survey['members_count'] ?? 0);
-                if ($size < 1) {
-                    $size = count($members) + 1;
-                }
-                $actualPopulation += max(1, $size);
-            }
-        }
+        $surveyPopulation = 0;
 
         foreach ($households as $survey) {
             $surveyId = (string) ($survey['survey_id'] ?? '');
             $members = $membersBySurvey[$surveyId] ?? [];
+
+            // "Actual population" for BNP Form C1:
+            // - Prefer resident counts from `residence_status`
+            // - If resident counts are incomplete, use survey-derived population
+            //   based on original members_count logic.
+            $size = (int) ($survey['members_count'] ?? 0);
+            if ($size < 1) {
+                $size = count($members) + 1;
+            }
+            $surveyPopulation += max(1, $size);
 
             if (strtoupper((string) ($survey['has_pregnant'] ?? 'NO')) === 'YES'
                 || strtoupper((string) ($survey['head_is_pregnant'] ?? 'NO')) === 'YES') {
@@ -820,6 +820,12 @@ if (!function_exists('nutrition_bnp_all_hh_report')) {
                 $famStunted++;
             }
         }
+
+        // BNP Form C1 "Total Actual Population" for consolidated prints:
+        // derive from household survey counts (members_count logic).
+        // Resident counts are intentionally not used because they may be incomplete
+        // in the current dataset, causing mismatched totals.
+        $actualPopulation = (int) $surveyPopulation;
 
         $settings = nutrition_load_settings($con, $barangayId);
         $formC1 = nutrition_bnp_load_form_c1($con, $barangayId);

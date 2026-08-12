@@ -2,29 +2,36 @@
 
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
+
+// Discard accidental BOM/whitespace from includes so JSON stays parseable.
+ob_start();
 require_once '../includes/nutrition_context.php';
+ob_end_clean();
 
 header('Content-Type: application/json; charset=utf-8');
 
 $gender = trim((string) ($_GET['gender'] ?? $_POST['gender'] ?? ''));
-$birthDate = trim((string) ($_GET['birth_date'] ?? $_POST['birth_date'] ?? ''));
+$birthDate = nutrition_normalize_date_to_ymd(trim((string) ($_GET['birth_date'] ?? $_POST['birth_date'] ?? '')));
 $weightKg = max(0, (float) ($_GET['weight_kg'] ?? $_POST['weight_kg'] ?? 0));
 $heightCm = max(0, (float) ($_GET['height_cm'] ?? $_POST['height_cm'] ?? 0));
-$referenceDate = trim((string) ($_GET['date_measured'] ?? $_POST['date_measured'] ?? ''));
-if ($referenceDate === '') {
-    $referenceDate = trim((string) ($_GET['survey_date'] ?? $_POST['survey_date'] ?? date('Y-m-d')));
+$referenceDate = nutrition_normalize_date_to_ymd(trim((string) ($_GET['date_measured'] ?? $_POST['date_measured'] ?? '')));
+if ($referenceDate === null) {
+    $referenceDate = nutrition_normalize_date_to_ymd(trim((string) ($_GET['survey_date'] ?? $_POST['survey_date'] ?? date('Y-m-d'))));
+}
+if ($referenceDate === null) {
+    $referenceDate = date('Y-m-d');
 }
 
-if ($birthDate === '') {
+if ($birthDate === null) {
     http_response_code(400);
-    echo json_encode(['error' => 'Birthday is required for growth assessment.']);
+    echo json_encode(['error' => 'Birthday is required for growth assessment (use MM/DD/YYYY).']);
     exit;
 }
 
-$ageMonths = nutrition_age_in_months($birthDate, $referenceDate !== '' ? $referenceDate : null);
+$ageMonths = nutrition_age_in_months($birthDate, $referenceDate);
 if ($ageMonths === null) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid birthday or survey date.']);
+    echo json_encode(['error' => 'Invalid birthday or survey date. Use MM/DD/YYYY.']);
     exit;
 }
 

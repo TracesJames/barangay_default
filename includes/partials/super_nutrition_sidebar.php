@@ -19,7 +19,9 @@ $portalBrandName = isset($con)
 $portalBrandTagline = isset($con)
     ? barangay_portal_brand_tagline($con, (string) ($_SESSION['user_id'] ?? ''), true)
     : 'Valencia City · Nutrition Profiling';
-$isStaffAccountsPage = in_array($superActivePage, ['staff_accounts', 'bns', 'bns_admin'], true);
+$isStaffAccountsPage = in_array($superActivePage, ['staff_accounts', 'bns', 'bns_admin', 'cnpc', 'nutrition_sa'], true);
+$isSsaActor = isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_ssa')
+    && barangay_user_is_ssa($con, (string) $_SESSION['user_id']);
 $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ?? '', '../');
 ?>
 <aside class="main-sidebar sidebar-dark-success elevation-4 sidebar-no-expand nutrition-sidebar super-nutrition-sidebar">
@@ -113,19 +115,35 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
             <p>Users <i class="right fas fa-angle-left"></i></p>
           </a>
           <ul class="nav nav-treeview">
+            <?php if ($isSsaActor) : ?>
             <li class="nav-item">
-              <a href="staffAccounts.php?role=<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>" class="nav-link <?= $superActivePage === 'bns' ? 'active' : '' ?>">
+              <a href="staffAccounts.php?hub=nutrition&amp;role=<?= STAFF_ROLE_NUTRITION_SUPER_ADMIN ?>" class="nav-link <?= $superActivePage === 'nutrition_sa' ? 'active' : '' ?>">
+                <i class="fas fa-circle nav-icon text-warning"></i>
+                <p>Nutrition Super Admin (SA)</p>
+              </a>
+            </li>
+            <?php endif; ?>
+            <?php if ($isNutritionPortalAdmin || $isSsaActor) : ?>
+            <li class="nav-item">
+              <a href="staffAccounts.php?hub=nutrition&amp;role=<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN ?>" class="nav-link <?= $superActivePage === 'bns_admin' ? 'active' : '' ?>">
                 <i class="fas fa-circle nav-icon text-red"></i>
+                <p>Nutrition Admin (A)</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="staffAccounts.php?hub=nutrition&amp;role=<?= STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR ?>" class="nav-link <?= $superActivePage === 'cnpc' ? 'active' : '' ?>">
+                <i class="fas fa-circle nav-icon text-info"></i>
+                <p>CNPC Accounts</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="staffAccounts.php?hub=nutrition&amp;role=<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>" class="nav-link <?= $superActivePage === 'bns' ? 'active' : '' ?>">
+                <i class="fas fa-circle nav-icon text-success"></i>
                 <p>BNS Accounts</p>
               </a>
             </li>
-            <li class="nav-item">
-              <a href="staffAccounts.php?role=<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN ?>" class="nav-link <?= $superActivePage === 'bns_admin' ? 'active' : '' ?>">
-                <i class="fas fa-circle nav-icon text-red"></i>
-                <p>Nutrition Hub Admin (A)</p>
-              </a>
-            </li>
-            <?php if (!$isNutritionPortalAdmin) : ?>
+            <?php endif; ?>
+            <?php if ($isSsaActor && !$isNutritionPortalAdmin) : ?>
             <li class="nav-item">
               <a href="staffAccounts.php" class="nav-link <?= $superActivePage === 'staff_accounts' ? 'active' : '' ?>">
                 <i class="fas fa-circle nav-icon text-red"></i>

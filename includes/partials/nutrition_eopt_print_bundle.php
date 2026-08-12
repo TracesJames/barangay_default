@@ -21,10 +21,65 @@ $placeLine = $isCityWide
     ? 'All Barangays, ' . ($meta['municipality'] ?? 'City of Valencia')
     : ('Barangay ' . ($meta['barangay'] ?? '') . ', ' . ($meta['municipality'] ?? 'City of Valencia'));
 
+$wfaIp = $eopt['wfa_ip'] ?? [];
+$hfaIp = $eopt['hfa_ip'] ?? [];
+$wflIp = $eopt['wfl_ip'] ?? [];
+$muacIp = $eopt['muac_ip'] ?? [];
+$measuredByBand = $totals['measured_by_band'] ?? [];
+$den059 = max((int) ($measuredByBand['0-59'] ?? ($totals['measured'] ?? 0)), 0);
+$den023 = max((int) ($measuredByBand['0-23'] ?? ($totals['age_0_23'] ?? 0)), 0);
+
 $cell = static function (array $matrix, string $status, string $band, string $sex): string {
     return number_format((int) ($matrix[$status][$band][$sex] ?? 0));
 };
 
+$prevPct = static function (int $count, int $den): string {
+    if ($den < 1) {
+        return '0.00%';
+    }
+
+    return number_format(($count / $den) * 100, 2) . '%';
+};
+
+/**
+ * Form 1B / Nut_StatusTool aligned columns:
+ * age bands (B/G/T) · 0–59 Total + Prev · F1K Total + Prev · IP Boys/Girls/Total
+ *
+ * @param array<string, string> $statuses statusKey => label
+ */
+$form1bStatusRows = static function (
+    array $matrix,
+    array $ipMatrix,
+    array $statuses,
+    int $den059,
+    int $den023,
+    bool $blankMuac05 = false
+) use ($bands, $cell, $prevPct): void {
+    foreach ($statuses as $status => $label) {
+        echo '<tr><td class="eopt-item">' . barangay_h($label) . '</td>';
+        foreach ($bands as $band) {
+            if ($blankMuac05 && $band === '0-5') {
+                echo '<td class="eopt-blank"></td><td class="eopt-blank"></td><td class="eopt-blank"></td>';
+                continue;
+            }
+            echo '<td class="eopt-num">' . $cell($matrix, $status, $band, 'M') . '</td>';
+            echo '<td class="eopt-num">' . $cell($matrix, $status, $band, 'F') . '</td>';
+            echo '<td class="eopt-num">' . $cell($matrix, $status, $band, 'T') . '</td>';
+        }
+        $t059 = (int) ($matrix[$status]['0-59']['T'] ?? 0);
+        $t023 = (int) ($matrix[$status]['0-23']['T'] ?? 0);
+        echo '<td class="eopt-num eopt-summary">' . number_format($t059) . '</td>';
+        echo '<td class="eopt-num eopt-summary">' . $prevPct($t059, $den059) . '</td>';
+        echo '<td class="eopt-num">' . number_format($t023) . '</td>';
+        echo '<td class="eopt-num">' . $prevPct($t023, $den023) . '</td>';
+        echo '<td class="eopt-num">' . $cell($ipMatrix, $status, '0-59', 'M') . '</td>';
+        echo '<td class="eopt-num">' . $cell($ipMatrix, $status, '0-59', 'F') . '</td>';
+        echo '<td class="eopt-num">' . $cell($ipMatrix, $status, '0-59', 'T') . '</td>';
+        echo '</tr>';
+    }
+};
+
+/** @deprecated kept for any older callers expecting $statusRows */
 $statusRows = static function (array $matrix, array $statuses) use ($bands, $cell): void {
     foreach ($statuses as $status => $label) {
         echo '<tr><td class="eopt-item">' . barangay_h($label) . '</td>';
@@ -235,67 +290,127 @@ $prevRow = static function (string $label, array $row): void {
   </table>
 </div>
 
-<div class="eopt-section eopt-break">
-  <div class="eopt-sheet-title">OPT Plus Form 1B</div>
-  <div class="eopt-focus">Summary Sheet of the Nutritional Status of 0–59 Month-Old Children in a Barangay</div>
-  <div class="eopt-meta">
+<div class="eopt-section eopt-break eopt-landscape">
+  <div class="eopt-sheet-title">OPT Plus Form 1B · Nutritional Status Summary</div>
+  <div class="eopt-focus">Summary Sheet of the Nutritional Status of 0–59 Month-Old Children</div>
+  <div class="eopt-meta eopt-form1b-meta">
     <?= barangay_h($placeLine) ?> · <?= barangay_h((string) ($meta['province'] ?? '')) ?> ·
     <?= barangay_h((string) ($meta['region'] ?? '')) ?><br>
-    Total Boys: <strong><?= (int) ($totals['boys'] ?? 0) ?></strong> ·
-    Total Girls: <strong><?= (int) ($totals['girls'] ?? 0) ?></strong> ·
-    Measured 0–59: <strong><?= number_format((int) ($totals['measured'] ?? 0)) ?></strong> ·
-    IP preschoolers: <strong><?= number_format((int) ($totals['ip'] ?? 0)) ?></strong> ·
-    MUAC measured: <strong><?= number_format((int) ($totals['muac_measured'] ?? 0)) ?></strong>
+    <strong>Total Boys:</strong> <?= (int) ($totals['boys'] ?? 0) ?>
+    · <strong>Total Girls:</strong> <?= (int) ($totals['girls'] ?? 0) ?>
+    · <strong>Total WFA:</strong> <?= (int) ($totals['wfa_classified'] ?? 0) ?>
+    · <strong>Total HFA:</strong> <?= (int) ($totals['hfa_classified'] ?? 0) ?>
+    · <strong>Total WFL/H:</strong> <?= (int) ($totals['wfl_classified'] ?? 0) ?>
+    · <strong>Total MUAC:</strong> <?= (int) ($totals['muac_measured'] ?? 0) ?>
+    · <strong>IP preschoolers:</strong> <?= (int) ($totals['ip'] ?? 0) ?>
   </div>
-  <table class="eopt-table eopt-matrix">
+  <table class="eopt-table eopt-matrix eopt-form1b">
     <thead>
       <tr>
-        <th rowspan="2">Indicator</th>
+        <th rowspan="2" class="eopt-item-col">ACRONYMS &amp; ABBREVIATIONS</th>
         <?php foreach ($bands as $band) : ?>
-        <th colspan="3"><?= barangay_h($band) ?> mos</th>
+        <th colspan="3"><?= barangay_h($band) ?> Months</th>
         <?php endforeach; ?>
-        <th colspan="3">0–59 mos</th>
-        <th rowspan="2">0–23 Total</th>
+        <th colspan="2">Birth to 5 Years<br>(0–59 Months)</th>
+        <th colspan="2">F1K<br>(0–23 Months)</th>
+        <th colspan="3"># IP Children</th>
       </tr>
       <tr>
-        <?php for ($i = 0; $i < count($bands) + 1; $i++) : ?>
-        <th>B</th><th>G</th><th>T</th>
-        <?php endfor; ?>
+        <?php foreach ($bands as $_) : ?>
+        <th>Boys</th><th>Girls</th><th>Total</th>
+        <?php endforeach; ?>
+        <th>Total</th>
+        <th>Prev</th>
+        <th>Total</th>
+        <th>Prev</th>
+        <th>Boys</th>
+        <th>Girls</th>
+        <th>Total</th>
       </tr>
     </thead>
     <tbody>
-      <tr class="eopt-section-row"><td colspan="<?= 2 + ((count($bands) + 1) * 3) ?>"><strong>WEIGHT FOR AGE (WFA)</strong></td></tr>
-      <?php $statusRows($wfa, [
+      <tr class="eopt-section-row"><td colspan="<?= 1 + (count($bands) * 3) + 7 ?>"><strong>WEIGHT FOR AGE (WFA)</strong></td></tr>
+      <?php
+      $form1bStatusRows($wfa, $wfaIp, [
           'Normal' => 'WFA - Normal',
           'UW' => 'WFA - MUW (Moderately Underweight)',
           'SUW' => 'WFA - SUW (Severely Underweight)',
-      ]); ?>
-      <tr class="eopt-section-row"><td colspan="<?= 2 + ((count($bands) + 1) * 3) ?>"><strong>HEIGHT FOR AGE (HFA)</strong></td></tr>
-      <?php $statusRows($hfa, [
+      ], $den059, $den023);
+      ?>
+      <tr class="eopt-note-row">
+        <td colspan="<?= 1 + (count($bands) * 3) + 7 ?>">
+          <em>No Obese/Overweight classification in the WFA. Following international standards, we use WL/H to classify overweight and obesity in children.</em>
+        </td>
+      </tr>
+
+      <tr class="eopt-section-row"><td colspan="<?= 1 + (count($bands) * 3) + 7 ?>"><strong>HEIGHT FOR AGE (HFA)</strong></td></tr>
+      <?php
+      $form1bStatusRows($hfa, $hfaIp, [
           'Normal' => 'HFA - Normal',
           'Tall' => 'HFA - Tall',
           'St' => 'HFA - MSt (Moderately Stunted)',
           'SSt' => 'HFA - SSt (Severely Stunted)',
-      ]); ?>
-      <tr class="eopt-section-row"><td colspan="<?= 2 + ((count($bands) + 1) * 3) ?>"><strong>WEIGHT FOR LENGTH/HEIGHT (WFL/H)</strong></td></tr>
-      <?php $statusRows($wfl, [
+      ], $den059, $den023);
+      ?>
+
+      <tr class="eopt-section-row"><td colspan="<?= 1 + (count($bands) * 3) + 7 ?>"><strong>WEIGHT FOR LENGTH/HEIGHT (WFL/H)</strong></td></tr>
+      <?php
+      $form1bStatusRows($wfl, $wflIp, [
           'Normal' => 'WFL/H - Normal',
           'OW' => 'WFL/H - OW (Overweight)',
           'Ob' => 'WFL/H - Ob (Obese)',
           'MW' => 'WFL/H - MW/MAM',
           'SW' => 'WFL/H - SW/SAM',
-      ]); ?>
-      <tr class="eopt-section-row"><td colspan="<?= 2 + ((count($bands) + 1) * 3) ?>"><strong>MUAC</strong></td></tr>
-      <?php $statusRows($muac, [
+      ], $den059, $den023);
+      ?>
+
+      <tr class="eopt-section-row"><td colspan="<?= 1 + (count($bands) * 3) + 7 ?>"><strong>MUAC</strong></td></tr>
+      <?php
+      $form1bStatusRows($muac, $muacIp, [
           'Normal' => 'MUAC - Normal',
           'MW' => 'MUAC - MW/MAM',
           'SW' => 'MUAC - SW/SAM',
-      ]); ?>
+      ], $den059, $den023, true);
+      ?>
+
+      <?php
+      // Total (WFA) = Normal + MUW + SUW (+ OW/OB if present in matrix)
+      $wfaTotalKeys = ['Normal', 'UW', 'SUW', 'OW', 'OB'];
+      echo '<tr class="eopt-total-row"><td class="eopt-item"><strong>Total (WFA)</strong></td>';
+      foreach ($bands as $band) {
+          $b = $g = $t = 0;
+          foreach ($wfaTotalKeys as $key) {
+              $b += (int) ($wfa[$key][$band]['M'] ?? 0);
+              $g += (int) ($wfa[$key][$band]['F'] ?? 0);
+              $t += (int) ($wfa[$key][$band]['T'] ?? 0);
+          }
+          echo '<td class="eopt-num">' . number_format($b) . '</td>';
+          echo '<td class="eopt-num">' . number_format($g) . '</td>';
+          echo '<td class="eopt-num">' . number_format($t) . '</td>';
+      }
+      $t059 = $t023 = $ipB = $ipG = $ipT = 0;
+      foreach ($wfaTotalKeys as $key) {
+          $t059 += (int) ($wfa[$key]['0-59']['T'] ?? 0);
+          $t023 += (int) ($wfa[$key]['0-23']['T'] ?? 0);
+          $ipB += (int) ($wfaIp[$key]['0-59']['M'] ?? 0);
+          $ipG += (int) ($wfaIp[$key]['0-59']['F'] ?? 0);
+          $ipT += (int) ($wfaIp[$key]['0-59']['T'] ?? 0);
+      }
+      echo '<td class="eopt-num eopt-summary">' . number_format($t059) . '</td>';
+      echo '<td class="eopt-num eopt-summary">' . $prevPct($t059, $den059) . '</td>';
+      echo '<td class="eopt-num">' . number_format($t023) . '</td>';
+      echo '<td class="eopt-num">' . $prevPct($t023, $den023) . '</td>';
+      echo '<td class="eopt-num">' . number_format($ipB) . '</td>';
+      echo '<td class="eopt-num">' . number_format($ipG) . '</td>';
+      echo '<td class="eopt-num">' . number_format($ipT) . '</td>';
+      echo '</tr>';
+      ?>
     </tbody>
   </table>
   <p class="eopt-note">
-    Note: No obese/overweight classification under WFA in international OPT practice — OW/Ob use WFL/H.
-    Aligned with DOH/NNC OPT Plus Form B (Region 10 e-OPT Plus ver2).
+    Aligned with DOH/NNC OPT Plus Form 1B / Nut_StatusTool (Region 10 e-OPT Plus).
+    Prevalence (Prev) = status count ÷ measured children in the same age group.
+    MUAC is not applied to 0–5 months (blank cells).
   </p>
 </div>
 

@@ -1813,3 +1813,146 @@ body.barangay-portal.nutrition-portal label {
   background: transparent !important;
   border-top-color: rgba(74, 222, 128, 0.14) !important;
 }
+
+/* Household survey date fields + jQuery UI calendar (MM/DD/YYYY) */
+.nutrition-portal .nutrition-date-mdy {
+  color: #ecfdf5 !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(74, 222, 128, 0.35) !important;
+  letter-spacing: 0.02em;
+}
+
+.nutrition-portal .nutrition-date-mdy::placeholder {
+  color: rgba(236, 253, 245, 0.45) !important;
+}
+
+.nutrition-portal .nutrition-date-mdy:focus {
+  border-color: rgba(74, 222, 128, 0.75) !important;
+  box-shadow: 0 0 0 0.15rem rgba(34, 197, 94, 0.2);
+}
+
+body .ui-datepicker.nutrition-ui-datepicker,
+body .ui-datepicker {
+  z-index: 2000 !important;
+  width: 17.5rem;
+  padding: 0.55rem;
+  border: 1px solid rgba(74, 222, 128, 0.35) !important;
+  border-radius: 0.65rem !important;
+  background: #102418 !important;
+  color: #ecfdf5 !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  font-family: inherit;
+}
+
+body .ui-datepicker .ui-datepicker-header {
+  background: rgba(34, 197, 94, 0.16) !important;
+  border: 0 !important;
+  border-radius: 0.45rem;
+  color: #bbf7d0 !important;
+  padding: 0.35rem 0.25rem;
+}
+
+body .ui-datepicker .ui-datepicker-title {
+  color: #ecfdf5 !important;
+  line-height: 1.8;
+}
+
+body .ui-datepicker .ui-datepicker-title select {
+  background: #0b1a12;
+  color: #ecfdf5;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 0.3rem;
+  margin: 0 0.15rem;
+  padding: 0.1rem 0.25rem;
+}
+
+body .ui-datepicker .ui-datepicker-prev,
+body .ui-datepicker .ui-datepicker-next {
+  top: 0.35rem;
+  background: transparent !important;
+  border: 0 !important;
+  cursor: pointer;
+}
+
+body .ui-datepicker .ui-datepicker-prev span,
+body .ui-datepicker .ui-datepicker-next span {
+  background-image: none !important;
+  text-indent: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  left: auto;
+  top: auto;
+  display: block;
+  color: #bbf7d0;
+  font-size: 0;
+}
+
+body .ui-datepicker .ui-datepicker-prev span::before {
+  content: "‹";
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #bbf7d0;
+}
+
+body .ui-datepicker .ui-datepicker-next span::before {
+  content: "›";
+  font-size: 1.25rem;
+  line-height: 1;
+  color: #bbf7d0;
+}
+
+body .ui-datepicker table {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
+body .ui-datepicker th {
+  color: rgba(236, 253, 245, 0.55);
+  font-weight: 600;
+  padding: 0.35rem 0;
+}
+
+body .ui-datepicker td {
+  padding: 1px;
+}
+
+body .ui-datepicker td span,
+body .ui-datepicker td a {
+  text-align: center;
+  border-radius: 0.35rem;
+  color: #ecfdf5 !important;
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0.35rem 0;
+}
+
+body .ui-datepicker td a:hover {
+  background: rgba(34, 197, 94, 0.25) !important;
+  color: #bbf7d0 !important;
+}
+
+body .ui-datepicker td.ui-datepicker-today a,
+body .ui-datepicker td.ui-datepicker-today span {
+  background: rgba(250, 204, 21, 0.22) !important;
+  color: #fef08a !important;
+  font-weight: 700;
+}
+
+body .ui-datepicker td.ui-datepicker-current-day a,
+body .ui-datepicker td a.ui-state-active {
+  background: #16a34a !important;
+  color: #052e16 !important;
+  font-weight: 700;
+}
+
+body .ui-datepicker td.ui-datepicker-unselectable span,
+body .ui-datepicker td.ui-state-disabled span {
+  color: rgba(236, 253, 245, 0.28) !important;
+  opacity: 1;
+}
+
+body .ui-datepicker .ui-state-disabled {
+  opacity: 1;
+}
+

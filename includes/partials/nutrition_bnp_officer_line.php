@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /**
  * BNP officer name line (top of form).

@@ -8,7 +8,7 @@ header('Content-Type: application/json; charset=utf-8');
 nutrition_ensure_module_tables($con);
 
 $userId = (string) ($_SESSION['user_id'] ?? '');
-nutrition_ensure_super_admin_for_manage($con, $userId);
+nutrition_ensure_can_edit_household_survey_names($con, $userId);
 
 $barangayId = (string) ($barangay_id ?? '');
 if ($barangayId === '') {

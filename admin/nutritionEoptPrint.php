@@ -54,9 +54,50 @@ $pdfFilename = 'eOPT-Plus-' . $safeBarangay . '-' . $calendarYear . '.pdf';
     .eopt-section-row td { background:#dbeafe; font-weight:700; }
     .eopt-note { font-size:7.5pt; color:#444; margin-top:5px; }
     .eopt-compact { font-size:7.5pt; }
+    .eopt-form1b .eopt-item-col { min-width:140px; text-align:left; }
+    .eopt-form1b .eopt-blank { background:#111; color:#111; }
+    .eopt-form1b .eopt-summary { background:#111; color:#fff; font-weight:700; }
+    .eopt-form1b .eopt-total-row td { background:#111; color:#fff; font-weight:700; }
+    .eopt-form1b .eopt-note-row td { background:#f8fafc; font-size:6.5pt; }
+    .eopt-form1b-meta { font-size:8.5pt; }
+    @page {
+      size: A4 portrait;
+      margin: 10mm 8mm;
+    }
+    @page eopt-landscape {
+      size: A4 landscape;
+      margin: 10mm 8mm;
+    }
+    .eopt-landscape {
+      page: eopt-landscape;
+    }
     @media print {
       .no-print { display:none !important; }
-      body { margin:8px; }
+      body { margin: 0; }
+      #eoptPrintRoot {
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+      .eopt-landscape {
+        page: eopt-landscape;
+        page-break-before: always;
+        break-before: page;
+      }
+      .eopt-landscape .eopt-form1b {
+        table-layout: auto;
+        font-size: 7.5pt;
+      }
+      .eopt-landscape .eopt-form1b th,
+      .eopt-landscape .eopt-form1b td {
+        padding: 2px 3px;
+        font-size: 7pt;
+      }
+      .eopt-landscape .eopt-item-col {
+        min-width: 160px;
+        width: 18%;
+      }
     }
   </style>
   <?php require __DIR__ . '/../includes/partials/report_fit_assets.php'; ?>

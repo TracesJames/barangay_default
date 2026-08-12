@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 require_once __DIR__ . '/barangay_context.php';
 
@@ -55,7 +55,19 @@ if (!function_exists('nutrition_user_is_portal_admin')) {
 }
 
 if (!function_exists('nutrition_user_can_manage_household_surveys')) {
+    /**
+     * Legacy alias for delete capability (SSA / Nutrition SA only).
+     * Prefer nutrition_user_can_delete_household_surveys / edit / add helpers.
+     */
     function nutrition_user_can_manage_household_surveys(mysqli $con, string $userId): bool
+    {
+        return nutrition_user_can_delete_household_surveys($con, $userId);
+    }
+}
+
+if (!function_exists('nutrition_user_can_add_household_surveys')) {
+    /** BNS, CNPC, Nutrition SA, SSA may create household surveys. Nutrition Admin (A) may not. */
+    function nutrition_user_can_add_household_surveys(mysqli $con, string $userId): bool
     {
         if ($userId === '') {
             return false;
@@ -63,30 +75,100 @@ if (!function_exists('nutrition_user_can_manage_household_surveys')) {
 
         if (barangay_user_is_ssa($con, $userId)
             || barangay_user_is_nutrition_portal_admin($con, $userId)
-            || barangay_user_is_bns_admin($con, $userId)) {
+            || barangay_user_is_cnpc($con, $userId)
+            || barangay_user_is_barangay_nutrition_scholar($con, $userId)) {
             return true;
         }
 
-        $stmt = $con->prepare('SELECT username, user_type, barangay_id FROM users WHERE id = ? LIMIT 1');
+        // Legacy nutrition.* city accounts without explicit role.
+        $stmt = $con->prepare('SELECT username, user_type, barangay_id, staff_role FROM users WHERE id = ? LIMIT 1');
         if (!$stmt) {
             return false;
         }
-
         $stmt->bind_param('s', $userId);
         $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-
         if (!$row) {
             return false;
         }
-
+        $role = trim((string) ($row['staff_role'] ?? ''));
+        if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
+            return false;
+        }
         $username = strtolower(trim((string) ($row['username'] ?? '')));
         $userType = strtolower(trim((string) ($row['user_type'] ?? '')));
         $barangayId = trim((string) ($row['barangay_id'] ?? ''));
-        $isNutritionAccount = $username === 'nutrition.superadmin' || str_starts_with($username, 'nutrition.');
 
-        return $isNutritionAccount && $userType === 'admin' && $barangayId === '';
+        return ($username === 'nutrition.superadmin' || str_starts_with($username, 'nutrition.'))
+            && $userType === 'admin'
+            && $barangayId === '';
+    }
+}
+
+if (!function_exists('nutrition_user_can_edit_household_survey_names')) {
+    /**
+     * Nutrition Admin (A) may edit registered names (same name tools as Nutrition SA).
+     * SSA / Nutrition SA / Admin (A) only — not BNS/CNPC via this privileged path
+     * (BNS edits through their own survey workflow).
+     */
+    function nutrition_user_can_edit_household_survey_names(mysqli $con, string $userId): bool
+    {
+        if ($userId === '') {
+            return false;
+        }
+
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_nutrition_portal_admin($con, $userId)
+            || barangay_user_is_bns_admin($con, $userId);
+    }
+}
+
+if (!function_exists('nutrition_user_can_edit_household_surveys')) {
+    /**
+     * Full edit of a registered household survey (reopen form / UPDATE).
+     * SSA and Nutrition Hub SA only — not Nutrition Admin (A), BNS, or CNPC.
+     */
+    function nutrition_user_can_edit_household_surveys(mysqli $con, string $userId): bool
+    {
+        return nutrition_user_can_delete_household_surveys($con, $userId);
+    }
+}
+
+if (!function_exists('nutrition_user_can_delete_household_surveys')) {
+    /** Only SSA and Nutrition Super Admin may delete household surveys / registered names. */
+    function nutrition_user_can_delete_household_surveys(mysqli $con, string $userId): bool
+    {
+        if ($userId === '') {
+            return false;
+        }
+
+        if (barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_nutrition_portal_admin($con, $userId)) {
+            return true;
+        }
+
+        $stmt = $con->prepare('SELECT username, user_type, barangay_id, staff_role FROM users WHERE id = ? LIMIT 1');
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('s', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!$row) {
+            return false;
+        }
+        if (trim((string) ($row['staff_role'] ?? '')) === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
+            return false;
+        }
+        $username = strtolower(trim((string) ($row['username'] ?? '')));
+        $userType = strtolower(trim((string) ($row['user_type'] ?? '')));
+        $barangayId = trim((string) ($row['barangay_id'] ?? ''));
+
+        return ($username === 'nutrition.superadmin' || str_starts_with($username, 'nutrition.'))
+            && $userType === 'admin'
+            && $barangayId === '';
     }
 }
 
@@ -260,18 +342,80 @@ if (!function_exists('nutrition_suggest_status')) {
     }
 }
 
-if (!function_exists('nutrition_age_in_months')) {
-    function nutrition_age_in_months(?string $birthDate, ?string $referenceDate = null): ?int
+if (!function_exists('nutrition_normalize_date_to_ymd')) {
+    /**
+     * Accept Y-m-d or Month/Day/YYYY (M/D/YYYY) and return Y-m-d for DB/API use.
+     */
+    function nutrition_normalize_date_to_ymd(?string $value): ?string
     {
-        $birthDate = trim((string) $birthDate);
-        if ($birthDate === '') {
+        $value = trim((string) $value);
+        if ($value === '') {
             return null;
         }
 
-        $referenceDate = trim((string) ($referenceDate ?? date('Y-m-d')));
+        if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $value, $m)) {
+            $y = (int) $m[1];
+            $mo = (int) $m[2];
+            $d = (int) $m[3];
+            if (!checkdate($mo, $d, $y)) {
+                return null;
+            }
+
+            return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+        }
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $value, $m)) {
+            $mo = (int) $m[1];
+            $d = (int) $m[2];
+            $y = (int) $m[3];
+            if (!checkdate($mo, $d, $y)) {
+                return null;
+            }
+
+            return sprintf('%04d-%02d-%02d', $y, $mo, $d);
+        }
+
         try {
-            $birth = new DateTime($birthDate);
-            $reference = new DateTime($referenceDate);
+            $dt = new DateTime($value);
+
+            return $dt->format('Y-m-d');
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+}
+
+if (!function_exists('nutrition_format_date_mdy')) {
+    /** Format a date value as Month/Day/YYYY for form display. */
+    function nutrition_format_date_mdy(?string $value): string
+    {
+        $ymd = nutrition_normalize_date_to_ymd($value);
+        if ($ymd === null) {
+            return '';
+        }
+
+        [$y, $mo, $d] = array_map('intval', explode('-', $ymd));
+
+        return sprintf('%02d/%02d/%04d', $mo, $d, $y);
+    }
+}
+
+if (!function_exists('nutrition_age_in_months')) {
+    function nutrition_age_in_months(?string $birthDate, ?string $referenceDate = null): ?int
+    {
+        $birthYmd = nutrition_normalize_date_to_ymd($birthDate);
+        if ($birthYmd === null) {
+            return null;
+        }
+
+        $referenceYmd = nutrition_normalize_date_to_ymd($referenceDate ?? date('Y-m-d'));
+        if ($referenceYmd === null) {
+            $referenceYmd = date('Y-m-d');
+        }
+
+        try {
+            $birth = new DateTime($birthYmd);
+            $reference = new DateTime($referenceYmd);
         } catch (Exception $e) {
             return null;
         }
@@ -822,11 +966,21 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
      *
      * @return array<int, array<string, mixed>>
      */
-    function nutrition_super_dashboard_rows(mysqli $con): array
+    function nutrition_super_dashboard_rows(mysqli $con, ?array $limitBarangayIds = null): array
     {
         $rows = [];
         $surveysByBarangay = [];
         $bnsByBarangay = [];
+        $limitLookup = null;
+        if ($limitBarangayIds !== null) {
+            $limitLookup = [];
+            foreach ($limitBarangayIds as $id) {
+                $id = trim((string) $id);
+                if ($id !== '') {
+                    $limitLookup[$id] = true;
+                }
+            }
+        }
 
         if (barangay_table_exists($con, 'nutrition_household_survey')) {
             $surveyResult = $con->query(
@@ -860,6 +1014,9 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
         foreach (barangay_list_all($con) as $barangayRow) {
             $barangayId = (string) ($barangayRow['id'] ?? '');
             if ($barangayId === '') {
+                continue;
+            }
+            if ($limitLookup !== null && !isset($limitLookup[$barangayId])) {
                 continue;
             }
 
@@ -1553,9 +1710,33 @@ if (!function_exists('nutrition_ensure_module_tables')) {
 if (!function_exists('nutrition_ensure_column')) {
     function nutrition_ensure_column(mysqli $con, string $table, string $column, string $definition): void
     {
-        if (!barangay_column_exists($con, $table, $column)) {
-            $con->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        if (barangay_column_exists($con, $table, $column)) {
+            return;
         }
+
+        try {
+            $ok = $con->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+            if ($ok) {
+                if (function_exists('barangay_mark_column_exists')) {
+                    barangay_mark_column_exists($table, $column);
+                }
+                return;
+            }
+        } catch (Throwable $e) {
+            // Race / duplicate column: treat as already present.
+        }
+
+        // Refresh cache from information_schema in case another request added it.
+        if (function_exists('barangay_column_cache')) {
+            $cache = &barangay_column_cache();
+            unset($cache[$table . '.' . $column]);
+        }
+        if (barangay_column_exists($con, $table, $column)) {
+            return;
+        }
+
+        // Non-fatal: leave page usable; log for operators.
+        error_log('nutrition_ensure_column failed: ' . $table . '.' . $column . ' — ' . ($con->error ?: 'unknown'));
     }
 }
 
@@ -2594,10 +2775,46 @@ if (!function_exists('nutrition_household_member_badges')) {
 if (!function_exists('nutrition_ensure_super_admin_for_manage')) {
     function nutrition_ensure_super_admin_for_manage(mysqli $con, string $userId): void
     {
-        if (!nutrition_user_can_manage_household_surveys($con, $userId)) {
+        if (!nutrition_user_can_delete_household_surveys($con, $userId)) {
             http_response_code(403);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Only the super admin can edit or delete household survey records.']);
+            echo json_encode(['error' => 'Only Nutrition Super Admin or Super Super Admin can delete household survey records.']);
+            exit;
+        }
+    }
+}
+
+if (!function_exists('nutrition_ensure_can_edit_household_survey_names')) {
+    function nutrition_ensure_can_edit_household_survey_names(mysqli $con, string $userId): void
+    {
+        if (!nutrition_user_can_edit_household_survey_names($con, $userId)) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => 'You are not allowed to edit household survey names.']);
+            exit;
+        }
+    }
+}
+
+if (!function_exists('nutrition_ensure_can_add_household_surveys')) {
+    function nutrition_ensure_can_add_household_surveys(mysqli $con, string $userId): void
+    {
+        if (!nutrition_user_can_add_household_surveys($con, $userId)) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => 'Nutrition Admin (A) can view registered surveys only. Adding surveys is not allowed.']);
+            exit;
+        }
+    }
+}
+
+if (!function_exists('nutrition_ensure_can_edit_household_surveys')) {
+    function nutrition_ensure_can_edit_household_surveys(mysqli $con, string $userId): void
+    {
+        if (!nutrition_user_can_edit_household_surveys($con, $userId)) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => 'Only Nutrition Super Admin or Super Super Admin can edit registered household surveys.']);
             exit;
         }
     }
@@ -3047,7 +3264,9 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
             return [];
         }
 
-        $referenceDate = trim((string) ($referenceDate ?? ($post['survey_date'] ?? date('Y-m-d'))));
+        $referenceDate = nutrition_normalize_date_to_ymd(
+            trim((string) ($referenceDate ?? ($post['survey_date'] ?? date('Y-m-d'))))
+        ) ?? date('Y-m-d');
         $members = [];
         foreach ($raw as $row) {
             if (!is_array($row)) {
@@ -3061,7 +3280,7 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
 
             $isPregnant = nutrition_family_member_yes_no($row, 'is_pregnant');
             $isLactating = nutrition_family_member_yes_no($row, 'is_lactating');
-            $birthDate = trim((string) ($row['birth_date'] ?? ''));
+            $birthDateValue = nutrition_normalize_date_to_ymd(trim((string) ($row['birth_date'] ?? '')));
             $gender = trim((string) ($row['gender'] ?? ''));
             $gender = in_array($gender, ['Male', 'Female'], true) ? $gender : '';
             if ($gender !== 'Female') {
@@ -3070,20 +3289,16 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
             }
             $weightKg = max(0, (float) ($row['weight_kg'] ?? 0));
             $heightCm = max(0, (float) ($row['height_cm'] ?? 0));
-            $birthDateValue = $birthDate !== '' ? $birthDate : null;
-            $dateMeasured = trim((string) ($row['date_measured'] ?? ''));
-            if ($dateMeasured === '') {
+            $dateMeasured = nutrition_normalize_date_to_ymd(trim((string) ($row['date_measured'] ?? '')));
+            if ($dateMeasured === null) {
                 $dateMeasured = $referenceDate;
             }
-            if ($dateMeasured !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateMeasured)) {
-                $dateMeasured = $referenceDate;
-            }
-            $memberReferenceDate = $dateMeasured !== '' ? $dateMeasured : $referenceDate;
-            $ageMonthsOnly = nutrition_age_in_months($birthDateValue, $memberReferenceDate !== '' ? $memberReferenceDate : null);
+            $memberReferenceDate = $dateMeasured !== null && $dateMeasured !== '' ? $dateMeasured : $referenceDate;
+            $ageMonthsOnly = nutrition_age_in_months($birthDateValue, $memberReferenceDate);
             if (!nutrition_is_child_0_to_5($ageMonthsOnly)) {
                 $weightKg = 0;
                 $heightCm = 0;
-                $dateMeasured = '';
+                $dateMeasured = null;
             }
             $growth = nutrition_family_member_growth_assessment(
                 $gender,
@@ -3100,7 +3315,7 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
                 'birth_date' => $birthDateValue,
                 'weight_kg' => $weightKg > 0 ? $weightKg : null,
                 'height_cm' => $heightCm > 0 ? $heightCm : null,
-                'date_measured' => ($dateMeasured !== '' && ($weightKg > 0 || $heightCm > 0)) ? $dateMeasured : null,
+                'date_measured' => ($dateMeasured !== null && $dateMeasured !== '' && ($weightKg > 0 || $heightCm > 0)) ? $dateMeasured : null,
                 'age_months' => $growth['age_months'],
                 'weight_for_age' => (string) ($growth['weight_for_age'] ?? ''),
                 'height_for_age' => (string) ($growth['height_for_age'] ?? ''),
@@ -3219,6 +3434,27 @@ if (!function_exists('nutrition_save_household_family_members')) {
         $stmt->close();
 
         return $saved;
+    }
+}
+
+if (!function_exists('nutrition_delete_household_family_members')) {
+    function nutrition_delete_household_family_members(mysqli $con, string $surveyId, string $barangayId): bool
+    {
+        if ($surveyId === '' || $barangayId === '' || !barangay_table_exists($con, 'nutrition_household_family_member')) {
+            return false;
+        }
+
+        $stmt = $con->prepare(
+            'DELETE FROM nutrition_household_family_member WHERE survey_id = ? AND barangay_id = ?'
+        );
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('ss', $surveyId, $barangayId);
+        $ok = $stmt->execute();
+        $stmt->close();
+
+        return $ok;
     }
 }
 

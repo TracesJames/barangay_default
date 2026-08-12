@@ -2,8 +2,8 @@
 
 /**
  * DB connection — prefers config outside webroot:
- *   C:\xampp\secure\barangay_db.php
- * Fallback: env vars BARANGAY_DB_* then local XAMPP defaults.
+ *   C:\xampp\secure\barangay_db\barangay_db.php
+ * Fallback: C:\xampp\secure\barangay_db.php (shim), then env BARANGAY_DB_*, then local XAMPP defaults.
  */
 
 // Block direct browser hits to this file (include-only).
@@ -13,17 +13,22 @@ if (isset($_SERVER['SCRIPT_FILENAME'])
     exit('Forbidden');
 }
 
+$secureRoot = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'secure'; // C:\xampp\secure when app is htdocs\barangay_default
 $dbConfigCandidates = [
-    dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'secure' . DIRECTORY_SEPARATOR . 'barangay_db.php', // C:\xampp\secure when app is htdocs\barangay_default
+    $secureRoot . DIRECTORY_SEPARATOR . 'barangay_db' . DIRECTORY_SEPARATOR . 'barangay_db.php',
+    $secureRoot . DIRECTORY_SEPARATOR . 'barangay_db.php',
+    dirname(__DIR__) . DIRECTORY_SEPARATOR . 'secure' . DIRECTORY_SEPARATOR . 'barangay_db' . DIRECTORY_SEPARATOR . 'barangay_db.php',
     dirname(__DIR__) . DIRECTORY_SEPARATOR . 'secure' . DIRECTORY_SEPARATOR . 'barangay_db.php',
-    __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'secure' . DIRECTORY_SEPARATOR . 'barangay_db.php',
 ];
 
 $dbConfig = null;
 foreach ($dbConfigCandidates as $candidate) {
     $real = realpath($candidate);
     if ($real !== false && is_file($real)) {
+        // Discard accidental UTF-8 BOM / whitespace from config so sessions stay writable.
+        ob_start();
         $dbConfig = require $real;
+        ob_end_clean();
         break;
     }
 }

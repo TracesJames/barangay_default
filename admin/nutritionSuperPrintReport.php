@@ -350,6 +350,29 @@ foreach ($cityBnpReports as $pack) {
     .eopt-section-row td { background:#dbeafe; font-weight:700; }
     .eopt-note { font-size:7.5pt; color:#444; margin-top:5px; }
     .eopt-compact { font-size:7.5pt; }
+    .eopt-form1b .eopt-item-col { min-width:140px; text-align:left; }
+    .eopt-form1b .eopt-blank { background:#111; color:#111; }
+    .eopt-form1b .eopt-summary { background:#111; color:#fff; font-weight:700; }
+    .eopt-form1b .eopt-total-row td { background:#111; color:#fff; font-weight:700; }
+    .eopt-form1b .eopt-note-row td { background:#f8fafc; font-size:6.5pt; }
+    .eopt-form1b-meta { font-size:8.5pt; }
+    /* Form 1B prints on A4 landscape (named page) */
+    @page eopt-landscape {
+      size: A4 landscape;
+      margin: 10mm 8mm 10mm 8mm;
+    }
+    .eopt-landscape {
+      page: eopt-landscape;
+    }
+    @media screen {
+      .eopt-landscape .eopt-form1b {
+        font-size: 6.5pt;
+      }
+      .eopt-landscape .eopt-form1b th,
+      .eopt-landscape .eopt-form1b td {
+        padding: 1px 2px;
+      }
+    }
 
     .city-sign-page {
       page-break-before: always;
@@ -421,9 +444,13 @@ foreach ($cityBnpReports as $pack) {
         size: A4 portrait;
         margin: 12mm 10mm 14mm 10mm;
       }
+      @page eopt-landscape {
+        size: A4 landscape;
+        margin: 10mm 8mm 10mm 8mm;
+      }
       html, body {
-        width: 210mm;
-        max-width: 210mm;
+        width: auto;
+        max-width: none;
         background: #fff !important;
         overflow: visible !important;
       }
@@ -433,6 +460,30 @@ foreach ($cityBnpReports as $pack) {
         background: #fff;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+      }
+      #cityReportPrintRoot {
+        width: auto;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+      }
+      .eopt-landscape {
+        page: eopt-landscape;
+        page-break-before: always;
+        break-before: page;
+      }
+      .eopt-landscape .eopt-form1b {
+        table-layout: auto;
+        font-size: 7.5pt;
+      }
+      .eopt-landscape .eopt-form1b th,
+      .eopt-landscape .eopt-form1b td {
+        padding: 2px 3px;
+        font-size: 7pt;
+      }
+      .eopt-landscape .eopt-item-col {
+        min-width: 160px;
+        width: 18%;
       }
       .no-print { display:none !important; }
       .mellpi-grid { grid-template-columns:1fr 1fr; }
@@ -459,7 +510,7 @@ foreach ($cityBnpReports as $pack) {
   <div class="no-print">
     <button type="button" class="btn-print" onclick="window.print()">Print</button>
     <button type="button" class="btn-pdf" id="cityReportDownloadPdfBtn">Download PDF</button>
-    <span id="cityReportPdfStatus">Tip: Download may take 1–2 minutes for the full city report.</span>
+    <span id="cityReportPdfStatus">Tip: Use Print for Form 1B landscape pages. Download PDF may take 1–2 minutes.</span>
   </div>
 
   <div id="cityReportPrintRoot" data-report-fit="a4">

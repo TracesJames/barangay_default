@@ -26,7 +26,14 @@ $koboConfigured = $koboConfigured ?? nutrition_kobo_is_configured($nutritionSett
 $koboFormUrl = $koboFormUrl ?? trim((string) ($nutritionSettings['kobo_form_url'] ?? ''));
 $koboLastSynced = $koboLastSynced ?? trim((string) ($nutritionSettings['kobo_last_synced_at'] ?? ''));
 $koboEnabled = ($nutritionSettings['kobo_enabled'] ?? 'NO') === 'YES';
-$canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (string) ($_SESSION['user_id'] ?? ''));
+$sessionUserId = (string) ($_SESSION['user_id'] ?? '');
+$canEditHouseholdSurveyNames = nutrition_user_can_edit_household_survey_names($con, $sessionUserId);
+$canDeleteHouseholdSurveys = nutrition_user_can_delete_household_surveys($con, $sessionUserId);
+$canAddHouseholdSurveys = nutrition_user_can_add_household_surveys($con, $sessionUserId);
+$canEditHouseholdSurveys = nutrition_user_can_edit_household_surveys($con, $sessionUserId);
+$canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHouseholdSurveys || $canEditHouseholdSurveys;
+$canManageNutritionSettings = !barangay_user_is_bns_admin($con, $sessionUserId)
+    && !barangay_user_is_barangay_nutrition_scholar($con, $sessionUserId);
 ?>
         <?php
         $nutritionPageIcon = 'fa-poll';
@@ -49,10 +56,13 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
             </a>
             <a href="nutritionBnpReport.php" class="btn btn-outline-light btn-sm">
               <i class="fas fa-book mr-1"></i> BNP 2026
-            </a>
+            </a>';
+        if ($canAddHouseholdSurveys) {
+            $nutritionPageActions .= '
             <a href="nutritionHouseholdSurvey.php" class="btn btn-outline-light btn-sm">
               <i class="fas fa-home mr-1"></i> New Survey
             </a>';
+        }
         require __DIR__ . '/nutrition_page_header.php';
         ?>
 
@@ -152,21 +162,27 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                 <i class="fas fa-external-link-alt mr-1"></i> Open KoBo Form
               </a>
               <?php endif; ?>
-              <?php if ($koboConfigured) : ?>
+              <?php if ($canAddHouseholdSurveys && $koboConfigured) : ?>
               <button type="button" class="btn btn-success btn-sm" id="syncKoboBtn">
                 <i class="fas fa-sync-alt mr-1"></i> Sync from KoBo
               </button>
               <?php endif; ?>
+              <?php if ($canManageNutritionSettings) : ?>
               <a href="nutritionSettings.php" class="btn btn-outline-light btn-sm">
                 <i class="fas fa-cog mr-1"></i> KoBo Settings
               </a>
+              <?php endif; ?>
             </div>
           </div>
           <div class="card-body">
             <?php if (!$koboEnabled) : ?>
-            <p class="text-muted mb-0">KoBoToolbox is not enabled. Turn it on under <a href="nutritionSettings.php">Nutrition Settings</a> to collect field data with KoBo forms and sync submissions here.</p>
+            <p class="text-muted mb-0"><?= $canManageNutritionSettings
+                ? 'KoBoToolbox is not enabled. Turn it on under <a href="nutritionSettings.php">Nutrition Settings</a> to collect field data with KoBo forms and sync submissions here.'
+                : 'KoBoToolbox is not enabled for this barangay.' ?></p>
             <?php elseif (!$koboConfigured) : ?>
-            <p class="text-muted mb-0">KoBoToolbox is enabled but not fully configured. Add your server URL, API token, and form Asset UID in <a href="nutritionSettings.php">Nutrition Settings</a>.</p>
+            <p class="text-muted mb-0"><?= $canManageNutritionSettings
+                ? 'KoBoToolbox is enabled but not fully configured. Add your server URL, API token, and form Asset UID in <a href="nutritionSettings.php">Nutrition Settings</a>.'
+                : 'KoBoToolbox is enabled but not fully configured.' ?></p>
             <?php else : ?>
             <p class="text-muted small mb-3">
               Last synced: <?= $koboLastSynced !== '' ? barangay_h(date('M j, Y g:i A', strtotime($koboLastSynced))) : 'Not yet synced' ?>
@@ -223,7 +239,7 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                     <th>Occupation</th>
                     <th>Members</th>
                     <?php if ($canManageHouseholdSurveys) : ?>
-                    <th class="text-center" style="width:7rem;">Actions</th>
+                    <th class="text-center" style="width:9.5rem;">Actions</th>
                     <?php endif; ?>
                   </tr>
                 </thead>
@@ -272,6 +288,16 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                     <td><?= number_format((int) ($row['member_count'] ?? 0)) ?></td>
                     <?php if ($canManageHouseholdSurveys) : ?>
                     <td class="text-center text-nowrap">
+                      <?php if ($canEditHouseholdSurveys) : ?>
+                      <a
+                        href="nutritionHouseholdSurvey.php?edit=<?= urlencode($surveyId) ?>"
+                        class="btn btn-sm btn-outline-success"
+                        title="Edit registered household survey"
+                      >
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <?php endif; ?>
+                      <?php if ($canEditHouseholdSurveyNames) : ?>
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-light nutrition-edit-head-btn"
@@ -285,6 +311,8 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                       >
                         <i class="fas fa-user-edit"></i>
                       </button>
+                      <?php endif; ?>
+                      <?php if ($canDeleteHouseholdSurveys) : ?>
                       <button
                         type="button"
                         class="btn btn-sm btn-outline-danger nutrition-delete-survey-btn"
@@ -294,6 +322,7 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                       >
                         <i class="fas fa-trash-alt"></i>
                       </button>
+                      <?php endif; ?>
                     </td>
                     <?php endif; ?>
                   </tr>
@@ -323,7 +352,7 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                                 <th>WFA</th>
                                 <th>HFA</th>
                                 <th>WFH</th>
-                                <?php if ($canManageHouseholdSurveys) : ?>
+                                <?php if ($canEditHouseholdSurveyNames) : ?>
                                 <th class="text-center" style="width:4rem;">Edit</th>
                                 <?php endif; ?>
                               </tr>
@@ -358,7 +387,7 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                                   <?php endif; ?>
                                 </td>
                                 <?php endforeach; ?>
-                                <?php if ($canManageHouseholdSurveys) : ?>
+                                <?php if ($canEditHouseholdSurveyNames) : ?>
                                 <td class="text-center">
                                   <button
                                     type="button"
@@ -376,7 +405,7 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
                             </tbody>
                           </table>
                         </div>
-                      <?php elseif ($canManageHouseholdSurveys) : ?>
+                      <?php elseif ($canEditHouseholdSurveyNames) : ?>
                         <p class="text-muted mb-0">No family members recorded for this household.</p>
                       <?php endif; ?>
                       </div>
@@ -391,7 +420,7 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
           </div>
         </div>
 
-<?php if ($canManageHouseholdSurveys) : ?>
+<?php if ($canEditHouseholdSurveyNames) : ?>
         <?= csrf_field(); ?>
         <div class="modal fade" id="nutritionEditHeadModal" tabindex="-1" role="dialog" aria-hidden="true">
           <div class="modal-dialog" role="document">
@@ -452,4 +481,6 @@ $canManageHouseholdSurveys = nutrition_user_can_manage_household_surveys($con, (
             </div>
           </div>
         </div>
+<?php elseif ($canDeleteHouseholdSurveys) : ?>
+        <?= csrf_field(); ?>
 <?php endif; ?>

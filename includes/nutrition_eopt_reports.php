@@ -570,6 +570,10 @@ if (!function_exists('nutrition_eopt_build_report')) {
         $hfaMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'Tall', 'St', 'SSt']);
         $wflMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'OW', 'Ob', 'MW', 'SW']);
         $muacMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'MW', 'SW']);
+        $wfaIpMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'OW', 'UW', 'SUW', 'OB']);
+        $hfaIpMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'Tall', 'St', 'SSt']);
+        $wflIpMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'OW', 'Ob', 'MW', 'SW']);
+        $muacIpMatrix = nutrition_eopt_empty_sex_band_matrix(['Normal', 'MW', 'SW']);
 
         $ipCount = 0;
         $undernutrition = 0;
@@ -579,16 +583,63 @@ if (!function_exists('nutrition_eopt_build_report')) {
         $boys = 0;
         $girls = 0;
         $muacMeasured = 0;
+        $wfaClassified = 0;
+        $hfaClassified = 0;
+        $wflClassified = 0;
+        $measuredByBand = [
+            '0-5' => 0,
+            '6-11' => 0,
+            '12-23' => 0,
+            '24-35' => 0,
+            '36-47' => 0,
+            '48-59' => 0,
+            '0-23' => 0,
+            '0-59' => 0,
+        ];
 
         foreach ($children as $child) {
             $sex = (string) ($child['sex'] ?? '');
             $band = (string) ($child['age_band'] ?? '');
-            nutrition_eopt_tally_matrix($wfaMatrix, (string) ($child['wfa'] ?? ''), $band, $sex);
-            nutrition_eopt_tally_matrix($hfaMatrix, (string) ($child['hfa'] ?? ''), $band, $sex);
-            nutrition_eopt_tally_matrix($wflMatrix, (string) ($child['wfl'] ?? ''), $band, $sex);
-            if (($child['muac'] ?? '') !== '') {
-                nutrition_eopt_tally_matrix($muacMatrix, (string) $child['muac'], $band, $sex);
+            $isIp = (($child['ip'] ?? '') === 'YES');
+            $wfa = (string) ($child['wfa'] ?? '');
+            $hfa = (string) ($child['hfa'] ?? '');
+            $wfl = (string) ($child['wfl'] ?? '');
+            $muacStatus = (string) ($child['muac'] ?? '');
+
+            nutrition_eopt_tally_matrix($wfaMatrix, $wfa, $band, $sex);
+            nutrition_eopt_tally_matrix($hfaMatrix, $hfa, $band, $sex);
+            nutrition_eopt_tally_matrix($wflMatrix, $wfl, $band, $sex);
+            // MUAC is not applied to 0–5 months (blanked on OPT Form 1B).
+            if ($muacStatus !== '' && $band !== '0-5') {
+                nutrition_eopt_tally_matrix($muacMatrix, $muacStatus, $band, $sex);
                 $muacMeasured++;
+            }
+
+            if ($isIp) {
+                nutrition_eopt_tally_matrix($wfaIpMatrix, $wfa, $band, $sex);
+                nutrition_eopt_tally_matrix($hfaIpMatrix, $hfa, $band, $sex);
+                nutrition_eopt_tally_matrix($wflIpMatrix, $wfl, $band, $sex);
+                if ($muacStatus !== '' && $band !== '0-5') {
+                    nutrition_eopt_tally_matrix($muacIpMatrix, $muacStatus, $band, $sex);
+                }
+            }
+
+            if ($wfa !== '') {
+                $wfaClassified++;
+            }
+            if ($hfa !== '') {
+                $hfaClassified++;
+            }
+            if ($wfl !== '') {
+                $wflClassified++;
+            }
+
+            if (isset($measuredByBand[$band])) {
+                $measuredByBand[$band]++;
+            }
+            $measuredByBand['0-59']++;
+            if (in_array($band, ['0-5', '6-11', '12-23'], true)) {
+                $measuredByBand['0-23']++;
             }
 
             if ($sex === 'M') {
@@ -597,7 +648,7 @@ if (!function_exists('nutrition_eopt_build_report')) {
                 $girls++;
             }
 
-            if (($child['ip'] ?? '') === 'YES') {
+            if ($isIp) {
                 $ipCount++;
             }
             if (strtoupper((string) ($child['edema'] ?? 'NONE')) !== 'NONE' && trim((string) ($child['edema'] ?? '')) !== '') {
@@ -607,9 +658,6 @@ if (!function_exists('nutrition_eopt_build_report')) {
                 $disabilityCount++;
             }
 
-            $wfa = (string) ($child['wfa'] ?? '');
-            $hfa = (string) ($child['hfa'] ?? '');
-            $wfl = (string) ($child['wfl'] ?? '');
             if (in_array($wfa, ['UW', 'SUW'], true)
                 || in_array($hfa, ['St', 'SSt'], true)
                 || in_array($wfl, ['MW', 'SW'], true)
@@ -695,14 +743,22 @@ if (!function_exists('nutrition_eopt_build_report')) {
                 'ow' => count($fieldList($children, 'wfl', ['OW'])) + count($fieldList($children, 'wfa', ['OW'])),
                 'ob' => count($fieldList($children, 'wfl', ['Ob'])) + count($fieldList($children, 'wfa', ['OB'])),
                 'muac_measured' => $muacMeasured,
+                'wfa_classified' => $wfaClassified,
+                'hfa_classified' => $hfaClassified,
+                'wfl_classified' => $wflClassified,
                 'edema' => $edemaCount,
                 'disability' => $disabilityCount,
                 'age_0_23' => count($listAge023),
+                'measured_by_band' => $measuredByBand,
             ],
             'wfa' => $wfaMatrix,
             'hfa' => $hfaMatrix,
             'wfl' => $wflMatrix,
             'muac' => $muacMatrix,
+            'wfa_ip' => $wfaIpMatrix,
+            'hfa_ip' => $hfaIpMatrix,
+            'wfl_ip' => $wflIpMatrix,
+            'muac_ip' => $muacIpMatrix,
             'dqc' => nutrition_eopt_build_dqc($children),
             'prevalence' => nutrition_eopt_build_prevalence($children),
             'lists' => [

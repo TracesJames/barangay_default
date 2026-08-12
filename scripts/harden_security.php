@@ -14,6 +14,10 @@ $secureDir = 'C:\\xampp\\secure';
 if (!is_dir($secureDir)) {
     mkdir($secureDir, 0700, true);
 }
+$dbDir = $secureDir . DIRECTORY_SEPARATOR . 'barangay_db';
+if (!is_dir($dbDir)) {
+    mkdir($dbDir, 0700, true);
+}
 
 require_once $root . '/includes/helpers.php';
 
@@ -45,7 +49,7 @@ if ($exitCode !== 0) {
     fwrite(STDERR, "Warning: MySQL user create may have failed (exit {$exitCode}). Continuing with password rotation using root.\n");
 }
 
-$dbConfigPath = $secureDir . DIRECTORY_SEPARATOR . 'barangay_db.php';
+$dbConfigPath = $dbDir . DIRECTORY_SEPARATOR . 'barangay_db.php';
 $dbConfigPhp = "<?php\nreturn [\n    'host' => 'localhost',\n    'user' => " . var_export($dbUser, true) . ",\n    'password' => " . var_export($dbPass, true) . ",\n    'name' => " . var_export($dbName, true) . ",\n];\n";
 file_put_contents($dbConfigPath, $dbConfigPhp);
 

@@ -22,7 +22,7 @@ if (!empty($nutritionExtraCss) && is_array($nutritionExtraCss)) {
 }
 require_once __DIR__ . '/../head_csrf.php';
 ?>
-  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20260805n">
+  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20260811a">
 </head>
 <body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-portal nutrition-portal">
 <div class="wrapper">

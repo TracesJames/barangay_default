@@ -3,13 +3,21 @@
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 require_once '../includes/partials/nutrition_init.php';
+require_once '../includes/nutrition_eopt_reports.php';
 
 $activePage = 'bnp_report';
 $nutritionPageTitle = 'BNP Reports 2026';
 
 $typeKey = trim((string) ($_GET['type'] ?? 'all_hh'));
-$meta = nutrition_bnp_resolve_type($typeKey);
-if ($meta === null) {
+$isEoptTool = in_array($typeKey, ['eopt', 'eopt_plus'], true);
+if ($isEoptTool) {
+    $typeKey = 'eopt';
+    $activePage = 'eopt_report';
+    $nutritionPageTitle = 'e-OPT Plus Tool';
+}
+
+$meta = $isEoptTool ? null : nutrition_bnp_resolve_type($typeKey);
+if (!$isEoptTool && $meta === null) {
     $typeKey = 'all_hh';
     $meta = nutrition_bnp_resolve_type($typeKey);
 }
@@ -21,57 +29,81 @@ $filters = [
 ];
 $reportMode = nutrition_bnp_normalize_mode($_GET['mode'] ?? 'consolidated');
 
-$bnpReport = nutrition_bnp_build_report($con, (string) $barangay_id, $typeKey, $filters);
-$barangayName = (string) $barangay;
-$isCityWide = false;
-$bnsName = trim((string) ($bnpReport['bns_name'] ?? ''));
-if ($bnsName === '') {
-    $bnsName = trim((string) ($nutritionSettings['nutrition_officer'] ?? ''));
-}
-if ($bnsName === '') {
-    $bnsAccounts = nutrition_bns_accounts_by_barangay($con);
-    $assignedBns = $bnsAccounts[(string) $barangay_id] ?? null;
-    if ($assignedBns) {
-        $bnsName = trim((string) ($assignedBns['display_name'] ?? ''));
-    }
-}
-$bnpReport['bns_name'] = $bnsName;
-$calendarYear = (int) ($bnpReport['calendar_year'] ?? date('Y'));
-$punongBarangayName = barangay_punong_barangay_name($con, (string) $barangay_id, (string) $barangay);
-$purokOptions = $bnpReport['purok_options'] ?? nutrition_list_household_puroks($con, (string) $barangay_id);
+$bnpReport = null;
+$eoptReport = null;
+$calendarYear = (int) date('Y');
+$bnsName = trim((string) ($nutritionSettings['nutrition_officer'] ?? ''));
+$purokOptions = nutrition_list_household_puroks($con, (string) $barangay_id);
 $types = nutrition_bnp_report_types();
 
+if ($isEoptTool) {
+    $eoptReport = nutrition_eopt_build_report($con, (string) $barangay_id, $filters);
+    $calendarYear = (int) ($eoptReport['meta']['calendar_year'] ?? date('Y'));
+} else {
+    $bnpReport = nutrition_bnp_build_report($con, (string) $barangay_id, $typeKey, $filters);
+    $barangayName = (string) $barangay;
+    $isCityWide = false;
+    $bnsName = trim((string) ($bnpReport['bns_name'] ?? ''));
+    if ($bnsName === '') {
+        $bnsName = trim((string) ($nutritionSettings['nutrition_officer'] ?? ''));
+    }
+    if ($bnsName === '') {
+        $bnsAccounts = nutrition_bns_accounts_by_barangay($con);
+        $assignedBns = $bnsAccounts[(string) $barangay_id] ?? null;
+        if ($assignedBns) {
+            $bnsName = trim((string) ($assignedBns['display_name'] ?? ''));
+        }
+    }
+    $bnpReport['bns_name'] = $bnsName;
+    $calendarYear = (int) ($bnpReport['calendar_year'] ?? date('Y'));
+    $purokOptions = $bnpReport['purok_options'] ?? $purokOptions;
+}
+
+$punongBarangayName = barangay_punong_barangay_name($con, (string) $barangay_id, (string) $barangay);
+
 $printQuery = http_build_query(array_filter([
-    'type' => $typeKey,
-    'mode' => $reportMode,
+    'type' => $isEoptTool ? null : $typeKey,
+    'mode' => $isEoptTool ? null : $reportMode,
     'purok' => $filters['purok'],
     'date_from' => $filters['date_from'],
     'date_to' => $filters['date_to'],
     'year' => (string) $calendarYear,
 ]));
 
+$eoptPrintHref = 'nutritionEoptPrint.php' . ($printQuery !== '' ? '?' . $printQuery : '');
+$eoptTemplateHref = '../assets/templates/eOPT_Plus_Community_Region10.xltx';
+
 require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
 ?>
         <?php
-        $nutritionPageIcon = 'fa-file-alt';
-        $nutritionPageHeading = 'BNP Template 2026 Reports';
-        $nutritionPageDescription = 'Official Barangay Nutrition Profile forms (C1–C9) for ' . $barangay . '.';
-        $printHref = 'nutritionBnpPrint.php' . ($printQuery !== '' ? '?' . $printQuery : '');
-        $downloadHref = 'nutritionBnpPrint.php?' . http_build_query(array_filter([
-            'type' => $typeKey,
-            'mode' => $reportMode,
-            'purok' => $filters['purok'],
-            'date_from' => $filters['date_from'],
-            'date_to' => $filters['date_to'],
-            'year' => (string) $calendarYear,
-            'download' => '1',
-        ]));
+        $nutritionPageIcon = $isEoptTool ? 'fa-notes-medical' : 'fa-file-alt';
+        $nutritionPageHeading = $isEoptTool ? 'e-OPT Plus Community Level Tool' : 'BNP Template 2026 Reports';
+        $nutritionPageDescription = $isEoptTool
+            ? 'Region 10 ver2 · Form 1A / 1B / 1C · NutStatusBrgy · DQC · monitoring lists for ' . $barangay . '.'
+            : 'Official Barangay Nutrition Profile forms (C1–C9) for ' . $barangay . '.';
+        $printHref = $isEoptTool
+            ? $eoptPrintHref
+            : ('nutritionBnpPrint.php' . ($printQuery !== '' ? '?' . $printQuery : ''));
+        $downloadHref = $isEoptTool
+            ? $eoptPrintHref
+            : ('nutritionBnpPrint.php?' . http_build_query(array_filter([
+                'type' => $typeKey,
+                'mode' => $reportMode,
+                'purok' => $filters['purok'],
+                'date_from' => $filters['date_from'],
+                'date_to' => $filters['date_to'],
+                'year' => (string) $calendarYear,
+                'download' => '1',
+            ])));
         $nutritionPageActions = '
+            <a href="' . barangay_h($eoptPrintHref) . '" target="_blank" class="btn btn-outline-light btn-sm">
+              <i class="fas fa-notes-medical mr-1"></i> e-OPT Plus Print
+            </a>
             <a href="' . barangay_h($printHref) . '" target="_blank" class="btn btn-success btn-sm">
-              <i class="fas fa-print mr-1"></i> Print Form
+              <i class="fas fa-print mr-1"></i> ' . ($isEoptTool ? 'Print e-OPT Plus' : 'Print Form') . '
             </a>
             <a href="' . barangay_h($downloadHref) . '" target="_blank" class="btn btn-primary btn-sm ml-1">
-              <i class="fas fa-file-pdf mr-1"></i> Download PDF
+              <i class="fas fa-file-pdf mr-1"></i> ' . ($isEoptTool ? 'Open PDF View' : 'Download PDF') . '
             </a>';
         require __DIR__ . '/../includes/partials/nutrition_page_header.php';
         ?>
@@ -87,12 +119,23 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                       'date_from' => $filters['date_from'],
                       'date_to' => $filters['date_to'],
                   ]);
-                  $active = $key === $typeKey;
+                  $active = !$isEoptTool && $key === $typeKey;
                   ?>
               <a href="<?= barangay_h($href) ?>" class="btn btn-sm <?= $active ? 'btn-success' : 'btn-outline-light' ?>">
                 <?= barangay_h((string) $type['form']) ?> · <?= barangay_h((string) $type['sheet']) ?>
               </a>
               <?php endforeach; ?>
+              <?php
+              $eoptTabHref = 'nutritionBnpReport.php?' . http_build_query([
+                  'type' => 'eopt',
+                  'purok' => $filters['purok'],
+                  'date_from' => $filters['date_from'],
+                  'date_to' => $filters['date_to'],
+              ]);
+              ?>
+              <a href="<?= barangay_h($eoptTabHref) ?>" class="btn btn-sm <?= $isEoptTool ? 'btn-warning' : 'btn-outline-warning' ?>">
+                <i class="fas fa-notes-medical mr-1"></i> e-OPT Plus
+              </a>
             </div>
 
             <form method="get" class="form-row align-items-end">
@@ -114,7 +157,9 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                 <label for="date_to">To</label>
                 <input type="date" class="form-control" id="date_to" name="date_to" value="<?= barangay_h($filters['date_to']) ?>">
               </div>
+              <?php if (!$isEoptTool) : ?>
               <?php require __DIR__ . '/../includes/partials/nutrition_bnp_mode_toggle.php'; ?>
+              <?php endif; ?>
               <div class="form-group col-md-3 mb-2">
                 <button type="submit" class="btn btn-success btn-block"><i class="fas fa-filter mr-1"></i> Apply</button>
               </div>
@@ -122,6 +167,91 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
           </div>
         </div>
 
+        <?php if ($isEoptTool) :
+            $eoptTotals = $eoptReport['totals'] ?? [];
+            $eoptMeta = $eoptReport['meta'] ?? [];
+            ?>
+        <div class="card nutrition-panel mb-3">
+          <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-notes-medical mr-2"></i>e-OPT Plus · Region 10 ver2</h3>
+            <div class="d-flex flex-wrap gap-2">
+              <a href="<?= barangay_h($eoptPrintHref) ?>" target="_blank" class="btn btn-success btn-sm">
+                <i class="fas fa-print mr-1"></i> Print Full Tool
+              </a>
+              <a href="<?= barangay_h($eoptTemplateHref) ?>" class="btn btn-outline-light btn-sm" download>
+                <i class="fas fa-file-excel mr-1"></i> Excel Template (.xltx)
+              </a>
+            </div>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">
+              Community Level Tool for Barangay <?= barangay_h($barangay) ?>
+              · <?= barangay_h((string) ($eoptMeta['municipality'] ?? 'City of Valencia')) ?>,
+              <?= barangay_h((string) ($eoptMeta['province'] ?? 'Bukidnon')) ?>
+              · CY <?= (int) $calendarYear ?>
+            </p>
+            <div class="row">
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['measured'] ?? 0)) ?></span>
+                  <small>Measured 0–59 mos</small>
+                </div>
+              </div>
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['at_risk'] ?? 0)) ?></span>
+                  <small>At-risk children</small>
+                </div>
+              </div>
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['uw'] ?? 0) + (int) ($eoptTotals['suw'] ?? 0)) ?></span>
+                  <small>UW + SUW (WFA)</small>
+                </div>
+              </div>
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['st'] ?? 0) + (int) ($eoptTotals['sst'] ?? 0)) ?></span>
+                  <small>St + SSt (HFA)</small>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['mw'] ?? 0) + (int) ($eoptTotals['sw'] ?? 0)) ?></span>
+                  <small>Wasted (MW + SW)</small>
+                </div>
+              </div>
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['ow'] ?? 0) + (int) ($eoptTotals['ob'] ?? 0)) ?></span>
+                  <small>OW + Obese</small>
+                </div>
+              </div>
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['boys'] ?? 0)) ?> / <?= number_format((int) ($eoptTotals['girls'] ?? 0)) ?></span>
+                  <small>Boys / Girls</small>
+                </div>
+              </div>
+              <div class="col-md-3 col-6 mb-3">
+                <div class="nutrition-report-stat">
+                  <span><?= number_format((int) ($eoptTotals['age_0_23'] ?? 0)) ?></span>
+                  <small>Age 0–23 months</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-success mb-0">
+              <strong>Included sheets when you print:</strong>
+              Nut_StatusTool · OPT Plus Form 1A · Form 1B (summary matrix) · Form 1C (at-risk list)
+              · NutStatusBrgy · DQC · Graphs · Monitoring lists.
+              Filters above (purok / date range) apply to the printed pack.
+            </div>
+          </div>
+        </div>
+        <?php else : ?>
         <div class="card nutrition-panel">
           <div class="card-body">
             <style>
@@ -224,5 +354,6 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
             </div>
           </div>
         </div>
+        <?php endif; ?>
 <?php
 require __DIR__ . '/../includes/partials/nutrition_layout_end.php';

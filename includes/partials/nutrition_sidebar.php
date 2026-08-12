@@ -12,7 +12,9 @@ $isNutritionScholar = !empty($isNutritionScholar);
 $isBnsAdmin = !empty($isBnsAdmin);
 $staffRoleLabel = $staffRoleLabel ?? ($user_type ?? 'admin');
 $showNutritionHub = !empty($isSuperAdmin) || !empty($isCityAdmin) || $isBnsAdmin;
-$showNutritionSettings = !$isNutritionScholar;
+// Nutrition Admin (A): view/reports + name edits only — no settings / new surveys.
+$showNutritionSettings = !$isNutritionScholar && !$isBnsAdmin;
+$showNutritionDataEntry = !$isBnsAdmin;
 $isNutritionPortalAdmin = !empty($isNutritionPortalAdmin)
     || (isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_nutrition_portal_admin')
         && barangay_user_is_nutrition_portal_admin($con, (string) $_SESSION['user_id']));
@@ -63,6 +65,7 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
           </a>
         </li>
 
+        <?php if ($showNutritionDataEntry) : ?>
         <li class="nav-header">Data Entry</li>
         <li class="nav-item">
           <a href="nutritionHouseholdSurvey.php" class="nav-link <?= $nutritionActivePage === 'household_survey' ? 'active' : '' ?>">
@@ -76,12 +79,25 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
             <p>New Assessment</p>
           </a>
         </li>
+        <?php endif; ?>
 
         <li class="nav-header">Reports</li>
         <li class="nav-item">
           <a href="nutritionBnpReport.php" class="nav-link <?= $nutritionActivePage === 'bnp_report' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-book"></i>
             <p>BNP Reports 2026</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="nutritionBnpReport.php?type=eopt" class="nav-link <?= $nutritionActivePage === 'eopt_report' ? 'active' : '' ?>">
+            <i class="nav-icon fas fa-notes-medical"></i>
+            <p>e-OPT Plus Tool</p>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="nutritionMellpiBarangayProfile.php" class="nav-link <?= $nutritionActivePage === 'mellpi_barangay_profile' ? 'active' : '' ?>">
+            <i class="nav-icon fas fa-clipboard-check"></i>
+            <p>MELLPI PRO Form</p>
           </a>
         </li>
         <li class="nav-item">

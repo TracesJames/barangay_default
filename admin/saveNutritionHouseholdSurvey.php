@@ -7,6 +7,7 @@ require_once '../includes/nutrition_context.php';
 header('Content-Type: application/json; charset=utf-8');
 nutrition_ensure_module_tables($con);
 
+$userId = (string) ($_SESSION['user_id'] ?? '');
 $barangayId = (string) ($barangay_id ?? '');
 if ($barangayId === '') {
     http_response_code(400);
@@ -14,20 +15,35 @@ if ($barangayId === '') {
     exit;
 }
 
+$existingSurveyId = trim((string) ($_POST['existing_survey_id'] ?? ''));
+$isEdit = $existingSurveyId !== '';
+if ($isEdit) {
+    nutrition_ensure_can_edit_household_surveys($con, $userId);
+    $existingSurvey = nutrition_load_household_survey_by_id($con, $existingSurveyId, $barangayId);
+    if ($existingSurvey === null) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Household survey not found for this barangay.']);
+        exit;
+    }
+} else {
+    nutrition_ensure_can_add_household_surveys($con, $userId);
+    $existingSurvey = null;
+}
+
 $headLastName = trim((string) ($_POST['head_last_name'] ?? ''));
 $headFirstName = trim((string) ($_POST['head_first_name'] ?? ''));
 $headMiddleName = trim((string) ($_POST['head_middle_name'] ?? ''));
 $headSuffix = trim((string) ($_POST['head_suffix'] ?? ''));
-$surveyDate = trim((string) ($_POST['survey_date'] ?? ''));
+$surveyDate = nutrition_normalize_date_to_ymd(trim((string) ($_POST['survey_date'] ?? '')));
 $purokNumber = trim((string) ($_POST['purok_number'] ?? ''));
 $purokLabel = nutrition_purok_label_from_number($purokNumber);
 $gender = trim((string) ($_POST['gender'] ?? ''));
 $occupation = trim((string) ($_POST['occupation'] ?? ''));
 $bnsName = trim((string) ($_POST['bns_name'] ?? ''));
 
-if ($headLastName === '' || $headFirstName === '' || $surveyDate === '') {
+if ($headLastName === '' || $headFirstName === '' || $surveyDate === null || $surveyDate === '') {
     http_response_code(400);
-    echo json_encode(['error' => 'Household head last name, first name, and survey date are required.']);
+    echo json_encode(['error' => 'Household head last name, first name, and survey date are required (use MM/DD/YYYY).']);
     exit;
 }
 
@@ -44,8 +60,7 @@ if (!in_array($gender, ['Male', 'Female'], true)) {
 }
 
 $householdHead = nutrition_format_household_head_name($headLastName, $headFirstName, $headMiddleName, $headSuffix);
-$birthDate = trim((string) ($_POST['birth_date'] ?? ''));
-$birthDateValue = $birthDate !== '' ? $birthDate : null;
+$birthDateValue = nutrition_normalize_date_to_ymd(trim((string) ($_POST['birth_date'] ?? '')));
 
 $familyMembers = nutrition_parse_family_members_from_post($_POST, $surveyDate);
 $nameValidationError = nutrition_validate_household_survey_names(
@@ -54,7 +69,8 @@ $nameValidationError = nutrition_validate_household_survey_names(
     $headFirstName,
     $headMiddleName,
     $headSuffix,
-    $familyMembers
+    $familyMembers,
+    $isEdit ? $existingSurveyId : ''
 );
 if ($nameValidationError !== null) {
     http_response_code(409);
@@ -62,8 +78,13 @@ if ($nameValidationError !== null) {
     exit;
 }
 
-$surveyId = (string) hexdec(uniqid());
-$houseHoldId = nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+$surveyId = $isEdit ? $existingSurveyId : (string) hexdec(uniqid());
+$houseHoldId = $isEdit
+    ? (string) ($existingSurvey['house_hold_id'] ?? '')
+    : nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+if ($houseHoldId === '') {
+    $houseHoldId = nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+}
 
 $headIsPregnant = ($gender === 'Female') ? nutrition_yes_no_from_post('head_is_pregnant') : 'NO';
 $headIsLactating = ($gender === 'Female') ? nutrition_yes_no_from_post('head_is_lactating') : 'NO';
@@ -175,6 +196,118 @@ if ($linkedResidenceId !== '') {
     if ($linkedResident === null) {
         $linkedResidenceId = '';
     }
+}
+
+if ($isEdit) {
+    $stmt = $con->prepare(
+        'UPDATE nutrition_household_survey SET
+         residence_id = ?, purok_label = ?, head_last_name = ?, head_first_name = ?, head_middle_name = ?,
+         head_suffix = ?, household_head = ?, birth_date = ?, gender = ?, occupation = ?, bns_name = ?,
+         is_4ps = ?, is_pwd = ?, is_ip = ?, is_solo_parent = ?, is_na_member = ?,
+         survey_date = ?, members_count = ?, children_count = ?, food_security = ?, has_pregnant = ?, has_lactating = ?,
+         head_is_pregnant = ?, head_is_lactating = ?, head_pregnancy_months = ?, head_pregnant_nutrition_status = ?,
+         head_planned_exclusive_breastfeeding = ?, head_planned_mixed_feeding = ?, head_planned_bottle_feeding = ?,
+         head_planned_other_feeding = ?, head_planned_other_specify = ?,
+         head_lactating_exclusive_breastfeeding = ?, head_lactating_mixed_feeding = ?, head_lactating_bottle_feeding = ?,
+         head_lactating_other_feeding = ?, head_lactating_other_specify = ?,
+         supplementary_feeding = ?,
+         water_source = ?, sanitation = ?, house_ownership = ?, house_ownership_other = ?, toilet_type = ?,
+         garbage_disposal = ?, garbage_uncollected_type = ?,
+         dwelling_type = ?, food_production = ?, uses_iodized_salt = ?, uses_sangkap_pinoy = ?, has_carenderia = ?,
+         has_sari_sari_store = ?, practices_family_planning = ?, family_planning_methods = ?,
+         complementary_meals = ?, complementary_meals_other = ?, complementary_snacks = ?, complementary_snacks_other = ?,
+         child_physical_activity = ?, child_physical_activity_other = ?, remarks = ?, surveyed_by = ?
+         WHERE survey_id = ? AND barangay_id = ?'
+    );
+    if (!$stmt) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Database error: ' . $con->error]);
+        exit;
+    }
+
+    $stmt->bind_param(
+        str_repeat('s', 17) . 'ii' . str_repeat('s', 5) . 'i' . str_repeat('s', 35) . 'ss',
+        $linkedResidenceId,
+        $purokLabel,
+        $headLastName,
+        $headFirstName,
+        $headMiddleName,
+        $headSuffix,
+        $householdHead,
+        $birthDateValue,
+        $gender,
+        $occupation,
+        $bnsName,
+        $is4ps,
+        $isPwd,
+        $isIp,
+        $isSoloParent,
+        $isNaMember,
+        $surveyDate,
+        $membersCount,
+        $childrenCount,
+        $foodSecurity,
+        $hasPregnant,
+        $hasLactating,
+        $headIsPregnant,
+        $headIsLactating,
+        $headPregnancyMonths,
+        $headPregnantNutritionStatus,
+        $headPlannedExclusive,
+        $headPlannedMixed,
+        $headPlannedBottle,
+        $headPlannedOther,
+        $headPlannedOtherSpecify,
+        $headLactatingExclusive,
+        $headLactatingMixed,
+        $headLactatingBottle,
+        $headLactatingOther,
+        $headLactatingOtherSpecify,
+        $supplementaryFeeding,
+        $waterSource,
+        $sanitation,
+        $houseOwnership,
+        $houseOwnershipOther,
+        $toiletType,
+        $garbageDisposal,
+        $garbageUncollected,
+        $dwellingType,
+        $foodProduction,
+        $usesIodizedSalt,
+        $usesSangkapPinoy,
+        $hasCarenderia,
+        $hasSariSariStore,
+        $practicesFamilyPlanning,
+        $familyPlanningMethods,
+        $complementaryMeals,
+        $complementaryMealsOther,
+        $complementarySnacks,
+        $complementarySnacksOther,
+        $childPhysicalActivity,
+        $childPhysicalActivityOther,
+        $remarks,
+        $surveyedBy,
+        $surveyId,
+        $barangayId
+    );
+
+    if (!$stmt->execute()) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Could not update survey: ' . $stmt->error]);
+        exit;
+    }
+    $stmt->close();
+
+    nutrition_delete_household_family_members($con, $surveyId, $barangayId);
+    nutrition_save_household_family_members($con, $surveyId, $barangayId, $familyMembers);
+
+    echo json_encode([
+        'ok' => true,
+        'survey_id' => $surveyId,
+        'house_hold_id' => $houseHoldId,
+        'message' => 'Household survey updated.',
+    ]);
+    exit;
 }
 
 $stmt = $con->prepare(

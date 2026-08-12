@@ -94,6 +94,16 @@ if($count > 0){
             exit($nutritionToken);
         }
 
+        if (barangay_user_is_cnpc($con, (string) $user_id)) {
+            $cnpcIds = staff_assigned_barangay_ids($con, (string) $user_id);
+            if (count($cnpcIds) === 1) {
+                barangay_set_active($cnpcIds[0]);
+                exit('nutrition_dashboard');
+            }
+            barangay_clear_active();
+            exit('nutrition_admin');
+        }
+
         $staffRole = barangay_user_staff_role($con, (string) $user_id);
         $userBarangayId = !empty($row['barangay_id']) ? (string) $row['barangay_id'] : null;
 

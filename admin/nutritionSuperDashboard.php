@@ -14,8 +14,9 @@ $isSuperAdmin = barangay_user_is_super_admin($con, $user_id);
 $isBnsAdmin = barangay_user_is_bns_admin($con, $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
+$isCnpc = barangay_user_is_cnpc($con, $user_id);
 
-if (!$isSuperAdmin && !$isBnsAdmin && !$isCityAdmin && !$isNutritionPortalAdmin) {
+if (!$isSuperAdmin && !$isBnsAdmin && !$isCityAdmin && !$isNutritionPortalAdmin && !$isCnpc) {
     header('Location: nutritionDashboard.php');
     exit;
 }
@@ -42,23 +43,52 @@ $isSuperAdmin = $isSuperAdmin || $isNutritionPortalAdmin;
 $activePage = 'nutrition_super_dashboard';
 $brandLogo = barangay_default_logo_url('../');
 
-$hubTotals = nutrition_hub_totals($con);
-$statusTotals = nutrition_hub_status_totals($con);
-$barangayRows = nutrition_super_dashboard_rows($con);
+$cnpcBarangayIds = $isCnpc ? staff_assigned_barangay_ids($con, $user_id) : null;
+$barangayRows = nutrition_super_dashboard_rows($con, $cnpcBarangayIds);
 $barangayCount = count($barangayRows);
-$atRisk = ($statusTotals['underweight'] ?? 0) + ($statusTotals['wasted'] ?? 0)
-    + ($statusTotals['severely_wasted'] ?? 0) + ($statusTotals['stunted'] ?? 0)
-    + ($statusTotals['overweight'] ?? 0) + ($statusTotals['obese'] ?? 0);
 $totalSurveys = array_sum(array_column($barangayRows, 'surveys'));
 
-$childrenTotal = (int) ($hubTotals['children'] ?? 0);
-$assessedTotal = (int) ($hubTotals['assessed'] ?? 0);
-$pendingTotal = (int) ($hubTotals['pending'] ?? 0);
-$severelyWasted = (int) ($statusTotals['severely_wasted'] ?? 0);
-$stunted = (int) ($statusTotals['stunted'] ?? 0);
-$wasted = (int) ($statusTotals['wasted'] ?? 0);
-$teenagePregnant = (int) ($hubTotals['teenage_pregnant'] ?? 0);
+$childrenTotal = (int) array_sum(array_column($barangayRows, 'children'));
+$assessedTotal = (int) array_sum(array_column($barangayRows, 'assessed'));
+$pendingTotal = (int) array_sum(array_column($barangayRows, 'pending'));
+$atRisk = (int) array_sum(array_column($barangayRows, 'at_risk'));
+$teenagePregnant = (int) array_sum(array_column($barangayRows, 'teenage_pregnant'));
 $coveragePct = $childrenTotal > 0 ? round(($assessedTotal / $childrenTotal) * 100, 1) : 0.0;
+
+if ($isCnpc) {
+    $hubTotals = [
+        'children' => $childrenTotal,
+        'assessed' => $assessedTotal,
+        'pending' => $pendingTotal,
+        'teenage_pregnant' => $teenagePregnant,
+        'pregnant' => (int) array_sum(array_column($barangayRows, 'pregnant')),
+    ];
+    $statusTotals = [
+        'underweight' => 0,
+        'wasted' => 0,
+        'severely_wasted' => 0,
+        'stunted' => 0,
+        'overweight' => 0,
+        'obese' => 0,
+    ];
+    $severelyWasted = 0;
+    $stunted = 0;
+    $wasted = 0;
+} else {
+    $hubTotals = nutrition_hub_totals($con);
+    $statusTotals = nutrition_hub_status_totals($con);
+    $severelyWasted = (int) ($statusTotals['severely_wasted'] ?? 0);
+    $stunted = (int) ($statusTotals['stunted'] ?? 0);
+    $wasted = (int) ($statusTotals['wasted'] ?? 0);
+    $atRisk = ($statusTotals['underweight'] ?? 0) + ($statusTotals['wasted'] ?? 0)
+        + ($statusTotals['severely_wasted'] ?? 0) + ($statusTotals['stunted'] ?? 0)
+        + ($statusTotals['overweight'] ?? 0) + ($statusTotals['obese'] ?? 0);
+    $childrenTotal = (int) ($hubTotals['children'] ?? 0);
+    $assessedTotal = (int) ($hubTotals['assessed'] ?? 0);
+    $pendingTotal = (int) ($hubTotals['pending'] ?? 0);
+    $teenagePregnant = (int) ($hubTotals['teenage_pregnant'] ?? 0);
+    $coveragePct = $childrenTotal > 0 ? round(($assessedTotal / $childrenTotal) * 100, 1) : 0.0;
+}
 
 $noBnsBarangays = [];
 $noSurveyBarangays = [];

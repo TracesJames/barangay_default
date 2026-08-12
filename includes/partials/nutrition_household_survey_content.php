@@ -66,6 +66,9 @@ foreach ($surveys as $surveyRow) {
           </div>
           <form id="householdSurveyForm">
             <?= csrf_field(); ?>
+            <?php if (!empty($editingSurvey['survey_id'])) : ?>
+            <input type="hidden" name="existing_survey_id" id="existing_survey_id" value="<?= barangay_h((string) $editingSurvey['survey_id']) ?>">
+            <?php endif; ?>
             <div class="card-body">
               <div class="nutrition-info-callout">
                 <i class="fas fa-info-circle"></i>
@@ -105,7 +108,8 @@ foreach ($surveys as $surveyRow) {
                   </div>
                   <div class="col-md-3 form-group">
                     <label for="survey_date">Survey Date <span class="text-danger">*</span></label>
-                    <input type="date" class="form-control" id="survey_date" name="survey_date" value="<?= date('Y-m-d') ?>" required>
+                    <input type="text" class="form-control nutrition-date-mdy" id="survey_date" name="survey_date" value="<?= barangay_h(date('m/d/Y')) ?>" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off" required>
+                    <small class="text-muted">Format: Month/Day/YYYY</small>
                   </div>
                   <div class="col-md-6 form-group">
                     <label for="bns_name">Name of BNS</label>
@@ -116,9 +120,11 @@ foreach ($surveys as $surveyRow) {
                     <div class="input-group">
                       <input type="text" class="form-control nutrition-readonly-id" id="house_hold_id" name="house_hold_id" value="<?= barangay_h($defaultHouseholdId) ?>" readonly>
                       <div class="input-group-append">
+                        <?php if (empty($editingSurvey['survey_id'])) : ?>
                         <button type="button" class="btn btn-outline-success" id="refreshHouseholdId" title="Refresh number">
                           <i class="fas fa-sync-alt"></i>
                         </button>
+                        <?php endif; ?>
                       </div>
                     </div>
                     <small class="text-muted d-block mt-1">
@@ -161,7 +167,8 @@ foreach ($surveys as $surveyRow) {
                 <div class="row">
                   <div class="col-md-4 form-group">
                     <label for="birth_date">Birthday</label>
-                    <input type="date" class="form-control" id="birth_date" name="birth_date">
+                    <input type="text" class="form-control nutrition-date-mdy" id="birth_date" name="birth_date" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">
+                    <small class="text-muted">Format: Month/Day/YYYY</small>
                   </div>
                   <div class="col-md-4 form-group">
                     <label for="gender">Gender <span class="text-danger">*</span></label>

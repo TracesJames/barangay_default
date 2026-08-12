@@ -72,11 +72,13 @@ if (!preg_match('/name="csrf_token"\s+value="([^"]+)"/', $loginPage['body'], $m)
 $csrf = $m[1];
 pass('Got CSRF token');
 
+$nutritionPassword = getenv('NUTRITION_SA_PASSWORD') ?: 'Vc!42c06f3050A9';
 $login = http_request($base . '/loginForm.php', [
     'post' => http_build_query([
         'username' => 'nutrition.superadmin',
-        'password' => 'nutrition123',
+        'password' => $nutritionPassword,
         'csrf_token' => $csrf,
+        'force_login' => '1',
     ]),
     'headers' => [
         'X-Requested-With: XMLHttpRequest',
@@ -84,7 +86,7 @@ $login = http_request($base . '/loginForm.php', [
     ],
 ]);
 
-$body = trim($login['body']);
+$body = trim(preg_replace('/\xEF\xBB\xBF/u', '', $login['body']));
 pass('Login response: ' . substr($body, 0, 80));
 
 if ($body !== 'nutrition_admin' && $body !== 'nutrition_dashboard') {

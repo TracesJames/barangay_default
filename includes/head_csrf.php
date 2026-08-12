@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/csrf.php';
 $assetBase = $appearanceAssetBase ?? '../assets';
 echo '<meta name="csrf-token" content="' . barangay_h(csrf_token()) . '">' . PHP_EOL;

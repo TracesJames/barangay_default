@@ -73,7 +73,8 @@ function nutritionBuildFamilyMemberCard(index) {
         '</div>' +
         '<div class="col-md-4 form-group">' +
           '<label>Birthday</label>' +
-          '<input type="date" class="form-control family-member-growth-trigger" name="family_members[' + index + '][birth_date]">' +
+          '<input type="text" class="form-control nutrition-date-mdy family-member-growth-trigger" name="family_members[' + index + '][birth_date]" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
+          '<small class="text-muted">MM/DD/YYYY</small>' +
         '</div>' +
         '<div class="col-md-4 form-group">' +
           '<label>Age (from birthday)</label>' +
@@ -104,7 +105,8 @@ function nutritionBuildFamilyMemberCard(index) {
         '<div class="row">' +
           '<div class="col-md-3 form-group">' +
             '<label>Date Measured <span class="text-danger">*</span></label>' +
-            '<input type="date" class="form-control family-member-growth-input family-member-date-measured" name="family_members[' + index + '][date_measured]" value="">' +
+            '<input type="text" class="form-control nutrition-date-mdy family-member-growth-input family-member-date-measured" name="family_members[' + index + '][date_measured]" value="" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
+            '<small class="text-muted">MM/DD/YYYY</small>' +
           '</div>' +
           '<div class="col-md-2 form-group">' +
             '<label>Weight (kg) <span class="text-danger">*</span></label>' +
@@ -192,6 +194,127 @@ function nutritionFormatAgeLabel(ageMonths) {
   return years + 'y ' + months + 'm (' + ageMonths + ' months)';
 }
 
+/** Strip UTF-8 BOM / leading junk so JSON.parse / dataType:json do not fail. */
+function nutritionStripBom(text) {
+  return String(text || '').replace(/^\uFEFF+/, '').replace(/^\s+/, '');
+}
+
+/** Convert Y-m-d or Date to MM/DD/YYYY. */
+function nutritionFormatMdy(value) {
+  if (!value) return '';
+  var s = String(value).trim();
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    return ('0' + m[2]).slice(-2) + '/' + ('0' + m[3]).slice(-2) + '/' + m[1];
+  }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    return ('0' + m[1]).slice(-2) + '/' + ('0' + m[2]).slice(-2) + '/' + m[3];
+  }
+  var d = new Date(s);
+  if (isNaN(d.getTime())) return '';
+  return ('0' + (d.getMonth() + 1)).slice(-2) + '/' + ('0' + d.getDate()).slice(-2) + '/' + d.getFullYear();
+}
+
+/** Convert MM/DD/YYYY or Y-m-d to Y-m-d for APIs/DB. */
+function nutritionToYmd(value) {
+  if (!value) return '';
+  var s = String(value).trim();
+  var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) {
+    return m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2);
+  }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return '';
+  var mo = parseInt(m[1], 10);
+  var day = parseInt(m[2], 10);
+  var y = parseInt(m[3], 10);
+  if (mo < 1 || mo > 12 || day < 1 || day > 31) return '';
+  return y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + day).slice(-2);
+}
+
+function nutritionTodayMdy() {
+  var d = new Date();
+  return ('0' + (d.getMonth() + 1)).slice(-2) + '/' + ('0' + d.getDate()).slice(-2) + '/' + d.getFullYear();
+}
+
+function nutritionInitDatePickers(context) {
+  var $scope = context ? $(context) : $(document);
+  if (!$.fn.datepicker) {
+    return;
+  }
+  $scope.find('.nutrition-date-mdy').each(function () {
+    var $input = $(this);
+    if ($input.hasClass('hasDatepicker')) {
+      return;
+    }
+    $input.attr('placeholder', 'MM/DD/YYYY');
+    $input.datepicker({
+      dateFormat: 'mm/dd/yy',
+      changeMonth: true,
+      changeYear: true,
+      yearRange: '1920:+0',
+      maxDate: 0,
+      showAnim: '',
+      showButtonPanel: false,
+      constrainInput: true,
+      // Keep calendar outside cards/scroll areas so it is not clipped on dark layout.
+      beforeShow: function (input, inst) {
+        setTimeout(function () {
+          var $dp = inst.dpDiv;
+          $dp.appendTo('body');
+          $dp.addClass('nutrition-ui-datepicker');
+          $dp.css({
+            zIndex: 2000,
+            position: 'absolute'
+          });
+        }, 0);
+      },
+      onSelect: function () {
+        $(this).trigger('change');
+      }
+    });
+  });
+}
+
+/** Client-side age in completed months (accepts MM/DD/YYYY or Y-m-d). */
+function nutritionAgeInMonthsLocal(birthDate, referenceDate) {
+  var birthYmd = nutritionToYmd(birthDate);
+  var refYmd = nutritionToYmd(referenceDate || nutritionTodayMdy());
+  if (!birthYmd || !refYmd) return null;
+  var b = birthYmd.split('-').map(Number);
+  var r = refYmd.split('-').map(Number);
+  var birth = new Date(b[0], b[1] - 1, b[2]);
+  var ref = new Date(r[0], r[1] - 1, r[2]);
+  if (isNaN(birth.getTime()) || isNaN(ref.getTime()) || birth > ref) return null;
+  var months = (ref.getFullYear() - birth.getFullYear()) * 12 + (ref.getMonth() - birth.getMonth());
+  if (ref.getDate() < birth.getDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+function nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro) {
+  var ageMonths = nutritionAgeInMonthsLocal(birthDate, dateMeasured);
+  if (ageMonths === null) {
+    $ageLabel.text('Could not compute age').addClass('text-muted');
+    $card.find('.family-member-age-months').val('');
+    $anthro.hide();
+    nutritionClearGrowthResults($card);
+    return;
+  }
+  $ageLabel.text(nutritionFormatAgeLabel(ageMonths)).removeClass('text-muted');
+  $card.find('.family-member-age-months').val(ageMonths);
+  if (ageMonths > 60) {
+    $ageLabel.html(
+      $('<span>').text(nutritionFormatAgeLabel(ageMonths)).prop('outerHTML') +
+      ' <span class="badge badge-secondary ml-1">Over 5 yrs — no OPT weighing</span>'
+    );
+    $anthro.hide();
+    nutritionClearGrowthResults($card);
+  } else {
+    $anthro.show();
+  }
+}
+
 function nutritionRefreshFamilyMemberGrowth($card) {
   var gender = $card.find('select[name*="[gender]"]').val();
   var birthDate = $card.find('input[name*="[birth_date]"]').val();
@@ -212,20 +335,32 @@ function nutritionRefreshFamilyMemberGrowth($card) {
   }
 
   if (!dateMeasured) {
-    dateMeasured = surveyDate || new Date().toISOString().slice(0, 10);
+    dateMeasured = surveyDate || nutritionTodayMdy();
     $dateMeasured.val(dateMeasured);
   }
 
-  $.getJSON('nutritionFamilyMemberGrowth.php', {
-    gender: gender || '',
-    birth_date: birthDate,
-    weight_kg: weight > 0 ? weight : 0,
-    height_cm: height > 0 ? height : 0,
-    survey_date: surveyDate,
-    date_measured: dateMeasured
-  }, function (res) {
+  var birthYmd = nutritionToYmd(birthDate);
+  var measuredYmd = nutritionToYmd(dateMeasured);
+  var surveyYmd = nutritionToYmd(surveyDate);
+
+  $.ajax({
+    url: 'nutritionFamilyMemberGrowth.php',
+    method: 'GET',
+    dataType: 'json',
+    data: {
+      gender: gender || '',
+      birth_date: birthYmd || birthDate,
+      weight_kg: weight > 0 ? weight : 0,
+      height_cm: height > 0 ? height : 0,
+      survey_date: surveyYmd || surveyDate,
+      date_measured: measuredYmd || dateMeasured
+    },
+    dataFilter: function (data) {
+      return nutritionStripBom(data);
+    }
+  }).done(function (res) {
     if (!res || !res.ok) {
-      nutritionClearGrowthResults($card);
+      nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro);
       return;
     }
 
@@ -273,9 +408,8 @@ function nutritionRefreshFamilyMemberGrowth($card) {
       nutritionSetGrowthResult($card, 'wfh', '');
     }
   }).fail(function () {
-    $ageLabel.text('Could not compute age').addClass('text-muted');
-    $anthro.hide();
-    nutritionClearGrowthResults($card);
+    // Endpoint may fail (auth/BOM/HTML); still show age so staff can continue.
+    nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro);
   });
 }
 
@@ -300,6 +434,7 @@ $('#addFamilyMemberBtn, .nutrition-add-first-member').on('click', function () {
   nutritionUpdateFamilyMembersEmptyState();
   var $lastCard = $('#familyMembersContainer .nutrition-family-member-card').last();
   if ($lastCard.length) {
+    nutritionInitDatePickers($lastCard);
     $('html, body').animate({ scrollTop: $lastCard.offset().top - 120 }, 250);
     $lastCard.find('input[name*="[member_name]"]').focus();
   }
@@ -470,7 +605,8 @@ function nutritionResetHouseholdSurveyForm() {
   familyMemberIndex = 0;
   nutritionUpdateFamilyMembersEmptyState();
   nutritionRefreshHouseholdId();
-  $('#survey_date').val(new Date().toISOString().slice(0, 10));
+  $('#survey_date').val(nutritionTodayMdy());
+  nutritionInitDatePickers($form);
   $('#fp_no').prop('checked', true);
   nutritionSyncPrfToggles();
   nutritionSyncHeadFemaleStatus();
@@ -485,7 +621,7 @@ function nutritionApplyResidentPrefill(resident) {
   $('#head_first_name').val(resident.head_first_name || '');
   $('#head_middle_name').val(resident.head_middle_name || '');
   $('#head_suffix').val(resident.head_suffix || '');
-  $('#birth_date').val(resident.birth_date || '');
+  $('#birth_date').val(nutritionFormatMdy(resident.birth_date || ''));
   $('#gender').val(resident.gender || '');
   $('#occupation').val(resident.occupation || '');
   $('#is_4ps').prop('checked', resident.is_4ps === 'YES');
@@ -504,10 +640,11 @@ function nutritionApplyResidentPrefill(resident) {
   members.forEach(function (member) {
     $('#familyMembersContainer').append(nutritionBuildFamilyMemberCard(familyMemberIndex));
     var $card = $('#familyMembersContainer .nutrition-family-member-card').last();
+    nutritionInitDatePickers($card);
     $card.find('input[name*="[member_name]"]').val(member.member_name || '');
     $card.find('select[name*="[relationship]"]').val(member.relationship || '');
     $card.find('select[name*="[gender]"]').val(member.gender || '');
-    $card.find('input[name*="[birth_date]"]').val(member.birth_date || '');
+    $card.find('input[name*="[birth_date]"]').val(nutritionFormatMdy(member.birth_date || ''));
     familyMemberIndex++;
     nutritionSyncFamilyMemberFemaleStatus($card);
     nutritionRefreshFamilyMemberGrowth($card);
@@ -609,6 +746,167 @@ $('.nutrition-form-step').on('click', function () {
 
 nutritionUpdateFamilyMembersEmptyState();
 nutritionSyncHeadFemaleStatus();
+nutritionInitDatePickers(document);
+
+function nutritionApplySurveyEditPayload(data) {
+  if (!data || typeof data !== 'object') {
+    return;
+  }
+
+  if (data.survey_id && !$('#existing_survey_id').length) {
+    $('#householdSurveyForm').prepend(
+      $('<input>', { type: 'hidden', name: 'existing_survey_id', id: 'existing_survey_id', value: data.survey_id })
+    );
+  }
+
+  $('#purok_number').val(data.purok_number || 1);
+  $('#survey_date').val(data.survey_date || '');
+  $('#bns_name').val(data.bns_name || '');
+  $('#house_hold_id').val(data.house_hold_id || '');
+  $('#head_last_name').val(data.head_last_name || '');
+  $('#head_first_name').val(data.head_first_name || '');
+  $('#head_middle_name').val(data.head_middle_name || '');
+  $('#head_suffix').val(data.head_suffix || '');
+  $('#birth_date').val(data.birth_date || '');
+  $('#gender').val(data.gender || '');
+  $('#occupation').val(data.occupation || '');
+  $('#is_4ps').prop('checked', !!data.is_4ps);
+  $('#is_pwd').prop('checked', !!data.is_pwd);
+  $('#is_ip').prop('checked', !!data.is_ip);
+  $('#is_solo_parent').prop('checked', !!data.is_solo_parent);
+  $('#is_na_member').prop('checked', !!data.is_na_member);
+
+  if (data.residence_id) {
+    var rid = String(data.residence_id);
+    var opt = new Option('Linked resident #' + rid, rid, true, true);
+    $('#barangay_residence_id').append(opt).trigger('change');
+  }
+
+  nutritionSyncHeadFemaleStatus();
+  $('#head_is_pregnant').prop('checked', !!data.head_is_pregnant);
+  $('#head_is_lactating').prop('checked', !!data.head_is_lactating);
+  nutritionSyncHeadFemaleStatus();
+  $('#head_pregnancy_months').val(data.head_pregnancy_months || '');
+  if (data.head_pregnant_nutrition_status) {
+    $('input[name="head_pregnant_nutrition_status"][value="' + String(data.head_pregnant_nutrition_status).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  $('#head_planned_exclusive').prop('checked', !!data.head_planned_exclusive_breastfeeding);
+  $('#head_planned_mixed').prop('checked', !!data.head_planned_mixed_feeding);
+  $('#head_planned_bottle').prop('checked', !!data.head_planned_bottle_feeding);
+  $('#head_planned_other').prop('checked', !!data.head_planned_other_feeding);
+  $('#head_planned_other_specify').val(data.head_planned_other_specify || '').prop('disabled', !data.head_planned_other_feeding);
+  $('#head_lactating_exclusive').prop('checked', !!data.head_lactating_exclusive_breastfeeding);
+  $('#head_lactating_mixed').prop('checked', !!data.head_lactating_mixed_feeding);
+  $('#head_lactating_bottle').prop('checked', !!data.head_lactating_bottle_feeding);
+  $('#head_lactating_other').prop('checked', !!data.head_lactating_other_feeding);
+  $('#head_lactating_other_specify').val(data.head_lactating_other_specify || '').prop('disabled', !data.head_lactating_other_feeding);
+
+  if (data.house_ownership) {
+    $('input[name="house_ownership"][value="' + String(data.house_ownership).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  $('#house_ownership_other').val(data.house_ownership_other || '');
+  if (data.toilet_type) {
+    $('input[name="toilet_type"][value="' + String(data.toilet_type).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  if (data.garbage_disposal) {
+    $('input[name="garbage_disposal"][value="' + String(data.garbage_disposal).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  if (data.garbage_uncollected_type) {
+    $('input[name="garbage_uncollected_type"][value="' + String(data.garbage_uncollected_type).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  if (data.water_source) {
+    $('input[name="water_source"][value="' + String(data.water_source).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  if (data.dwelling_type) {
+    $('input[name="dwelling_type"][value="' + String(data.dwelling_type).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+
+  var foodActs = String(data.food_production || '').split(/[,|]/);
+  $('input[name="food_production_activities[]"]').prop('checked', false);
+  foodActs.forEach(function (act) {
+    act = $.trim(act);
+    if (!act) return;
+    $('input[name="food_production_activities[]"][value="' + act.replace(/"/g, '\\"') + '"]').prop('checked', true);
+  });
+
+  $('#uses_iodized_salt').prop('checked', !!data.uses_iodized_salt);
+  $('#uses_sangkap_pinoy').prop('checked', !!data.uses_sangkap_pinoy);
+  $('#has_carenderia').prop('checked', !!data.has_carenderia);
+  $('#has_sari_sari_store').prop('checked', !!data.has_sari_sari_store);
+
+  if (data.practices_family_planning) {
+    $('#fp_yes').prop('checked', true);
+  } else {
+    $('#fp_no').prop('checked', true);
+  }
+  var fpMethods = String(data.family_planning_methods || '').split(/[,|]/);
+  $('input[name="family_planning_methods[]"]').prop('checked', false);
+  fpMethods.forEach(function (m) {
+    m = $.trim(m);
+    if (!m) return;
+    $('input[name="family_planning_methods[]"][value="' + m.replace(/"/g, '\\"') + '"]').prop('checked', true);
+  });
+
+  if (data.complementary_meals) {
+    $('input[name="complementary_meals"][value="' + String(data.complementary_meals).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  $('#complementary_meals_other').val(data.complementary_meals_other || '');
+  if (data.complementary_snacks) {
+    $('input[name="complementary_snacks"][value="' + String(data.complementary_snacks).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  $('#complementary_snacks_other').val(data.complementary_snacks_other || '');
+  if (data.child_physical_activity) {
+    $('input[name="child_physical_activity"][value="' + String(data.child_physical_activity).replace(/"/g, '\\"') + '"]').prop('checked', true);
+  }
+  $('#child_physical_activity_other').val(data.child_physical_activity_other || '');
+  $('#remarks').val(data.remarks || '');
+
+  nutritionSyncPrfToggles();
+
+  $('#familyMembersContainer').empty();
+  familyMemberIndex = 0;
+  var members = Array.isArray(data.family_members) ? data.family_members : [];
+  members.forEach(function (member) {
+    $('#familyMembersContainer').append(nutritionBuildFamilyMemberCard(familyMemberIndex));
+    var $card = $('#familyMembersContainer .nutrition-family-member-card').last();
+    nutritionInitDatePickers($card);
+    $card.find('input[name*="[member_name]"]').val(member.member_name || '');
+    $card.find('select[name*="[relationship]"]').val(member.relationship || '');
+    $card.find('select[name*="[gender]"]').val(member.gender || '');
+    $card.find('input[name*="[birth_date]"]').val(member.birth_date || '');
+    $card.find('input[name*="[weight_kg]"]').val(member.weight_kg || '');
+    $card.find('input[name*="[height_cm]"]').val(member.height_cm || '');
+    $card.find('input[name*="[date_measured]"]').val(member.date_measured || '');
+    $card.find('input[name*="[weight_for_age]"]').val(member.weight_for_age || '');
+    $card.find('input[name*="[height_for_age]"]').val(member.height_for_age || '');
+    $card.find('input[name*="[weight_for_height]"]').val(member.weight_for_height || '');
+    $card.find('.family-member-pregnant').prop('checked', !!member.is_pregnant);
+    $card.find('.family-member-lactating').prop('checked', !!member.is_lactating);
+    $card.find('input[name*="[pregnancy_months]"]').val(member.pregnancy_months || '');
+    if (member.pregnant_nutrition_status) {
+      $card.find('input[name*="[pregnant_nutrition_status]"][value="' + String(member.pregnant_nutrition_status).replace(/"/g, '\\"') + '"]').prop('checked', true);
+    }
+    $card.find('input[name*="[planned_exclusive_breastfeeding]"]').prop('checked', !!member.planned_exclusive_breastfeeding);
+    $card.find('input[name*="[planned_mixed_feeding]"]').prop('checked', !!member.planned_mixed_feeding);
+    $card.find('input[name*="[planned_bottle_feeding]"]').prop('checked', !!member.planned_bottle_feeding);
+    $card.find('input[name*="[planned_other_feeding]"]').prop('checked', !!member.planned_other_feeding);
+    $card.find('input[name*="[planned_other_specify]"]').val(member.planned_other_specify || '').prop('disabled', !member.planned_other_feeding);
+    $card.find('input[name*="[lactating_exclusive_breastfeeding]"]').prop('checked', !!member.lactating_exclusive_breastfeeding);
+    $card.find('input[name*="[lactating_mixed_feeding]"]').prop('checked', !!member.lactating_mixed_feeding);
+    $card.find('input[name*="[lactating_bottle_feeding]"]').prop('checked', !!member.lactating_bottle_feeding);
+    $card.find('input[name*="[lactating_other_feeding]"]').prop('checked', !!member.lactating_other_feeding);
+    $card.find('input[name*="[lactating_other_specify]"]').val(member.lactating_other_specify || '').prop('disabled', !member.lactating_other_feeding);
+    familyMemberIndex++;
+    nutritionSyncFamilyMemberFemaleStatus($card);
+    nutritionRefreshFamilyMemberGrowth($card);
+  });
+  nutritionUpdateFamilyMembersEmptyState();
+  nutritionRefreshFamilyMemberLabels();
+}
+
+if (window.nutritionSurveyEditPayload) {
+  nutritionApplySurveyEditPayload(window.nutritionSurveyEditPayload);
+}
 
 (function () {
   var purok = ($('#purok_number').val() || '').trim();
@@ -631,15 +929,22 @@ $('#householdSurveyForm').on('submit', function (e) {
     });
   });
   var linkedResidence = $.trim($('#barangay_residence_id').val() || '');
+  var isEdit = $.trim($('#existing_survey_id').val() || '') !== '';
   var doSave = function () {
     if (typeof barangaySyncCsrfForms === 'function') barangaySyncCsrfForms();
     $.post('saveNutritionHouseholdSurvey.php', $form.serialize(), function (res) {
       Swal.fire({
-        title: 'Saved',
-        html: (res.message || 'Household survey recorded.') +
-          (res.household_id ? '<div class="mt-2"><code>' + $('<div>').text(res.household_id).html() + '</code></div>' : ''),
+        title: isEdit ? 'Updated' : 'Saved',
+        html: (res.message || (isEdit ? 'Household survey updated.' : 'Household survey recorded.')) +
+          (res.house_hold_id ? '<div class="mt-2"><code>' + $('<div>').text(res.house_hold_id).html() + '</code></div>' : ''),
         type: 'success'
-      }).then(function () { window.location.reload(); });
+      }).then(function () {
+        if (isEdit) {
+          window.location.href = 'nutritionBarangaySurvey.php?highlight=' + encodeURIComponent(res.survey_id || '');
+          return;
+        }
+        window.location.reload();
+      });
     }, 'json').fail(function (xhr) {
       var msg = 'Could not save survey.';
       try {
