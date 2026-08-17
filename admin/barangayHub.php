@@ -21,6 +21,12 @@ $isCityAdmin = barangay_user_is_city_admin($con, (string) $user_id);
 $isBnsAdmin = barangay_user_is_bns_admin($con, (string) $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, (string) $user_id);
 $isCnpc = barangay_user_is_cnpc($con, (string) $user_id);
+$isSsa = barangay_user_is_ssa($con, (string) $user_id);
+
+if ($hubIsNutrition && (($isSuperAdmin && !$isSsa) || $isCityAdmin)) {
+    header('Location: barangayHub.php?picker=1');
+    exit;
+}
 $canPickAllBarangays = $isSuperAdmin || $isCityAdmin || $isBnsAdmin || $isNutritionPortalAdmin;
 $isPickerMode = isset($_GET['picker']) && $_GET['picker'] !== '' && $_GET['picker'] !== '0';
 
@@ -35,12 +41,21 @@ if ($isCnpc && !$hubIsNutrition) {
 }
 
 if ($hubIsNutrition && $isPickerMode && !$hubForcePicker && ($isSuperAdmin || $isBnsAdmin) && !$isNutritionPortalAdmin && !$isCnpc) {
+    if ($isBnsAdmin && !$isSuperAdmin) {
+        $next = basename(str_replace('\\', '/', (string) ($_GET['next'] ?? '')));
+        $picker = 'barangayHub.php?picker=1&system=nutrition&view=picker';
+        if ($next !== '' && function_exists('nutrition_allowed_redirect') && nutrition_allowed_redirect($next) === $next) {
+            $picker .= '&next=' . rawurlencode($next);
+        }
+        header('Location: ' . $picker);
+        exit;
+    }
     header('Location: nutritionSuperDashboard.php');
     exit;
 }
 
 if ($isBnsAdmin && !$hubIsNutrition) {
-    header('Location: barangayHub.php?picker=1&system=nutrition');
+    header('Location: barangayHub.php?picker=1&system=nutrition&view=picker');
     exit;
 }
 
@@ -117,6 +132,13 @@ $hubTotals = $hubShowStats
     ? ($hubIsNutrition ? nutrition_hub_totals($con) : barangay_hub_totals($con))
     : [];
 $hubOpenRedirect = $hubIsNutrition ? 'nutritionDashboard.php' : 'dashboard.php';
+$hubNext = basename(str_replace('\\', '/', (string) ($_GET['next'] ?? '')));
+if ($hubIsNutrition && $hubNext !== '' && function_exists('nutrition_allowed_redirect')) {
+    $resolvedNext = nutrition_allowed_redirect($hubNext);
+    if ($resolvedNext !== 'dashboard.php') {
+        $hubOpenRedirect = $resolvedNext;
+    }
+}
 
 $nutritionPickerById = [];
 $totalHouseholdSurveys = 0;
@@ -218,14 +240,16 @@ require_once '../includes/head_csrf.php';
       </div>
       <div class="flex flex-wrap items-center justify-end gap-3 sm:gap-5">
         <div class="flex flex-wrap items-center gap-2">
-          <?php if (!$isNutritionPortalAdmin) : ?>
+          <?php if (barangay_user_can_access_barangay_hub($con, (string) $user_id)) : ?>
           <a href="barangayHub.php?picker=1" class="hub-system-switch <?= !$hubIsNutrition ? 'is-active' : '' ?>">
             <i class="fas fa-tachometer-alt"></i> City of Valencia Portal
           </a>
           <?php endif; ?>
-          <a href="barangayHub.php?picker=1&amp;system=nutrition<?= $isNutritionPortalAdmin ? '&amp;view=picker' : '' ?>" class="hub-system-switch <?= $hubIsNutrition ? 'is-active' : '' ?>">
+          <?php if (barangay_user_can_access_nutrition_portal($con, (string) $user_id)) : ?>
+          <a href="barangayHub.php?picker=1&amp;system=nutrition<?= $isNutritionPortalAdmin || $isBnsAdmin ? '&amp;view=picker' : '' ?>" class="hub-system-switch <?= $hubIsNutrition ? 'is-active' : '' ?>">
             <i class="fas fa-seedling"></i> Nutrition Portal
           </a>
+          <?php endif; ?>
         </div>
         <?php if ($hubShowManagement && !$hubIsNutrition) : ?>
         <a href="barangayCertificates.php" class="text-sm font-semibold text-white/70 transition hover:text-white">
@@ -234,7 +258,7 @@ require_once '../includes/head_csrf.php';
         <a href="superDashboard.php" class="text-sm font-semibold text-white/70 transition hover:text-white">
           <i class="fas fa-city mr-1.5"></i>Super Admin
         </a>
-        <?php elseif ($hubIsNutrition && ($isSuperAdmin || $isBnsAdmin)) : ?>
+        <?php elseif ($hubIsNutrition && ($isSuperAdmin || $isBnsAdmin || $isNutritionPortalAdmin)) : ?>
         <a href="nutritionSuperDashboard.php" class="text-sm font-semibold text-white/70 transition hover:text-white">
           <i class="fas fa-chart-pie mr-1.5"></i>Super Admin Dashboard
         </a>
@@ -249,7 +273,7 @@ require_once '../includes/head_csrf.php';
       </div>
     </nav>
 
-    <?php if ($isPickerMode && ($isSuperAdmin || $isCityAdmin)) : ?>
+    <?php if ($isPickerMode && ($isSuperAdmin || $isCityAdmin || $isNutritionPortalAdmin || $isBnsAdmin)) : ?>
     <div class="mx-auto max-w-7xl px-5 pt-6">
       <div class="hub-picker-banner <?= $hubIsNutrition ? 'hub-picker-banner--nutrition hub-picker-banner--rich' : '' ?> rounded-2xl px-5 py-4 text-center sm:px-6 sm:py-5">
         <?php if ($hubIsNutrition) : ?>
@@ -260,7 +284,7 @@ require_once '../includes/head_csrf.php';
         <p class="mt-1 text-xs text-white/60 sm:text-sm">
           Open household surveys, child assessments, BNP reports, and pregnant family profiles for that barangay.
         </p>
-        <?php if ($isSuperAdmin || $isBnsAdmin) : ?>
+        <?php if ($isSuperAdmin || $isBnsAdmin || $isNutritionPortalAdmin) : ?>
         <div class="hub-nutrition-quicklinks mt-4 flex flex-wrap items-center justify-center gap-2">
           <a href="nutritionSuperDashboard.php" class="hub-nutrition-quicklink"><i class="fas fa-chart-pie"></i> City Dashboard</a>
           <a href="nutritionSuperPregnantFamiliesPrint.php" target="_blank" class="hub-nutrition-quicklink"><i class="fas fa-female"></i> Pregnant Families</a>

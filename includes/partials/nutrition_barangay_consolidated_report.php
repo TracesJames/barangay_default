@@ -32,8 +32,7 @@ $canDeleteHouseholdSurveys = nutrition_user_can_delete_household_surveys($con, $
 $canAddHouseholdSurveys = nutrition_user_can_add_household_surveys($con, $sessionUserId);
 $canEditHouseholdSurveys = nutrition_user_can_edit_household_surveys($con, $sessionUserId);
 $canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHouseholdSurveys || $canEditHouseholdSurveys;
-$canManageNutritionSettings = !barangay_user_is_bns_admin($con, $sessionUserId)
-    && !barangay_user_is_barangay_nutrition_scholar($con, $sessionUserId);
+$canManageNutritionSettings = nutrition_user_can_save_settings($con, $sessionUserId);
 ?>
         <?php
         $nutritionPageIcon = 'fa-poll';

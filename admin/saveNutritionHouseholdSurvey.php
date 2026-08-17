@@ -49,7 +49,7 @@ if ($headLastName === '' || $headFirstName === '' || $surveyDate === null || $su
 
 if ($purokLabel === '') {
     http_response_code(400);
-    echo json_encode(['error' => 'Please enter a valid purok number.']);
+    echo json_encode(['error' => 'Please enter a valid purok (number or letters, e.g. 1, 1A, A).']);
     exit;
 }
 

@@ -66,7 +66,10 @@ if (!function_exists('nutrition_user_can_manage_household_surveys')) {
 }
 
 if (!function_exists('nutrition_user_can_add_household_surveys')) {
-    /** BNS, CNPC, Nutrition SA, SSA may create household surveys. Nutrition Admin (A) may not. */
+    /**
+     * Add / encode new household surveys.
+     * SSA, Nutrition SA, Nutrition Admin (A), BNS — not CNPC (edit/delete only).
+     */
     function nutrition_user_can_add_household_surveys(mysqli $con, string $userId): bool
     {
         if ($userId === '') {
@@ -75,7 +78,7 @@ if (!function_exists('nutrition_user_can_add_household_surveys')) {
 
         if (barangay_user_is_ssa($con, $userId)
             || barangay_user_is_nutrition_portal_admin($con, $userId)
-            || barangay_user_is_cnpc($con, $userId)
+            || barangay_user_is_bns_admin($con, $userId)
             || barangay_user_is_barangay_nutrition_scholar($con, $userId)) {
             return true;
         }
@@ -92,13 +95,13 @@ if (!function_exists('nutrition_user_can_add_household_surveys')) {
         if (!$row) {
             return false;
         }
-        $role = trim((string) ($row['staff_role'] ?? ''));
-        if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
-            return false;
-        }
         $username = strtolower(trim((string) ($row['username'] ?? '')));
         $userType = strtolower(trim((string) ($row['user_type'] ?? '')));
         $barangayId = trim((string) ($row['barangay_id'] ?? ''));
+        $role = trim((string) ($row['staff_role'] ?? ''));
+        if ($role === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+            return false;
+        }
 
         return ($username === 'nutrition.superadmin' || str_starts_with($username, 'nutrition.'))
             && $userType === 'admin'
@@ -108,26 +111,19 @@ if (!function_exists('nutrition_user_can_add_household_surveys')) {
 
 if (!function_exists('nutrition_user_can_edit_household_survey_names')) {
     /**
-     * Nutrition Admin (A) may edit registered names (same name tools as Nutrition SA).
-     * SSA / Nutrition SA / Admin (A) only — not BNS/CNPC via this privileged path
-     * (BNS edits through their own survey workflow).
+     * Edit registered household / member names on Consolidated Report.
+     * Same mutate set as full edit/delete (SSA / Nutrition SA / Nutrition Admin / CNPC).
      */
     function nutrition_user_can_edit_household_survey_names(mysqli $con, string $userId): bool
     {
-        if ($userId === '') {
-            return false;
-        }
-
-        return barangay_user_is_ssa($con, $userId)
-            || barangay_user_is_nutrition_portal_admin($con, $userId)
-            || barangay_user_is_bns_admin($con, $userId);
+        return nutrition_user_can_edit_household_surveys($con, $userId);
     }
 }
 
 if (!function_exists('nutrition_user_can_edit_household_surveys')) {
     /**
      * Full edit of a registered household survey (reopen form / UPDATE).
-     * SSA and Nutrition Hub SA only — not Nutrition Admin (A), BNS, or CNPC.
+     * SSA, Nutrition SA, Nutrition Admin (A), CNPC — not BNS.
      */
     function nutrition_user_can_edit_household_surveys(mysqli $con, string $userId): bool
     {
@@ -135,8 +131,24 @@ if (!function_exists('nutrition_user_can_edit_household_surveys')) {
     }
 }
 
+if (!function_exists('nutrition_user_can_save_settings')) {
+    /** SSA and Nutrition Super Admin may change nutrition settings. */
+    function nutrition_user_can_save_settings(mysqli $con, string $userId): bool
+    {
+        if ($userId === '') {
+            return false;
+        }
+
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_nutrition_portal_admin($con, $userId);
+    }
+}
+
 if (!function_exists('nutrition_user_can_delete_household_surveys')) {
-    /** Only SSA and Nutrition Super Admin may delete household surveys / registered names. */
+    /**
+     * Delete household surveys / registered names.
+     * SSA, Nutrition SA, Nutrition Admin (A), CNPC — not BNS.
+     */
     function nutrition_user_can_delete_household_surveys(mysqli $con, string $userId): bool
     {
         if ($userId === '') {
@@ -144,7 +156,9 @@ if (!function_exists('nutrition_user_can_delete_household_surveys')) {
         }
 
         if (barangay_user_is_ssa($con, $userId)
-            || barangay_user_is_nutrition_portal_admin($con, $userId)) {
+            || barangay_user_is_nutrition_portal_admin($con, $userId)
+            || barangay_user_is_bns_admin($con, $userId)
+            || barangay_user_is_cnpc($con, $userId)) {
             return true;
         }
 
@@ -159,7 +173,8 @@ if (!function_exists('nutrition_user_can_delete_household_surveys')) {
         if (!$row) {
             return false;
         }
-        if (trim((string) ($row['staff_role'] ?? '')) === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
+        $role = trim((string) ($row['staff_role'] ?? ''));
+        if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR) {
             return false;
         }
         $username = strtolower(trim((string) ($row['username'] ?? '')));
@@ -1333,6 +1348,21 @@ if (!function_exists('nutrition_purok_number_from_label')) {
     }
 }
 
+if (!function_exists('nutrition_purok_input_from_label')) {
+    /** Display value for the purok text field (e.g. 1, 1A, A). */
+    function nutrition_purok_input_from_label(string $purokLabel): string
+    {
+        $label = trim($purokLabel);
+        if ($label === '') {
+            return '1';
+        }
+        $core = preg_replace('/^(purok|prk)\s*/i', '', $label) ?? $label;
+        $core = trim($core);
+
+        return $core !== '' ? $core : '1';
+    }
+}
+
 if (!function_exists('nutrition_format_member_display_name')) {
     function nutrition_format_member_display_name(
         string $firstName,
@@ -1369,6 +1399,7 @@ if (!function_exists('nutrition_load_resident_survey_prefill')) {
      *   is_ip:string,
      *   is_solo_parent:string,
      *   purok_number:int,
+     *   purok_input:string,
      *   purok_label:string,
      *   family_members:array<int, array{member_name:string,relationship:string,gender:string,birth_date:string}>
      * }|null
@@ -1455,6 +1486,7 @@ if (!function_exists('nutrition_load_resident_survey_prefill')) {
             'is_ip' => $yesNo($resident['indigenous'] ?? 'NO'),
             'is_solo_parent' => $yesNo($resident['single_parent'] ?? 'NO'),
             'purok_number' => nutrition_purok_number_from_label($purokLabel),
+            'purok_input' => nutrition_purok_input_from_label($purokLabel),
             'purok_label' => $purokLabel,
             'family_members' => $familyMembers,
         ];
@@ -1464,7 +1496,17 @@ if (!function_exists('nutrition_load_resident_survey_prefill')) {
 if (!function_exists('nutrition_allowed_redirect')) {
     function nutrition_allowed_redirect(string $redirect): string
     {
-        $allowed = ['dashboard.php', 'nutritionDashboard.php'];
+        $redirect = basename(str_replace('\\', '/', $redirect));
+        $allowed = [
+            'dashboard.php',
+            'nutritionDashboard.php',
+            'nutritionHouseholdSurvey.php',
+            'nutritionBarangaySurvey.php',
+            'nutritionProfiles.php',
+            'nutritionBnpReport.php',
+            'nutritionMellpiBarangayProfile.php',
+            'nutritionReport.php',
+        ];
 
         return in_array($redirect, $allowed, true) ? $redirect : 'dashboard.php';
     }
@@ -2250,26 +2292,48 @@ if (!function_exists('nutrition_purok_code_from_label')) {
         if ($purok === '') {
             return 'P1';
         }
-        if (preg_match('/^P(\d+)$/i', $purok, $matches)) {
-            return 'P' . max(1, (int) $matches[1]);
+        $core = preg_replace('/^(purok|prk)\s*/i', '', $purok) ?? $purok;
+        $core = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $core));
+        if ($core === '' || $core === '0') {
+            return 'P1';
         }
-        if (preg_match('/(\d+)/', $purok, $matches)) {
-            return 'P' . max(1, (int) $matches[1]);
+        if (str_starts_with($core, 'P') && strlen($core) > 1) {
+            return $core;
         }
 
-        return 'P1';
+        return 'P' . $core;
     }
 }
 
 if (!function_exists('nutrition_purok_label_from_number')) {
+    /** Accepts purok numbers and letters (1, 1A, A). */
     function nutrition_purok_label_from_number(string $purokNumber): string
     {
-        $purokNumber = trim($purokNumber);
-        if ($purokNumber === '' || !ctype_digit($purokNumber)) {
+        $purokNumber = trim((string) preg_replace('/\s+/', ' ', $purokNumber));
+        if ($purokNumber === '') {
             return '';
         }
+        if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9\s.\-\/]{0,31}$/u', $purokNumber)) {
+            return '';
+        }
+        $core = preg_replace('/^(purok|prk)\s*/i', '', $purokNumber) ?? $purokNumber;
+        $core = trim($core);
+        if ($core === '') {
+            return '';
+        }
+        if (preg_match('/^P([A-Za-z0-9]+)$/i', $core, $matches)) {
+            $core = $matches[1];
+        }
+        if (ctype_digit($core)) {
+            $n = (int) $core;
+            if ($n < 1) {
+                return '';
+            }
 
-        return 'PUROK ' . max(1, (int) $purokNumber);
+            return 'PUROK ' . $n;
+        }
+
+        return 'PUROK ' . mb_strtoupper($core);
     }
 }
 
@@ -2778,7 +2842,7 @@ if (!function_exists('nutrition_ensure_super_admin_for_manage')) {
         if (!nutrition_user_can_delete_household_surveys($con, $userId)) {
             http_response_code(403);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Only Nutrition Super Admin or Super Super Admin can delete household survey records.']);
+            echo json_encode(['error' => 'You are not allowed to delete household survey records.']);
             exit;
         }
     }
@@ -2802,7 +2866,7 @@ if (!function_exists('nutrition_ensure_can_add_household_surveys')) {
         if (!nutrition_user_can_add_household_surveys($con, $userId)) {
             http_response_code(403);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Nutrition Admin (A) can view registered surveys only. Adding surveys is not allowed.']);
+            echo json_encode(['error' => 'You are not allowed to add household surveys.']);
             exit;
         }
     }

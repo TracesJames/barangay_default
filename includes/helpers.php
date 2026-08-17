@@ -32,13 +32,19 @@ if (!function_exists('barangay_start_session')) {
             return;
         }
 
-        $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443')
+            || (strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https');
+        $crossOrigin = function_exists('barangay_cors_is_cross_origin_enabled')
+            && barangay_cors_is_cross_origin_enabled();
+
+        // SameSite=None requires Secure; only when FRONTEND_URL(S) is configured.
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => barangay_app_base_path(),
-            'secure' => $isSecure,
+            'secure' => $crossOrigin ? true : $isHttps,
             'httponly' => true,
-            'samesite' => 'Lax',
+            'samesite' => $crossOrigin ? 'None' : 'Lax',
         ]);
         session_start();
     }
@@ -73,6 +79,22 @@ if (!function_exists('barangay_is_datatables_endpoint')) {
         $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
 
         return (bool) preg_match('/Table\.php$/i', $script);
+    }
+}
+
+if (!function_exists('barangay_request_expects_json')) {
+    function barangay_request_expects_json(): bool
+    {
+        $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+        if (str_contains($accept, 'application/json')) {
+            return true;
+        }
+        $requestedWith = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+        if ($requestedWith === 'xmlhttprequest') {
+            return true;
+        }
+
+        return isset($_POST['ajax']) || isset($_GET['ajax']);
     }
 }
 
@@ -114,6 +136,20 @@ if (!function_exists('barangay_h')) {
     function barangay_h(?string $value): string
     {
         return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('barangay_html_date')) {
+    /** HTML date input value (Y-m-d). Empty for missing or invalid dates. */
+    function barangay_html_date(?string $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || $value === '0000-00-00') {
+            return '';
+        }
+        $ts = strtotime($value);
+
+        return $ts ? date('Y-m-d', $ts) : '';
     }
 }
 

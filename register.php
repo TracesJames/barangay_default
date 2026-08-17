@@ -54,7 +54,6 @@ if (!$showPicker) {
 <link rel="stylesheet" href="assets/plugins/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="assets/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="assets/plugins/bs-stepper/css/bs-stepper.min.css">
-  <link rel="stylesheet" href="assets/plugins/phone code/intlTelInput.min.css">
   <link rel="stylesheet" href="assets/plugins/sweetalert2/css/sweetalert2.min.css">
   <link rel="stylesheet" href="assets/plugins/step-wizard/css/smart_wizard_all.min.css">
 <?php if ($showPicker) {

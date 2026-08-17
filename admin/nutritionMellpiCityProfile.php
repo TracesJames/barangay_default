@@ -17,8 +17,8 @@ $isBnsAdmin = barangay_user_is_bns_admin($con, $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
 
-if (!$isSuperAdmin && !$isBnsAdmin && !$isCityAdmin && !$isNutritionPortalAdmin) {
-    header('Location: nutritionDashboard.php');
+if (!barangay_user_can_open_nutrition_city_hub($con, $user_id)) {
+    header('Location: ' . (barangay_user_can_access_barangay_hub($con, $user_id) ? 'dashboard.php' : 'nutritionDashboard.php'));
     exit;
 }
 

@@ -1,7 +1,7 @@
 <?php
+include_once 'connection.php';
 require_once 'includes/helpers.php';
 barangay_start_session();
-include_once 'connection.php';
 include_once 'userInfo.php';
 require_once 'includes/csrf.php';
 require_once 'includes/barangay_context.php';

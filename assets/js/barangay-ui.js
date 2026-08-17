@@ -185,6 +185,12 @@
     }, 200);
   }
 
+  if (global.jQuery) {
+    global.jQuery.ajaxSetup({
+      xhrFields: { withCredentials: true }
+    });
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

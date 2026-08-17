@@ -429,7 +429,7 @@ if(isset($_REQUEST['official_id']) || isset($_REQUEST['request'])){
                   <div class="col-sm-12">
                     <div class="form-group ">
                       <label >Date of Birth</label>
-                      <input type="date" class="form-control" id="edit_birth_date" name="edit_birth_date" value="<?php echo strftime('%Y-%m-%d',strtotime($row_official['birth_date'])); ?>">
+                      <input type="date" class="form-control" id="edit_birth_date" name="edit_birth_date" value="<?= barangay_html_date($row_official['birth_date'] ?? '') ?>">
                       <input type="hidden" id="edit_birth_date_check" value='false'>
                     </div>
                   </div>

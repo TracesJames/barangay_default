@@ -30,7 +30,7 @@ $isSsa = barangay_user_is_ssa($con, $user_id);
 $isBarangayScope = $barangayId !== '';
 
 if ($isBarangayScope) {
-    $allowed = $isSsa || $isSuperAdmin || $isCityAdmin || $isNutritionPortalAdmin || $isBnsAdmin || $isBns || $isCnpc;
+    $allowed = $isSsa || $isNutritionPortalAdmin || $isBns || $isCnpc;
     if (!$allowed) {
         http_response_code(403);
         echo json_encode(['error' => 'Not authorized to save barangay MELLPI profile.']);
@@ -50,7 +50,7 @@ if ($isBarangayScope) {
         exit;
     }
 } else {
-    if (!$isSuperAdmin && !$isBnsAdmin && !$isCityAdmin && !$isNutritionPortalAdmin && !$isSsa) {
+    if (!$isSsa && !$isNutritionPortalAdmin) {
         http_response_code(403);
         echo json_encode(['error' => 'Not authorized.']);
         exit;

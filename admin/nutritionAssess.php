@@ -17,8 +17,13 @@ $user_image = $row_user['image'] ?? '';
 $isSuperAdmin = barangay_user_is_super_admin($con, $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 
-if (barangay_session_id() === null && ($isSuperAdmin || $isCityAdmin)) {
-    header('Location: barangayHub.php?picker=1&system=nutrition');
+if (!barangay_user_can_access_nutrition_portal($con, $user_id)) {
+    header('Location: dashboard.php');
+    exit;
+}
+
+if (barangay_session_id() === null && barangay_user_can_open_nutrition_city_hub($con, $user_id)) {
+    header('Location: barangayHub.php?picker=1&system=nutrition&view=picker');
     exit;
 }
 

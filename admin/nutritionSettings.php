@@ -6,6 +6,7 @@ require_once '../includes/partials/nutrition_init.php';
 
 $activePage = 'settings';
 $nutritionPageTitle = 'Settings';
+$canSaveNutritionSettings = nutrition_user_can_save_settings($con, (string) ($_SESSION['user_id'] ?? ''));
 $nutritionIncludeScriptsCsrf = true;
 $nutritionExtraCss = ['../assets/plugins/sweetalert2/css/sweetalert2.min.css'];
 $nutritionExtraJs = [
@@ -30,6 +31,9 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
               <form id="nutritionSettingsForm">
                 <?= csrf_field(); ?>
                 <div class="card-body">
+                  <?php if (!$canSaveNutritionSettings) : ?>
+                  <p class="alert alert-info py-2">View only — Nutrition Admin (A) cannot change settings.</p>
+                  <?php endif; ?>
                   <p class="text-muted">Configure nutrition profiling options for <strong><?= barangay_h($barangay) ?></strong>.</p>
                   <div class="form-group">
                     <label>Nutrition Officer Name</label>
@@ -147,15 +151,18 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                     <small class="text-muted">Optional link for enumerators to collect data on mobile or web</small>
                   </div>
                 </div>
+                <?php if ($canSaveNutritionSettings) : ?>
                 <div class="card-footer text-right">
                   <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i> Save Settings</button>
                 </div>
+                <?php endif; ?>
               </form>
             </div>
           </div>
         </div>
 <?php
-$nutritionPageScript = <<<'HTML'
+$nutritionPageScript = $canSaveNutritionSettings
+    ? <<<'HTML'
 <script>
 $('#nutritionSettingsForm').on('submit', function (e) {
   e.preventDefault();
@@ -169,6 +176,11 @@ $('#nutritionSettingsForm').on('submit', function (e) {
     Swal.fire({ title: 'Error', text: msg, type: 'error' });
   });
 });
+</script>
+HTML
+    : <<<'HTML'
+<script>
+$('#nutritionSettingsForm').find('input:not([type=hidden]), select, textarea').prop('disabled', true);
 </script>
 HTML;
 require __DIR__ . '/../includes/partials/nutrition_layout_end.php';

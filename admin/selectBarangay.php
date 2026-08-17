@@ -57,19 +57,19 @@ if (!$canPickAny) {
 
 barangay_set_active($barangayId);
 
-$redirect = nutrition_allowed_redirect(trim((string) ($_POST['redirect'] ?? 'dashboard.php')));
 $requested = trim((string) ($_POST['redirect'] ?? ''));
-if ($requested !== '' && str_contains($requested, 'nutrition')) {
-    $redirect = 'nutritionDashboard.php';
-} elseif (
-    $requested === ''
-    && (
-        barangay_user_is_nutrition_portal_admin($con, $userId)
-        || barangay_user_is_bns_admin($con, $userId)
-        || barangay_user_is_cnpc($con, $userId)
-    )
-) {
-    $redirect = 'nutritionDashboard.php';
+$isNutritionActor = barangay_user_is_nutrition_portal_admin($con, $userId)
+    || barangay_user_is_bns_admin($con, $userId)
+    || barangay_user_is_cnpc($con, $userId)
+    || barangay_user_is_barangay_nutrition_scholar($con, $userId);
+
+if ($requested === '') {
+    $redirect = $isNutritionActor ? 'nutritionDashboard.php' : 'dashboard.php';
+} else {
+    $redirect = nutrition_allowed_redirect($requested);
+    if ($redirect === 'dashboard.php' && $isNutritionActor && str_contains($requested, 'nutrition')) {
+        $redirect = 'nutritionDashboard.php';
+    }
 }
 
 if ($isAjax) {

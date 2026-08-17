@@ -22,6 +22,7 @@ $portalBrandTagline = isset($con)
 $isStaffAccountsPage = in_array($superActivePage, ['staff_accounts', 'bns', 'bns_admin', 'cnpc', 'nutrition_sa'], true);
 $isSsaActor = isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_ssa')
     && barangay_user_is_ssa($con, (string) $_SESSION['user_id']);
+$activeNutritionBarangayId = function_exists('barangay_session_id') ? barangay_session_id() : null;
 $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ?? '', '../');
 ?>
 <aside class="main-sidebar sidebar-dark-success elevation-4 sidebar-no-expand nutrition-sidebar super-nutrition-sidebar">
@@ -60,6 +61,14 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
             <p>Select Barangay</p>
           </a>
         </li>
+        <?php if ($activeNutritionBarangayId !== null) : ?>
+        <li class="nav-item">
+          <a href="nutritionDashboard.php" class="nav-link <?= $superActivePage === 'dashboard' ? 'active' : '' ?>">
+            <i class="nav-icon fas fa-tachometer-alt"></i>
+            <p>Barangay Dashboard</p>
+          </a>
+        </li>
+        <?php endif; ?>
         <li class="nav-item">
           <a href="nutritionMellpiCityProfile.php" class="nav-link <?= $superActivePage === 'mellpi_city_profile' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-clipboard-list"></i>
@@ -90,8 +99,10 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
             && isset($con, $_SESSION['user_id'])
             && function_exists('barangay_user_is_ssa')
             && barangay_user_is_ssa($con, (string) $_SESSION['user_id']);
+        $canManageStaffAccounts = isset($con, $_SESSION['user_id'])
+            && function_exists('barangay_user_can_manage_staff_accounts')
+            && barangay_user_can_manage_staff_accounts($con, (string) $_SESSION['user_id']);
         ?>
-        <?php if ($isSuperAdmin || $isNutritionPortalAdmin) : ?>
         <?php if ($canSwitchToBarangayHub) : ?>
         <li class="nav-header">PORTALS</li>
         <li class="nav-item">
@@ -108,6 +119,7 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
         </li>
         <?php endif; ?>
 
+        <?php if ($canManageStaffAccounts) : ?>
         <li class="nav-header">ACCOUNTS</li>
         <li class="nav-item <?= $isStaffAccountsPage ? 'menu-open' : '' ?>">
           <a href="#" class="nav-link <?= $isStaffAccountsPage ? 'active' : '' ?>">

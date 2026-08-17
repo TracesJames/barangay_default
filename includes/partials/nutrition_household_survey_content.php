@@ -104,7 +104,8 @@ foreach ($surveys as $surveyRow) {
                   </div>
                   <div class="col-md-3 form-group">
                     <label for="purok_number">Purok <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control nutrition-input-narrow" id="purok_number" name="purok_number" min="1" max="99" step="1" value="<?= (int) $defaultPurokNumber ?>" required>
+                    <input type="text" class="form-control nutrition-input-narrow" id="purok_number" name="purok_number" maxlength="32" value="<?= barangay_h((string) ($defaultPurokInput ?? $defaultPurokNumber ?? '1')) ?>" placeholder="1, 1A, A" autocomplete="off" required>
+                    <small class="text-muted">Number and/or letters (e.g. 1, 1A, A)</small>
                   </div>
                   <div class="col-md-3 form-group">
                     <label for="survey_date">Survey Date <span class="text-danger">*</span></label>

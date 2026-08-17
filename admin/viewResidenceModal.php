@@ -234,7 +234,7 @@ fieldset {
          DATE OF BIRTH
           <br>
           
-          <input type="date" class="editInfo  form-control form-control-sm" value="<?php echo strftime('%Y-%m-%d',strtotime($row_view_residence['birth_date'])); ?>" name="edit_birth_date" id="edit_birth_date"/>
+          <input type="date" class="editInfo  form-control form-control-sm" value="<?= barangay_html_date($row_view_residence['birth_date'] ?? '') ?>" name="edit_birth_date" id="edit_birth_date"/>
           <input type="hidden" id="edit_birth_date_check" value='false'>
       </td>
       <td>

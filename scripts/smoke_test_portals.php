@@ -72,6 +72,12 @@ assert_true(
 
 assert_true('Child max age is 19 (nutrition)', nutrition_child_max_age_years() === 19);
 assert_true('Children label uses 0–19', nutrition_children_age_label() === 'Children (0–19)');
+assert_true('Purok 1 stays numeric label', nutrition_purok_label_from_number('1') === 'PUROK 1');
+assert_true('Purok 1A allows letters', nutrition_purok_label_from_number('1A') === 'PUROK 1A');
+assert_true('Purok A allows alphabet', nutrition_purok_label_from_number('A') === 'PUROK A');
+assert_true('Purok code for 1A is P1A', nutrition_purok_code_from_label('PUROK 1A') === 'P1A');
+assert_true('Purok code for A is PA', nutrition_purok_code_from_label('A') === 'PA');
+assert_true('Purok input from PUROK 1A is 1A', nutrition_purok_input_from_label('PUROK 1A') === '1A');
 
 $hub = nutrition_hub_totals($con);
 assert_true('Hub totals return children', isset($hub['children']));
@@ -130,6 +136,16 @@ if (is_array($nutritionAdmin)) {
         'Nutrition SA can open nutritionAccountProfile.php',
         barangay_nutrition_portal_admin_can_access_script('nutritionAccountProfile.php')
     );
+    assert_true(
+        'Nutrition SA can open nutritionDashboard.php',
+        barangay_nutrition_portal_admin_can_access_script('nutritionDashboard.php')
+    );
+    assert_true('Nutrition SA can pick any barangay', barangay_user_can_pick_barangay($con, $nid));
+    $sidebar = file_get_contents(dirname(__DIR__) . '/includes/partials/nutrition_sidebar.php');
+    assert_true(
+        'Barangay sidebar shows All Barangays for Nutrition SA',
+        is_string($sidebar) && str_contains($sidebar, '$isNutritionPortalAdmin') && str_contains($sidebar, 'All Barangays')
+    );
 }
 
 $citySuper = $con->query(
@@ -156,6 +172,14 @@ if (is_array($cityRow)) {
     if ($role === 'ssa') {
         assert_true('SSA can pick barangay', barangay_user_can_pick_barangay($con, $cid));
         assert_true('SSA manages staff accounts', barangay_user_can_manage_staff_accounts($con, $cid));
+        assert_true('SSA can access nutrition portal', barangay_user_can_access_nutrition_portal($con, $cid));
+        assert_true('SSA can access barangay hub', barangay_user_can_access_barangay_hub($con, $cid));
+        assert_true('SSA can mutate barangay records', barangay_user_can_mutate_barangay_records($con, $cid));
+    } elseif ($role === 'super_admin') {
+        assert_true('Barangay SA cannot access nutrition portal', !barangay_user_can_access_nutrition_portal($con, $cid));
+        assert_true('Barangay SA can access barangay hub', barangay_user_can_access_barangay_hub($con, $cid));
+        assert_true('Barangay SA can mutate barangay records', barangay_user_can_mutate_barangay_records($con, $cid));
+        assert_true('Barangay SA manages staff accounts (hub scope)', barangay_user_can_manage_staff_accounts($con, $cid));
     }
 } else {
     echo "[WARN] No city SSA/SA found for brand comparison" . PHP_EOL;
@@ -175,12 +199,12 @@ $roleCases = [
     ],
     STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN => [
         'label' => 'Nutrition Admin (A)',
-        'add' => false,
+        'add' => true,
         'edit_names' => true,
-        'edit_full' => false,
-        'delete' => false,
-        'household_script' => false,
-        'delete_script' => false,
+        'edit_full' => true,
+        'delete' => true,
+        'household_script' => true,
+        'delete_script' => true,
     ],
     STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR => [
         'label' => 'BNS',
@@ -193,12 +217,12 @@ $roleCases = [
     ],
     STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR => [
         'label' => 'CNPC',
-        'add' => true,
-        'edit_names' => false,
-        'edit_full' => false,
-        'delete' => false,
+        'add' => false,
+        'edit_names' => true,
+        'edit_full' => true,
+        'delete' => true,
         'household_script' => true,
-        'delete_script' => false,
+        'delete_script' => true,
     ],
 ];
 
@@ -234,10 +258,32 @@ foreach ($roleCases as $role => $expect) {
         nutrition_user_can_delete_household_surveys($con, $uid) === $expect['delete']
     );
 
+    $mayManageAccounts = in_array($role, [
+        STAFF_ROLE_SSA,
+        STAFF_ROLE_SUPER_ADMIN,
+        STAFF_ROLE_NUTRITION_SUPER_ADMIN,
+    ], true);
+    assert_true(
+        "{$who}: staff account management",
+        barangay_user_can_manage_staff_accounts($con, $uid) === $mayManageAccounts
+    );
+
     if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
         assert_true(
-            "{$who}: cannot open household survey page",
-            !barangay_bns_admin_can_access_script('nutritionHouseholdSurvey.php')
+            "{$who}: cannot open staff accounts page",
+            !barangay_bns_admin_can_access_script('staffAccounts.php')
+        );
+        assert_true(
+            "{$who}: cannot save staff accounts",
+            !barangay_bns_admin_can_access_script('saveStaffAccount.php')
+        );
+        assert_true(
+            "{$who}: can open household survey page",
+            barangay_bns_admin_can_access_script('nutritionHouseholdSurvey.php')
+        );
+        assert_true(
+            "{$who}: can save household survey",
+            barangay_bns_admin_can_access_script('saveNutritionHouseholdSurvey.php')
         );
         assert_true(
             "{$who}: can open consolidated report",
@@ -248,12 +294,56 @@ foreach ($roleCases as $role => $expect) {
             barangay_bns_admin_can_access_script('updateNutritionHouseholdSurveyNames.php')
         );
         assert_true(
-            "{$who}: cannot open settings",
-            !barangay_bns_admin_can_access_script('nutritionSettings.php')
+            "{$who}: can open settings (view)",
+            barangay_bns_admin_can_access_script('nutritionSettings.php')
         );
         assert_true(
-            "{$who}: cannot open delete endpoint",
-            !barangay_bns_admin_can_access_script('deleteNutritionHouseholdSurvey.php')
+            "{$who}: cannot save settings",
+            !barangay_bns_admin_can_access_script('saveNutritionSettings.php')
+        );
+        assert_true(
+            "{$who}: can open delete endpoint",
+            barangay_bns_admin_can_access_script('deleteNutritionHouseholdSurvey.php')
+        );
+        assert_true(
+            "{$who}: can open new assessment",
+            barangay_bns_admin_can_access_script('nutritionAssess.php')
+        );
+        assert_true(
+            "{$who}: nutrition portal only",
+            barangay_user_can_access_nutrition_portal($con, $uid)
+                && !barangay_user_can_access_barangay_hub($con, $uid)
+        );
+        assert_true(
+            "{$who}: household survey is not city-wide (needs barangay session)",
+            !in_array('nutritionHouseholdSurvey.php', barangay_bns_admin_city_wide_scripts(), true)
+        );
+        assert_true(
+            "{$who}: save survey is not city-wide (needs barangay session)",
+            !in_array('saveNutritionHouseholdSurvey.php', barangay_bns_admin_city_wide_scripts(), true)
+        );
+        assert_true(
+            "{$who}: super dashboard is city-wide",
+            in_array('nutritionSuperDashboard.php', barangay_bns_admin_city_wide_scripts(), true)
+        );
+        assert_true(
+            "{$who}: selectBarangay can redirect to household survey",
+            nutrition_allowed_redirect('nutritionHouseholdSurvey.php') === 'nutritionHouseholdSurvey.php'
+        );
+    }
+
+    if ($role === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
+        assert_true(
+            "{$who}: can open delete endpoint",
+            barangay_cnpc_can_access_script('deleteNutritionHouseholdSurvey.php')
+        );
+        assert_true(
+            "{$who}: can save (edit) household survey",
+            barangay_cnpc_can_access_script('saveNutritionHouseholdSurvey.php')
+        );
+        assert_true(
+            "{$who}: cannot add surveys (capability)",
+            !nutrition_user_can_add_household_surveys($con, $uid)
         );
     }
 
@@ -267,6 +357,25 @@ foreach ($roleCases as $role => $expect) {
             barangay_nutrition_portal_admin_can_access_script('deleteNutritionHouseholdSurvey.php') === $expect['delete_script']
         );
     }
+}
+
+$cityAdminA = $con->query("SELECT id, username FROM users WHERE staff_role = 'admin' ORDER BY id ASC LIMIT 1");
+$cityAdminRow = $cityAdminA ? $cityAdminA->fetch_assoc() : null;
+if (is_array($cityAdminRow)) {
+    $aid = (string) $cityAdminRow['id'];
+    $awho = 'Barangay Admin (A) @' . $cityAdminRow['username'];
+    assert_true("{$awho}: barangay hub only", barangay_user_can_access_barangay_hub($con, $aid));
+    assert_true("{$awho}: cannot access nutrition portal", !barangay_user_can_access_nutrition_portal($con, $aid));
+    assert_true("{$awho}: cannot mutate records", !barangay_user_can_mutate_barangay_records($con, $aid));
+    assert_true("{$awho}: cannot edit/delete person", !barangay_user_can_edit_or_delete_person($con, $aid));
+    assert_true("{$awho}: cannot open editOfficial.php", !barangay_city_admin_can_access_script('editOfficial.php'));
+    assert_true("{$awho}: cannot open deleteOfficial.php", !barangay_city_admin_can_access_script('deleteOfficial.php'));
+    assert_true("{$awho}: cannot open nutritionDashboard.php", !barangay_city_admin_can_access_script('nutritionDashboard.php'));
+    assert_true("{$awho}: can open dashboard.php", barangay_city_admin_can_access_script('dashboard.php'));
+    assert_true("{$awho}: can open allResidence.php", barangay_city_admin_can_access_script('allResidence.php'));
+    assert_true("{$awho}: cannot manage staff accounts", !barangay_user_can_manage_staff_accounts($con, $aid));
+} else {
+    echo "[WARN] No Barangay Admin (A) account — skip hub isolation checks" . PHP_EOL;
 }
 
 $barangays = barangay_list_all($con);

@@ -1242,6 +1242,10 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
         }
 
         if ($staffRole === STAFF_ROLE_ADMIN) {
+            if ($isNutritionHubPicker || ($script === 'barangayHub.php' && isset($_GET['system']) && $_GET['system'] === 'nutrition')) {
+                header('Location: barangayHub.php?picker=1');
+                exit;
+            }
             if (in_array($script, barangay_city_admin_denied_scripts(), true)) {
                 if ($isHubPicker || $script === 'selectBarangay.php') {
                     return;
@@ -1268,25 +1272,28 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
                 if ($isHubPicker || $script === 'selectBarangay.php') {
                     return;
                 }
-                header('Location: barangayHub.php?picker=1&system=nutrition');
+                header('Location: nutritionSuperDashboard.php');
                 exit;
             }
-            if (!in_array($script, [
-                'barangayHub.php', 'selectBarangay.php', 'myProfile.php',
-                'nutritionDashboard.php', 'nutritionAccountProfile.php',
-                'nutritionBarangaySurvey.php', 'nutritionBarangaySurveyPrint.php',
-                'nutritionPregnantFamiliesReport.php', 'nutritionPregnantFamiliesPrint.php',
-                'nutritionBnpReport.php', 'nutritionBnpPrint.php',
-                'nutritionReport.php', 'nutritionPrintReport.php',
-                'nutritionProfiles.php',
-                'nutritionSuperDashboard.php',
-                'nutritionSuperPrintReport.php', 'nutritionHubGuidePrint.php',
-                'nutritionSuperPregnantFamiliesPrint.php',
-                'nutritionProcessFormPrint.php', 'cityReportPack.php',
-                'nutritionMellpiCityProfile.php',
-            ], true)
-                && barangay_session_id() === null) {
-                header('Location: barangayHub.php?picker=1&system=nutrition');
+            $cityWide = function_exists('barangay_bns_admin_city_wide_scripts')
+                ? barangay_bns_admin_city_wide_scripts()
+                : ['barangayHub.php', 'selectBarangay.php', 'myProfile.php', 'nutritionSuperDashboard.php', 'nutritionAccountProfile.php'];
+            if (!in_array($script, $cityWide, true) && barangay_session_id() === null) {
+                $wantsJson = function_exists('barangay_request_expects_json')
+                    ? barangay_request_expects_json()
+                    : false;
+                if ($wantsJson || (function_exists('barangay_bns_admin_support_scripts')
+                    && in_array($script, barangay_bns_admin_support_scripts(), true))) {
+                    http_response_code(400);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['error' => 'No active barangay selected. Open a barangay first, then encode the household survey.']);
+                    exit;
+                }
+                $picker = 'barangayHub.php?picker=1&system=nutrition&view=picker';
+                if ($script !== '' && $script !== 'nutritionDashboard.php' && $script !== 'barangayHub.php') {
+                    $picker .= '&next=' . rawurlencode($script);
+                }
+                header('Location: ' . $picker);
                 exit;
             }
             return;

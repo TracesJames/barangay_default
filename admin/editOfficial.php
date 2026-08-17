@@ -3,6 +3,7 @@
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 require_once '../includes/barangay_context.php';
+barangay_require_mutate_barangay_records($con);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

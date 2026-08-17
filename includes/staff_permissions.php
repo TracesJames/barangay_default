@@ -201,18 +201,98 @@ if (!function_exists('barangay_user_is_super_admin')) {
     }
 }
 
-if (!function_exists('barangay_user_can_edit_or_delete_person')) {
+if (!function_exists('barangay_user_can_mutate_barangay_records')) {
     /**
-     * Only Super Super Admin and Barangay Hub Super Admin may edit or delete resident (person) details.
+     * Edit / delete Barangay Hub records. SSA and Barangay Hub SA only.
+     * Admin (A) may view and add, but not edit or delete.
      */
-    function barangay_user_can_edit_or_delete_person(mysqli $con, ?string $userId = null): bool
+    function barangay_user_can_mutate_barangay_records(mysqli $con, ?string $userId = null): bool
     {
         $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
         if ($userId === '') {
             return false;
         }
 
-        return barangay_user_is_super_admin($con, $userId);
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_barangay_hub_super_admin($con, $userId);
+    }
+}
+
+if (!function_exists('barangay_user_can_edit_or_delete_person')) {
+    /**
+     * Only SSA and Barangay Hub Super Admin may edit or delete resident details.
+     */
+    function barangay_user_can_edit_or_delete_person(mysqli $con, ?string $userId = null): bool
+    {
+        return barangay_user_can_mutate_barangay_records($con, $userId);
+    }
+}
+
+if (!function_exists('barangay_require_mutate_barangay_records')) {
+    function barangay_require_mutate_barangay_records(mysqli $con, string $message = 'You do not have permission to edit or delete records.'): void
+    {
+        if (barangay_user_can_mutate_barangay_records($con)) {
+            return;
+        }
+        if (function_exists('barangay_request_expects_json') && barangay_request_expects_json()) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => $message]);
+            exit;
+        }
+        http_response_code(403);
+        exit($message);
+    }
+}
+
+if (!function_exists('barangay_user_can_open_nutrition_city_hub')) {
+    /** SSA, Nutrition SA, Nutrition Admin (A), CNPC — not Barangay SA / Barangay Admin (A). */
+    function barangay_user_can_open_nutrition_city_hub(mysqli $con, ?string $userId = null): bool
+    {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if ($userId === '') {
+            return false;
+        }
+
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_nutrition_portal_admin($con, $userId)
+            || barangay_user_is_bns_admin($con, $userId)
+            || barangay_user_is_cnpc($con, $userId);
+    }
+}
+
+if (!function_exists('barangay_user_can_access_nutrition_portal')) {
+    function barangay_user_can_access_nutrition_portal(mysqli $con, ?string $userId = null): bool
+    {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if ($userId === '') {
+            return false;
+        }
+
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_nutrition_portal_admin($con, $userId)
+            || barangay_user_is_bns_admin($con, $userId)
+            || barangay_user_is_barangay_nutrition_scholar($con, $userId)
+            || barangay_user_is_cnpc($con, $userId);
+    }
+}
+
+if (!function_exists('barangay_user_can_access_barangay_hub')) {
+    function barangay_user_can_access_barangay_hub(mysqli $con, ?string $userId = null): bool
+    {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if ($userId === '') {
+            return false;
+        }
+        $role = barangay_user_staff_role($con, $userId);
+
+        return in_array($role, [
+            STAFF_ROLE_SSA,
+            STAFF_ROLE_SUPER_ADMIN,
+            STAFF_ROLE_ADMIN,
+            STAFF_ROLE_BARANGAY_ADMIN,
+            STAFF_ROLE_BARANGAY_STAFF,
+        ], true);
     }
 }
 
@@ -379,6 +459,12 @@ if (!function_exists('barangay_user_can_delete_staff_accounts')) {
 }
 
 if (!function_exists('barangay_user_can_manage_staff_accounts')) {
+    /**
+     * Create/manage staff accounts:
+     * - SSA: system-wide (all hubs/portals)
+     * - Barangay Hub SA / Nutrition SA: within assigned hub scope only
+     * - Admin / CNPC / BNS: never
+     */
     function barangay_user_can_manage_staff_accounts(mysqli $con, ?string $userId = null): bool
     {
         $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
@@ -444,22 +530,63 @@ if (!function_exists('barangay_city_admin_certificate_scripts')) {
     }
 }
 
+if (!function_exists('barangay_city_admin_mutation_scripts')) {
+    /**
+     * Edit / delete endpoints Barangay Admin (A) cannot use.
+     *
+     * @return array<int, string>
+     */
+    function barangay_city_admin_mutation_scripts(): array
+    {
+        return [
+            'editOfficial.php',
+            'editEndOfficial.php',
+            'deleteOfficial.php',
+            'unDeleteOfficial.php',
+            'officialEndTerm.php',
+            'editResidence.php',
+            'deleteResidence.php',
+            'editStatusResidence.php',
+            'editStatusOfficial.php',
+            'archiveResidence.php',
+            'unArchiveResidence.php',
+            'editBlotterRecord.php',
+            'deleteBlotterRecord.php',
+            'deletePersonRecord.php',
+            'deleteComplainantRecord.php',
+            'editPosition.php',
+            'deletePosition.php',
+            'editStatusposition.php',
+            'editUserResidence.php',
+            'updateSettings.php',
+            'setHouseholdHead.php',
+        ];
+    }
+}
+
 if (!function_exists('barangay_city_admin_denied_scripts')) {
     /**
-     * Admin portal pages city Admin and Barangay Staff roles cannot access.
+     * Admin portal pages city Admin (A) cannot access: super-only, certificates,
+     * staff accounts, edit/delete, and all Nutrition Portal pages.
      *
      * @return array<int, string>
      */
     function barangay_city_admin_denied_scripts(): array
     {
-        return array_merge(barangay_super_admin_only_scripts(), barangay_city_admin_certificate_scripts(), [
-            'staffAccounts.php',
-            'staffAccountsTable.php',
-            'saveStaffAccount.php',
-            'deleteStaffAccount.php',
-            'viewStaffAccount.php',
-            'resetStaffAccountPassword.php',
-        ]);
+        return array_values(array_unique(array_merge(
+            barangay_super_admin_only_scripts(),
+            barangay_city_admin_certificate_scripts(),
+            barangay_city_admin_mutation_scripts(),
+            barangay_barangay_hub_sa_denied_scripts(),
+            [
+                'staffAccounts.php',
+                'staffAccountsTable.php',
+                'saveStaffAccount.php',
+                'deleteStaffAccount.php',
+                'viewStaffAccount.php',
+                'resetStaffAccountPassword.php',
+            ]
+        )));
     }
 }
 
@@ -481,23 +608,17 @@ if (!function_exists('barangay_city_admin_allowed_scripts')) {
             'allOfficial.php',
             'viewOfficial.php',
             'viewEndOfficial.php',
-            'editOfficial.php',
-            'editEndOfficial.php',
-            'officialEndTerm.php',
             'newResidence.php',
             'addNewResidence.php',
             'allResidence.php',
             'importResidence.php',
             'importResidenceProcess.php',
             'downloadResidenceImportTemplate.php',
-            'archiveResidence.php',
             'familyHouseholdHead.php',
             'familyHouseholdHeadTable.php',
-            'setHouseholdHead.php',
             'usersResident.php',
             'userResidenceTable.php',
             'viewResidenceUser.php',
-            'editUserResidence.php',
             'report.php',
             'reportTable.php',
             'printReport.php',
@@ -520,37 +641,22 @@ if (!function_exists('barangay_city_admin_support_scripts')) {
             'positionTable.php',
             'viewPositionModal.php',
             'addNewPosition.php',
-            'editPosition.php',
-            'editStatusposition.php',
-            'deletePosition.php',
             'allOfficialTable.php',
             'viewOfficialModal.php',
-            'editStatusOfficial.php',
-            'deleteOfficial.php',
-            'unDeleteOfficial.php',
             'allResidenceTable.php',
             'showResidence.php',
             'showResidenceInfo.php',
             'viewResidenceModal.php',
-            'editStatusResidence.php',
             'archiveResidenceTable.php',
-            'unArchiveResidence.php',
             'endOfficialTable.php',
             'blotterRecordTable.php',
             'blotterPersonTable.php',
             'addNewBlotterRecord.php',
-            'editBlotterRecord.php',
-            'deleteBlotterRecord.php',
-            'deletePersonRecord.php',
-            'deleteComplainantRecord.php',
             'viewRecordsModal.php',
             'viewRecordResident.php',
             'showPerson.php',
-            'updateSettings.php',
             'saveProfile.php',
             'blotterResidentSearch.php',
-            'updateSettings.php',
-            'saveProfile.php',
         ];
     }
 }
@@ -634,29 +740,17 @@ if (!function_exists('barangay_bns_can_access_script')) {
 
 if (!function_exists('barangay_bns_admin_allowed_scripts')) {
     /**
-     * Nutrition Admin (A) — city-wide sub of Nutrition SA:
-     * view registered lists/reports, edit names; no add survey / settings / delete.
+     * Nutrition Admin (A) — Nutrition Portal: add / edit / delete surveys + reports.
+     * No staff accounts; settings save remains SA/SSA only.
      *
      * @return array<int, string>
      */
     function barangay_bns_admin_allowed_scripts(): array
     {
-        return [
+        return array_values(array_unique(array_merge(barangay_bns_allowed_scripts(), [
             'barangayHub.php',
             'selectBarangay.php',
             'nutritionSuperDashboard.php',
-            'nutritionDashboard.php',
-            'nutritionAccountProfile.php',
-            'nutritionBarangaySurvey.php',
-            'nutritionBarangaySurveyPrint.php',
-            'nutritionPregnantFamiliesReport.php',
-            'nutritionPregnantFamiliesPrint.php',
-            'nutritionBnpReport.php',
-            'nutritionBnpPrint.php',
-            'nutritionEoptPrint.php',
-            'nutritionReport.php',
-            'nutritionPrintReport.php',
-            'nutritionProfiles.php',
             'nutritionSuperPrintReport.php',
             'nutritionHubGuidePrint.php',
             'nutritionSuperPregnantFamiliesPrint.php',
@@ -664,8 +758,9 @@ if (!function_exists('barangay_bns_admin_allowed_scripts')) {
             'cityReportPack.php',
             'nutritionMellpiCityProfile.php',
             'nutritionMellpiBarangayProfile.php',
-            'myProfile.php',
-        ];
+            'nutritionSettings.php',
+            'nutritionAssess.php',
+        ])));
     }
 }
 
@@ -678,8 +773,36 @@ if (!function_exists('barangay_bns_admin_support_scripts')) {
         return [
             'saveProfile.php',
             'nutritionProfilesTable.php',
+            'nutritionHouseholdResidentSearch.php',
+            'nutritionHouseholdResidentPrefill.php',
+            'nutritionResidentSearch.php',
+            'nutritionFamilyMemberGrowth.php',
+            'nutritionNextHouseholdId.php',
+            'saveNutritionHouseholdSurvey.php',
+            'saveNutritionAssessment.php',
             'updateNutritionHouseholdSurveyNames.php',
+            'deleteNutritionHouseholdSurvey.php',
+        ];
+    }
+}
+
+if (!function_exists('barangay_bns_admin_denied_mutation_scripts')) {
+    /**
+     * Nutrition Admin (A) still cannot manage staff or save city settings/MELLPI city profile.
+     *
+     * @return array<int, string>
+     */
+    function barangay_bns_admin_denied_mutation_scripts(): array
+    {
+        return [
+            'saveNutritionSettings.php',
             'saveNutritionMellpiCityProfile.php',
+            'staffAccounts.php',
+            'saveStaffAccount.php',
+            'deleteStaffAccount.php',
+            'staffAccountsTable.php',
+            'viewStaffAccount.php',
+            'resetStaffAccountPassword.php',
         ];
     }
 }
@@ -687,8 +810,38 @@ if (!function_exists('barangay_bns_admin_support_scripts')) {
 if (!function_exists('barangay_bns_admin_can_access_script')) {
     function barangay_bns_admin_can_access_script(string $script): bool
     {
+        if (in_array($script, barangay_bns_admin_denied_mutation_scripts(), true)) {
+            return false;
+        }
+
         return in_array($script, barangay_bns_admin_allowed_scripts(), true)
             || in_array($script, barangay_bns_admin_support_scripts(), true);
+    }
+}
+
+if (!function_exists('barangay_bns_admin_city_wide_scripts')) {
+    /**
+     * Nutrition Admin (A) pages that do not need an active barangay session.
+     * Household Survey / barangay reports are NOT city-wide — pick a barangay first.
+     *
+     * @return array<int, string>
+     */
+    function barangay_bns_admin_city_wide_scripts(): array
+    {
+        return [
+            'barangayHub.php',
+            'selectBarangay.php',
+            'myProfile.php',
+            'nutritionAccountProfile.php',
+            'nutritionSuperDashboard.php',
+            'nutritionSuperPrintReport.php',
+            'nutritionHubGuidePrint.php',
+            'nutritionSuperPregnantFamiliesPrint.php',
+            'nutritionProcessFormPrint.php',
+            'cityReportPack.php',
+            'nutritionMellpiCityProfile.php',
+            'saveProfile.php',
+        ];
     }
 }
 
@@ -844,9 +997,8 @@ if (!function_exists('barangay_nutrition_portal_admin_can_access_script')) {
 
 if (!function_exists('barangay_cnpc_allowed_scripts')) {
     /**
-     * CNPC (2B): BNS field work for assigned barangays + progress monitor surfaces.
-     * No city settings / city MELLPI edit / survey delete / staff accounts.
-     * Barangay MELLPI registration is allowed for assigned barangays.
+     * CNPC — Nutrition Portal, assigned barangays:
+     * edit / delete household surveys + reports; cannot add new surveys.
      *
      * @return array<int, string>
      */
@@ -866,7 +1018,11 @@ if (!function_exists('barangay_cnpc_support_scripts')) {
      */
     function barangay_cnpc_support_scripts(): array
     {
-        return barangay_bns_support_scripts();
+        return array_values(array_unique(array_merge(barangay_bns_support_scripts(), [
+            'deleteNutritionHouseholdSurvey.php',
+            'updateNutritionHouseholdSurveyNames.php',
+            'saveNutritionHouseholdSurvey.php',
+        ])));
     }
 }
 

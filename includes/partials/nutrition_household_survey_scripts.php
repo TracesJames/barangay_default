@@ -574,8 +574,8 @@ $('#survey_date').on('change', function () {
 });
 
 function nutritionRefreshHouseholdId() {
-  var purok = $('#purok_number').val();
-  if (!purok || parseInt(purok, 10) < 1) return;
+  var purok = ($('#purok_number').val() || '').trim();
+  if (!purok) return;
   $.getJSON('nutritionNextHouseholdId.php', { purok: purok }, function (res) {
     if (res && res.household_id) {
       $('#house_hold_id').val(res.household_id);
@@ -630,8 +630,9 @@ function nutritionApplyResidentPrefill(resident) {
   $('#is_solo_parent').prop('checked', resident.is_solo_parent === 'YES');
   nutritionSyncHeadFemaleStatus();
 
-  if (resident.purok_number) {
-    $('#purok_number').val(resident.purok_number).trigger('change');
+  var purokValue = resident.purok_input || resident.purok_label || resident.purok_number || '';
+  if (purokValue) {
+    $('#purok_number').val(purokValue).trigger('change');
   }
 
   $('#familyMembersContainer').empty();
@@ -759,7 +760,7 @@ function nutritionApplySurveyEditPayload(data) {
     );
   }
 
-  $('#purok_number').val(data.purok_number || 1);
+  $('#purok_number').val(data.purok_input || data.purok_number || '1');
   $('#survey_date').val(data.survey_date || '');
   $('#bns_name').val(data.bns_name || '');
   $('#house_hold_id').val(data.house_hold_id || '');

@@ -37,7 +37,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
               <h1>Nutrition Portal</h1>
               <p><?= barangay_h($barangay . ' · ' . $zone . ' · ' . $district) ?> — Monitor child nutrition and growth assessments</p>
               <div class="nutrition-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
-              <?php if ($isSuperAdmin || $isCityAdmin) : ?>
+              <?php if (!empty($isSsa) || $isBnsAdmin || $isNutritionPortalAdmin || $isCnpc) : ?>
               <div class="nutrition-actions mt-2">
                 <a href="nutritionSuperDashboard.php" class="btn btn-sm btn-outline-light">
                   <i class="fas fa-th-large"></i> City Nutrition Dashboard

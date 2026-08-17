@@ -4,7 +4,7 @@ class UserInfo{
 
 
 	private static function get_user_agent() {
-		return  $_SERVER['HTTP_USER_AGENT'];
+		return (string) ($_SERVER['HTTP_USER_AGENT'] ?? '');
 	}
 
 	public static function get_ip() {
@@ -103,11 +103,12 @@ class UserInfo{
 		$tablet_browser = 0;
 		$mobile_browser = 0;
 
-		if (preg_match('/(tablet|ipad|playbook)|(android(?!.*(mobi|opera mini)))/i', strtolower($_SERVER['HTTP_USER_AGENT']))) {
+		$ua = strtolower(self::get_user_agent());
+		if (preg_match('/(tablet|ipad|playbook)|(android(?!.*(mobi|opera mini)))/i', $ua)) {
 			$tablet_browser++;
 		}
 
-		if (preg_match('/(up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|android|iemobile)/i', strtolower($_SERVER['HTTP_USER_AGENT']))) {
+		if (preg_match('/(up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|android|iemobile)/i', $ua)) {
 			$mobile_browser++;
 		}
 

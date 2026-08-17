@@ -96,8 +96,12 @@ try {
         $subdata[] = $single_parent;
         $subdata[] = $voters;
         $subdata[] = $status;
-        $subdata[] = '<a href="viewEndOfficial.php?request=' . $row['official_id'] . '" style="cursor: pointer;  color: yellow;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-user-edit text-lg px-3 "></a>
-  <i style="cursor: pointer;  color: red;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-times text-lg px-2 deleteOfficial" id="' . $row['official_id'] . '"></i>';
+        $canMutate = barangay_user_can_mutate_barangay_records($con, (string) ($_SESSION['user_id'] ?? ''));
+        $actions = '<a href="viewEndOfficial.php?request=' . $row['official_id'] . '" style="cursor: pointer;  color: yellow;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-user-edit text-lg px-3 "></a>';
+        if ($canMutate) {
+            $actions .= '<i style="cursor: pointer;  color: red;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-times text-lg px-2 deleteOfficial" id="' . $row['official_id'] . '"></i>';
+        }
+        $subdata[] = $actions;
         $data[] = $subdata;
     }
 

@@ -30,14 +30,17 @@ if(isset($_SESSION['user_id']) && isset($_SESSION['user_type']) && $_SESSION['us
 
 try{
 
+  if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    exit('errorMethod');
+  }
 
-
-  $residence_id = $con->real_escape_string($_POST['residence_id']);
-  $purpose = $con->real_escape_string(strtoupper($_POST['purpose']));
-  $certificate_id = $con->real_escape_string($_POST['certificate_id']);
-  $edit_date_issued = $con->real_escape_string($_POST['edit_date_issued']);
-  $edit_date_expired = $con->real_escape_string($_POST['edit_date_expired']);
-  $message = $con->real_escape_string($_POST['message']);
+  $residence_id = $con->real_escape_string((string) ($_POST['residence_id'] ?? ''));
+  $purpose = $con->real_escape_string(strtoupper((string) ($_POST['purpose'] ?? '')));
+  $certificate_id = $con->real_escape_string((string) ($_POST['certificate_id'] ?? ''));
+  $edit_date_issued = $con->real_escape_string((string) ($_POST['edit_date_issued'] ?? ''));
+  $edit_date_expired = $con->real_escape_string((string) ($_POST['edit_date_expired'] ?? ''));
+  $message = $con->real_escape_string((string) ($_POST['message'] ?? ''));
   $status = 'ACCEPTED';
 
 
@@ -52,9 +55,9 @@ try{
     $stmt_user->bind_param('s',$residence_id);
     $stmt_user->execute();
     $result_user = $stmt_user->get_result();
-    $row_user = $result_user->fetch_assoc();
-    $first_name = $row_user['first_name'];
-    $last_name = $row_user['last_name'];
+    $row_user = $result_user->fetch_assoc() ?: [];
+    $first_name = (string) ($row_user['first_name'] ?? '');
+    $last_name = (string) ($row_user['last_name'] ?? '');
     $status_activity_log = 'updated';
   
      

@@ -15,13 +15,14 @@ $isBnsAdmin = barangay_user_is_bns_admin($con, $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
 $isCnpc = barangay_user_is_cnpc($con, $user_id);
+$isSsa = barangay_user_is_ssa($con, $user_id);
 
-if (!$isSuperAdmin && !$isBnsAdmin && !$isCityAdmin && !$isNutritionPortalAdmin && !$isCnpc) {
-    header('Location: nutritionDashboard.php');
+if (!barangay_user_can_open_nutrition_city_hub($con, $user_id)) {
+    header('Location: ' . ($isSuperAdmin || $isCityAdmin ? 'dashboard.php' : 'nutritionDashboard.php'));
     exit;
 }
 
-barangay_clear_active();
+// Keep any active barangay so Household Survey encode in another tab is not wiped.
 csrf_token();
 barangay_release_session_lock();
 
@@ -43,6 +44,7 @@ $isSuperAdmin = $isSuperAdmin || $isNutritionPortalAdmin;
 $activePage = 'nutrition_super_dashboard';
 $brandLogo = barangay_default_logo_url('../');
 
+$canEncodeHouseholdSurvey = nutrition_user_can_add_household_surveys($con, $user_id);
 $cnpcBarangayIds = $isCnpc ? staff_assigned_barangay_ids($con, $user_id) : null;
 $barangayRows = nutrition_super_dashboard_rows($con, $cnpcBarangayIds);
 $barangayCount = count($barangayRows);
@@ -62,6 +64,8 @@ if ($isCnpc) {
         'pending' => $pendingTotal,
         'teenage_pregnant' => $teenagePregnant,
         'pregnant' => (int) array_sum(array_column($barangayRows, 'pregnant')),
+        'this_month' => (int) array_sum(array_column($barangayRows, 'this_month')),
+        'at_risk' => $atRisk,
     ];
     $statusTotals = [
         'underweight' => 0,
@@ -391,17 +395,17 @@ if ($nutritionRecommendations === []) {
           </div>
           <div class="nutrition-stat nutrition-stat--children">
             <i class="fas fa-child nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($hubTotals['children']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) ($hubTotals['children'] ?? 0)) ?></div>
             <div class="nutrition-stat-label"><?= barangay_h(nutrition_children_age_label()) ?></div>
           </div>
           <div class="nutrition-stat nutrition-stat--assessed">
             <i class="fas fa-clipboard-check nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($hubTotals['assessed']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) ($hubTotals['assessed'] ?? 0)) ?></div>
             <div class="nutrition-stat-label">Assessed</div>
           </div>
           <div class="nutrition-stat nutrition-stat--pending">
             <i class="fas fa-hourglass-half nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($hubTotals['pending']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) ($hubTotals['pending'] ?? 0)) ?></div>
             <div class="nutrition-stat-label">Pending Assessment</div>
           </div>
           <div class="nutrition-stat nutrition-stat--risk">
@@ -411,7 +415,7 @@ if ($nutritionRecommendations === []) {
           </div>
           <div class="nutrition-stat nutrition-stat--month">
             <i class="fas fa-calendar-check nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($hubTotals['this_month']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) ($hubTotals['this_month'] ?? 0)) ?></div>
             <div class="nutrition-stat-label">Assessments This Month</div>
           </div>
           <div class="nutrition-stat nutrition-stat--assessed">
@@ -562,7 +566,7 @@ if ($nutritionRecommendations === []) {
                   <td><?= number_format((int) $row['at_risk']) ?></td>
                   <td><?= number_format((int) $row['surveys']) ?></td>
                   <td><code><?= barangay_h($row['bns_username'] !== '' ? $row['bns_username'] : '—') ?></code></td>
-                  <td>
+                  <td class="text-nowrap">
                     <form method="post" action="selectBarangay.php" class="d-inline js-open-nutrition-form">
                       <?= csrf_field(); ?>
                       <input type="hidden" name="barangay_id" value="<?= barangay_h($row['id']) ?>">
@@ -571,6 +575,16 @@ if ($nutritionRecommendations === []) {
                         <i class="fas fa-external-link-alt mr-1"></i> Open
                       </button>
                     </form>
+                    <?php if ($canEncodeHouseholdSurvey) : ?>
+                    <form method="post" action="selectBarangay.php" class="d-inline js-open-nutrition-form">
+                      <?= csrf_field(); ?>
+                      <input type="hidden" name="barangay_id" value="<?= barangay_h($row['id']) ?>">
+                      <input type="hidden" name="redirect" value="nutritionHouseholdSurvey.php">
+                      <button type="submit" class="btn btn-sm btn-success">
+                        <i class="fas fa-home mr-1"></i> Encode Survey
+                      </button>
+                    </form>
+                    <?php endif; ?>
                   </td>
                 </tr>
                 <?php endforeach; ?>

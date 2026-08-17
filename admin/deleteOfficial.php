@@ -5,6 +5,7 @@ include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 
 barangay_require_post();
+barangay_require_mutate_barangay_records($con);
 
 try{
 

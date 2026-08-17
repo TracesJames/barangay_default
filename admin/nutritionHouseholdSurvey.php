@@ -21,7 +21,6 @@ if ($editSurveyId !== '') {
     }
     $editingMembers = nutrition_list_household_family_members($con, $editSurveyId);
 } elseif (!nutrition_user_can_add_household_surveys($con, $sessionUserId)) {
-    // Nutrition Admin (A): view registered list + edit names only — no new surveys.
     header('Location: nutritionBarangaySurvey.php');
     exit;
 }
@@ -32,19 +31,19 @@ $surveys = nutrition_list_household_surveys($con, (string) $barangay_id);
 $report = nutrition_household_consolidated_report($con, (string) $barangay_id);
 $summary = $report['summary'] ?? [];
 $relationshipOptions = nutrition_relationship_options();
-$defaultPurokNumber = 1;
+$defaultPurokInput = '1';
 $defaultHouseholdId = nutrition_generate_household_reference(
     $con,
     (string) $barangay_id,
-    (string) $defaultPurokNumber,
+    $defaultPurokInput,
     (string) $barangay
 );
 $psgcCode = nutrition_barangay_psgc_code($con, (string) $barangay_id, (string) $barangay);
 
 if ($editingSurvey !== null) {
-    $defaultPurokNumber = nutrition_purok_number_from_label((string) ($editingSurvey['purok_label'] ?? 'Purok 1'));
-    if ($defaultPurokNumber < 1) {
-        $defaultPurokNumber = 1;
+    $defaultPurokInput = nutrition_purok_input_from_label((string) ($editingSurvey['purok_label'] ?? 'Purok 1'));
+    if ($defaultPurokInput === '') {
+        $defaultPurokInput = '1';
     }
     $defaultHouseholdId = (string) ($editingSurvey['house_hold_id'] ?? $defaultHouseholdId);
     $nutritionSurveyCardTitle = 'Edit Household Survey';
@@ -115,7 +114,8 @@ if ($editingSurvey !== null) {
         'survey_id' => (string) ($editingSurvey['survey_id'] ?? ''),
         'residence_id' => (string) ($editingSurvey['residence_id'] ?? ''),
         'house_hold_id' => (string) ($editingSurvey['house_hold_id'] ?? ''),
-        'purok_number' => (int) $defaultPurokNumber,
+        'purok_number' => $defaultPurokInput,
+        'purok_input' => $defaultPurokInput,
         'survey_date' => $fmt($editingSurvey['survey_date'] ?? ''),
         'bns_name' => (string) ($editingSurvey['bns_name'] ?? ''),
         'head_last_name' => (string) ($editingSurvey['head_last_name'] ?? ''),

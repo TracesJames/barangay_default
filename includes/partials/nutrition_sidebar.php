@@ -11,14 +11,27 @@ $nutritionActivePage = $activePage ?? '';
 $isNutritionScholar = !empty($isNutritionScholar);
 $isBnsAdmin = !empty($isBnsAdmin);
 $staffRoleLabel = $staffRoleLabel ?? ($user_type ?? 'admin');
-$showNutritionHub = !empty($isSuperAdmin) || !empty($isCityAdmin) || $isBnsAdmin;
-// Nutrition Admin (A): view/reports + name edits only — no settings / new surveys.
-$showNutritionSettings = !$isNutritionScholar && !$isBnsAdmin;
-$showNutritionDataEntry = !$isBnsAdmin;
 $isNutritionPortalAdmin = !empty($isNutritionPortalAdmin)
     || (isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_nutrition_portal_admin')
         && barangay_user_is_nutrition_portal_admin($con, (string) $_SESSION['user_id']));
-$hideBarangayAdminSwitch = $isNutritionScholar || $isBnsAdmin || $isNutritionPortalAdmin;
+$isCnpc = !empty($isCnpc)
+    || (isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_cnpc')
+        && barangay_user_is_cnpc($con, (string) $_SESSION['user_id']));
+$isSsa = !empty($isSsa)
+    || (isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_ssa')
+        && barangay_user_is_ssa($con, (string) $_SESSION['user_id']));
+$showNutritionHub = $isSsa || $isBnsAdmin || $isNutritionPortalAdmin || $isCnpc;
+$canSwitchNutritionBarangay = $isSsa || $isBnsAdmin || $isNutritionPortalAdmin || $isCnpc;
+$hubAllBarangaysHref = ($isSsa || $isBnsAdmin || $isNutritionPortalAdmin)
+    ? 'nutritionSuperDashboard.php'
+    : 'barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker';
+// Nutrition Admin (A): add/edit/delete surveys. CNPC: edit/delete only (no add). BNS: add only.
+$showNutritionSettings = !$isNutritionScholar;
+$showNutritionHouseholdSurvey = isset($con, $_SESSION['user_id']) && function_exists('nutrition_user_can_add_household_surveys')
+    ? nutrition_user_can_add_household_surveys($con, (string) $_SESSION['user_id'])
+    : !$isCnpc;
+$showNutritionAssessment = !$isCnpc;
+$hideBarangayAdminSwitch = !$isSsa;
 $portalBrandName = isset($con)
     ? barangay_portal_brand_name($con, (string) ($_SESSION['user_id'] ?? ''), true)
     : 'Nutrition Portal';
@@ -50,9 +63,17 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
       <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu">
         <?php if ($showNutritionHub) : ?>
         <li class="nav-item">
-          <a href="<?= !empty($isSuperAdmin) || !empty($isBnsAdmin) ? 'nutritionSuperDashboard.php' : 'barangayHub.php?picker=1&amp;system=nutrition' ?>" class="nav-link">
+          <a href="<?= $hubAllBarangaysHref ?>" class="nav-link">
             <i class="nav-icon fas fa-th-large"></i>
             <p>All Barangays</p>
+          </a>
+        </li>
+        <?php endif; ?>
+        <?php if ($canSwitchNutritionBarangay) : ?>
+        <li class="nav-item">
+          <a href="barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker" class="nav-link">
+            <i class="nav-icon fas fa-exchange-alt"></i>
+            <p>Switch Barangay</p>
           </a>
         </li>
         <?php endif; ?>
@@ -65,20 +86,24 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
           </a>
         </li>
 
-        <?php if ($showNutritionDataEntry) : ?>
+        <?php if ($showNutritionHouseholdSurvey || $showNutritionAssessment) : ?>
         <li class="nav-header">Data Entry</li>
+        <?php if ($showNutritionHouseholdSurvey) : ?>
         <li class="nav-item">
           <a href="nutritionHouseholdSurvey.php" class="nav-link <?= $nutritionActivePage === 'household_survey' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-home"></i>
             <p>Household Survey</p>
           </a>
         </li>
+        <?php endif; ?>
+        <?php if ($showNutritionAssessment) : ?>
         <li class="nav-item">
           <a href="nutritionAssess.php" class="nav-link <?= $nutritionActivePage === 'assess' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-weight"></i>
             <p>New Assessment</p>
           </a>
         </li>
+        <?php endif; ?>
         <?php endif; ?>
 
         <li class="nav-header">Reports</li>
@@ -126,6 +151,12 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
         </li>
 
         <li class="nav-header">Help</li>
+        <li class="nav-item">
+          <a href="nutritionHubGuidePrint.php" target="_blank" class="nav-link">
+            <i class="nav-icon fas fa-file-pdf"></i>
+            <p>User Guide (PDF)</p>
+          </a>
+        </li>
         <li class="nav-item">
           <a href="nutritionProcessFormPrint.php" target="_blank" class="nav-link">
             <i class="nav-icon fas fa-clipboard-check"></i>

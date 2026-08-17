@@ -30,22 +30,25 @@ $isNutritionScholar = barangay_user_is_barangay_nutrition_scholar($con, $user_id
 $isBnsAdmin = barangay_user_is_bns_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
 $isCnpc = barangay_user_is_cnpc($con, $user_id);
+$isSsa = barangay_user_is_ssa($con, $user_id);
 $staffRoleLabel = $isNutritionPortalAdmin
     ? staff_role_label(STAFF_ROLE_NUTRITION_SUPER_ADMIN)
     : staff_role_label(barangay_user_staff_role($con, $user_id));
+
+if (!barangay_user_can_access_nutrition_portal($con, $user_id)) {
+    header('Location: dashboard.php');
+    exit;
+}
 
 if ($isNutritionScholar) {
     // Assigned barangay is forced in barangay_enforce_admin_page_access.
 } elseif (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'nutritionAccountProfile.php') {
     // City nutrition accounts can edit profile without an active barangay session.
-} elseif (($isSuperAdmin || $isBnsAdmin || $isNutritionPortalAdmin || $isCnpc) && barangay_session_id() === null) {
+} elseif (barangay_user_can_open_nutrition_city_hub($con, $user_id) && barangay_session_id() === null) {
     header('Location: nutritionSuperDashboard.php');
     exit;
-} elseif ($isCityAdmin && barangay_session_id() === null) {
-    header('Location: barangayHub.php?picker=1&system=nutrition');
-    exit;
-} elseif (!$isSuperAdmin && !$isCityAdmin && !$isBnsAdmin && !$isNutritionPortalAdmin && empty($barangay_id)) {
-    header('Location: barangayHub.php?picker=1&system=nutrition');
+} elseif (barangay_session_id() === null && empty($barangay_id)) {
+    header('Location: barangayHub.php?picker=1&system=nutrition&view=picker');
     exit;
 }
 

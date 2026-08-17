@@ -508,7 +508,9 @@ try{
                 <a href="barangayHub.php?picker=1" class="btn btn-sm"><i class="fas fa-th-large"></i> All Barangays</a>
                 <?php } ?>
                 <a href="newResidence.php" class="btn btn-sm"><i class="fas fa-user-plus"></i> New Resident</a>
+                <?php if (barangay_user_is_ssa($con, (string) $user_id)) { ?>
                 <a href="nutritionDashboard.php" class="btn btn-sm btn-success"><i class="fas fa-seedling"></i> Nutrition Profiling</a>
+                <?php } ?>
                 <a href="newOfficial.php" class="btn btn-sm"><i class="fas fa-user-tie"></i> New Official</a>
                 <a href="blotterRecord.php" class="btn btn-sm"><i class="fas fa-clipboard"></i> Blotter</a>
                 <?php if (!empty($canIssueCertificate)) { ?>

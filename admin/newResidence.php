@@ -56,7 +56,6 @@ if (!$isSuperAdmin && !$isCityAdmin && empty($barangay_id)) {
   <link rel="stylesheet" href="../assets/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">
   <link rel="stylesheet" href="../assets/plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="../assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
-  <link rel="stylesheet" href="../assets/plugins/phone code/intlTelInput.min.css">
   <link rel="stylesheet" href="../assets/css/new-residence.css?v=20260729a">
   
  <style>
@@ -706,7 +705,6 @@ if (!$isSuperAdmin && !$isCityAdmin && empty($barangay_id)) {
 <script src="../assets/js/residence-family.js"></script>
 <script src="../assets/js/residence-minor-guardian.js"></script>
 <script src="../assets/js/new-residence.js?v=20260729a"></script>
-<script src="../assets/plugins/phone code/intlTelInput.js"></script>
 
 <script>
   $(document).ready(function(){

@@ -16,7 +16,7 @@ $isSuperAdmin = barangay_user_is_super_admin($con, $user_id);
 $isBnsAdmin = barangay_user_is_bns_admin($con, $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
-$canOpenHub = $isSuperAdmin || $isBnsAdmin || $isCityAdmin || $isNutritionPortalAdmin;
+$canOpenHub = barangay_user_can_access_nutrition_portal($con, $user_id);
 
 date_default_timezone_set('Asia/Manila');
 $generatedAt = date('F j, Y g:i A');
@@ -298,7 +298,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </div>
     </header>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>1. Document control</h2>
       <table>
         <thead>
@@ -332,7 +332,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </div>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>2. Purpose &amp; scope</h2>
       <p>This form defines the <strong>standard process</strong> for encoding, validating, and reporting nutrition data in the Nutrition Portal so barangay and city reports (BNP C1–C9, MELLPI, e-OPT Plus) stay complete and consistent.</p>
       <div class="box note">
@@ -341,7 +341,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </div>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>3. Roles</h2>
       <table>
         <thead>
@@ -356,7 +356,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </table>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>4. End-to-end process (recommended order)</h2>
       <div class="flow">
         <div class="flow-step">
@@ -404,7 +404,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </div>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>5. Process A — Login &amp; open Nutrition Portal</h2>
       <ol class="process-steps">
         <li>Open <span class="path">login.php</span> and sign in with the assigned account.</li>
@@ -416,7 +416,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       <p class="small muted">URLs: <span class="path">nutritionSuperDashboard.php</span> · <span class="path">nutritionDashboard.php</span> · <span class="path">barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker</span></p>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>6. Process B — Household Survey (primary data entry)</h2>
       <p><strong>Owner:</strong> BNS / barangay nutrition staff &nbsp;|&nbsp; <strong>Page:</strong> <span class="path">nutritionHouseholdSurvey.php</span></p>
       <ol class="process-steps">
@@ -433,7 +433,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </div>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>7. Process C — New Assessment (registered resident)</h2>
       <p><strong>Owner:</strong> BNS &nbsp;|&nbsp; <strong>Page:</strong> <span class="path">nutritionAssess.php</span></p>
       <ol class="process-steps">
@@ -445,7 +445,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       <p class="small muted">Use this when linking growth data to an existing barangay resident outside (or in addition to) a household survey member row.</p>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>8. Process D — School &amp; other Form C1 manual fields</h2>
       <p><strong>Owner:</strong> BNS / CNC focal &nbsp;|&nbsp; <strong>Page:</strong> <span class="path">nutritionSettings.php</span> → <em>BNP Form C1 — Manual Fields</em></p>
       <div class="box note">
@@ -476,7 +476,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       <p class="small muted"><strong>Separate school data:</strong> Until a dedicated School Nutrition module is built, treat these Settings fields as the official school-only dataset for barangay BNP C1. City-level school matrices may also be maintained in MELLPI City Profile Registration.</p>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>9. Process E — Barangay reports (BNP / Consolidated / Pregnant)</h2>
       <ol class="process-steps">
         <li>Open <span class="path">nutritionBnpReport.php</span> (or BNP 2026 from the hub).</li>
@@ -497,7 +497,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </table>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>10. Process F — MELLPI City Profile Registration</h2>
       <p><strong>Owner:</strong> City nutrition / Super Admin &nbsp;|&nbsp; <strong>Page:</strong> <span class="path">nutritionMellpiCityProfile.php</span></p>
       <ol class="process-steps">
@@ -508,7 +508,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </ol>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>11. Process G — Print City Report (submission pack)</h2>
       <p><strong>Page:</strong> <span class="path">nutritionSuperPrintReport.php</span></p>
       <ol class="process-steps">
@@ -520,7 +520,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </ol>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>12. Data source map (quick reference)</h2>
       <table>
         <thead>
@@ -541,7 +541,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </table>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>13. Monthly process checklist (fill &amp; file)</h2>
       <p class="small muted">Period covered: _______________ &nbsp; to &nbsp; _______________ &nbsp;|&nbsp; Barangay / City: _______________________________</p>
       <table>
@@ -580,7 +580,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </div>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>14. Acknowledgement</h2>
       <p>I have read this Nutrition Portal Process Form and will follow the encoding and reporting steps for my role.</p>
       <table>
@@ -595,7 +595,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
       </table>
     </section>
 
-    <section>
+    <section data-pdf-section="1">
       <h2>15. Quick URL list</h2>
       <table>
         <thead>
@@ -622,6 +622,9 @@ $barangayLabel = trim((string) ($barangay ?? ''));
     </div>
   </div>
 
+  <script src="../assets/plugins/jsPDF/html2canvas.min.js"></script>
+  <script src="../assets/plugins/jsPDF/jspdf.umd.min.js"></script>
+  <script src="../assets/js/nutrition-print-pdf.js?v=20260812a"></script>
   <script>
   (function () {
     var pdfFilename = <?= json_encode($pdfFilename) ?>;
@@ -683,7 +686,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
 
     function downloadPdf() {
       if (typeof window.nutritionDownloadPrintPdf !== 'function') {
-        setStatus('PDF helper failed to load. Use Print → Save as PDF.');
+        setStatus('PDF helper failed to load. Use Print → Save as PDF instead.');
         return;
       }
       var run = function () {
@@ -691,18 +694,31 @@ $barangayLabel = trim((string) ($barangay ?? ''));
           root: document.getElementById('processPrintRoot'),
           filename: pdfFilename,
           button: btn,
-          setStatus: setStatus
+          setStatus: setStatus,
+          scale: 1
         });
       };
-      Promise.resolve(run()).catch(function () {
-        setStatus('PDF download failed. Use Print → Save as PDF.');
-      });
+      if (window.barangayReportFit && typeof window.barangayReportFit.withPrintLayout === 'function') {
+        window.barangayReportFit.withPrintLayout(run);
+      } else {
+        Promise.resolve(run()).catch(function () {
+          setStatus('PDF download failed. Use Print → Save as PDF instead.');
+        });
+      }
     }
 
     if (btn) btn.addEventListener('click', downloadPdf);
     if (docBtn) docBtn.addEventListener('click', downloadWordDoc);
-    if (autoDownload) setTimeout(downloadPdf, 400);
-    if (autoDownloadDoc) setTimeout(downloadWordDoc, 400);
+    if (autoDownload) {
+      window.addEventListener('load', function () {
+        setTimeout(downloadPdf, 600);
+      });
+    }
+    if (autoDownloadDoc) {
+      window.addEventListener('load', function () {
+        setTimeout(downloadWordDoc, 700);
+      });
+    }
   })();
   </script>
 </body>

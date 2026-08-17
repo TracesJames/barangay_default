@@ -288,7 +288,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
             );
             if (!$stmt) {
-                throw RuntimeException($con->error);
+                throw new RuntimeException($con->error);
             }
 
             $emptyImage = '';
@@ -346,7 +346,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)';
                 $statusStmt = $con->prepare($statusSql);
                 if (!$statusStmt) {
-                    throw RuntimeException($con->error);
+                    throw new RuntimeException($con->error);
                 }
                 $statusStmt->bind_param(
                     'ssssssssssss',
@@ -370,7 +370,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?)';
                 $statusStmt = $con->prepare($statusSql);
                 if (!$statusStmt) {
-                    throw RuntimeException($con->error);
+                    throw new RuntimeException($con->error);
                 }
                 $statusStmt->bind_param(
                     'sssssssssss',
@@ -392,7 +392,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?,?)';
                 $statusStmt = $con->prepare($statusSql);
                 if (!$statusStmt) {
-                    throw RuntimeException($con->error);
+                    throw new RuntimeException($con->error);
                 }
                 $statusStmt->bind_param(
                     'ssssssssss',
@@ -413,7 +413,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?)';
                 $statusStmt = $con->prepare($statusSql);
                 if (!$statusStmt) {
-                    throw RuntimeException($con->error);
+                    throw new RuntimeException($con->error);
                 }
                 $statusStmt->bind_param(
                     'sssssssss',
@@ -438,7 +438,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?)';
                 $userStmt = $con->prepare($userSql);
                 if (!$userStmt) {
-                    throw RuntimeException($con->error);
+                    throw new RuntimeException($con->error);
                 }
                 $emptyImage = '';
                 $userStmt->bind_param(
@@ -462,7 +462,7 @@ if (!function_exists('residence_import_create_one')) {
                 ) VALUES (?,?,?,?,?,?,?,?,?,?)';
                 $userStmt = $con->prepare($userSql);
                 if (!$userStmt) {
-                    throw RuntimeException($con->error);
+                    throw new RuntimeException($con->error);
                 }
                 $emptyImage = '';
                 $userStmt->bind_param(
@@ -677,9 +677,14 @@ if (!function_exists('residence_import_stream_registration_template')) {
             $residentRows[] = $blank;
         }
 
+        if (!class_exists('ZipArchive')) {
+            residence_import_stream_csv_template($con, $activeBarangay);
+            return;
+        }
+
         $tempFile = tempnam(sys_get_temp_dir(), 'brgy_xlsx_');
         if ($tempFile === false) {
-            throw RuntimeException('Could not create temporary Excel file.');
+            throw new RuntimeException('Could not create temporary Excel file.');
         }
         $xlsxPath = $tempFile . '.xlsx';
         @unlink($tempFile);

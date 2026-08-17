@@ -13,7 +13,7 @@ $isSuperAdmin = barangay_user_is_super_admin($con, $user_id);
 $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
 
-if (!$isSuperAdmin && !$isCityAdmin && !$isNutritionPortalAdmin) {
+if (!barangay_user_can_open_nutrition_city_hub($con, $user_id)) {
     header('Location: dashboard.php');
     exit;
 }

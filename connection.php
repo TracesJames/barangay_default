@@ -4,6 +4,8 @@
  * DB connection — prefers config outside webroot:
  *   C:\xampp\secure\barangay_db\barangay_db.php
  * Fallback: C:\xampp\secure\barangay_db.php (shim), then env BARANGAY_DB_*, then local XAMPP defaults.
+ *
+ * CORS: .env FRONTEND_URL / FRONTEND_URLS (includes/env.php), then config frontend_url / frontend_urls.
  */
 
 // Block direct browser hits to this file (include-only).
@@ -12,6 +14,8 @@ if (isset($_SERVER['SCRIPT_FILENAME'])
     http_response_code(403);
     exit('Forbidden');
 }
+
+require_once __DIR__ . '/includes/env.php';
 
 $secureRoot = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'secure'; // C:\xampp\secure when app is htdocs\barangay_default
 $dbConfigCandidates = [
@@ -39,8 +43,26 @@ if (!is_array($dbConfig)) {
         'user' => getenv('BARANGAY_DB_USER') ?: 'barangay_app',
         'password' => getenv('BARANGAY_DB_PASSWORD') !== false ? (string) getenv('BARANGAY_DB_PASSWORD') : '',
         'name' => getenv('BARANGAY_DB_NAME') ?: 'barangay',
+        'frontend_url' => getenv('FRONTEND_URL') ?: '',
     ];
 }
+
+if (getenv('FRONTEND_URL') === false || getenv('FRONTEND_URL') === '') {
+    $frontendUrl = trim((string) ($dbConfig['frontend_url'] ?? ''));
+    if ($frontendUrl !== '') {
+        putenv('FRONTEND_URL=' . $frontendUrl);
+        $_ENV['FRONTEND_URL'] = $frontendUrl;
+    }
+}
+if (getenv('FRONTEND_URLS') === false || getenv('FRONTEND_URLS') === '') {
+    $frontendUrls = trim((string) ($dbConfig['frontend_urls'] ?? ''));
+    if ($frontendUrls !== '') {
+        putenv('FRONTEND_URLS=' . $frontendUrls);
+        $_ENV['FRONTEND_URLS'] = $frontendUrls;
+    }
+}
+
+require_once __DIR__ . '/includes/cors.php';
 
 if (!defined('DB_HOST')) {
     define('DB_HOST', (string) ($dbConfig['host'] ?? 'localhost'));

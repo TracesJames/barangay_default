@@ -19,10 +19,10 @@ $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
 $childMaxAge = nutrition_child_max_age_years();
 $childAgeLabel = nutrition_children_age_label();
-$guideVersion = '2026.07.24';
+$guideVersion = '2026.08.13b';
 
-if (!$isSuperAdmin && !$isBnsAdmin && !$isCityAdmin && !$isNutritionPortalAdmin) {
-    header('Location: nutritionDashboard.php');
+if (!barangay_user_can_access_nutrition_portal($con, $user_id)) {
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -271,7 +271,7 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
       <div class="meta">
         <p><strong>Document type:</strong> PDF / Word (.doc) / Print Form</p>
         <p><strong>Generated:</strong> <?= htmlspecialchars($generatedAt, ENT_QUOTES, 'UTF-8') ?></p>
-        <p><strong>Audience:</strong> Nutrition Super Admin, City Super Admin, BNS Admin, City Admin, Barangay Nutrition Scholars</p>
+        <p><strong>Audience:</strong> SSA, Nutrition Super Admin (SA), Nutrition Admin (A), CNPC, BNS, City Super Admin, City Admin</p>
       </div>
     </header>
 
@@ -324,41 +324,84 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
       <h2>2. Roles &amp; access</h2>
       <table>
         <thead>
-          <tr><th>Role</th><th>Nutrition Portal</th><th>City of Valencia Portal</th><th>Notes</th></tr>
+          <tr><th>Role</th><th>Staff code</th><th>Nutrition Portal</th><th>City Portal</th><th>Household surveys</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>Nutrition Super Admin</strong><br><span class="path">nutrition.superadmin</span></td>
-            <td>Full city hub</td>
-            <td><strong>No</strong> — blocked</td>
-            <td>Nutrition Hub only. Can manage BNS / BNS Admin accounts.</td>
-          </tr>
-          <tr>
-            <td>City Super Admin</td>
-            <td>Yes (can switch)</td>
+            <td><strong>SSA</strong></td>
+            <td><span class="path">ssa</span></td>
+            <td>Full (both hubs)</td>
             <td>Yes</td>
-            <td>Can open both portals.</td>
+            <td>Add · full edit · delete · name edit</td>
           </tr>
           <tr>
-            <td>BNS Admin</td>
-            <td>Yes (all barangays via picker)</td>
+            <td><strong>Nutrition Super Admin (SA)</strong></td>
+            <td><span class="path">nutrition_super_admin</span></td>
+            <td>Full city hub</td>
+            <td><strong>No</strong></td>
+            <td>Add · full edit · delete · name edit</td>
+          </tr>
+          <tr>
+            <td><strong>Nutrition Admin (A)</strong></td>
+            <td><span class="path">barangay_nutrition_scholar_admin</span></td>
+            <td>Nutrition only</td>
+            <td><strong>No</strong></td>
+            <td><strong>Add · edit · delete</strong></td>
+          </tr>
+          <tr>
+            <td><strong>CNPC</strong></td>
+            <td><span class="path">city_nutrition_program_coordinator</span></td>
+            <td>Assigned barangays</td>
             <td>No</td>
-            <td>City nutrition oversight.</td>
+            <td><strong>Edit · delete</strong> — cannot add</td>
           </tr>
           <tr>
-            <td>City Admin</td>
-            <td>Yes (picker)</td>
-            <td>Yes (picker)</td>
-            <td>No staff-account management.</td>
-          </tr>
-          <tr>
-            <td>BNS / barangay nutrition staff</td>
-            <td>Assigned barangay only</td>
+            <td><strong>BNS</strong></td>
+            <td><span class="path">barangay_nutrition_scholar</span></td>
+            <td>One assigned barangay</td>
             <td>No</td>
-            <td>Household surveys &amp; assessments for one barangay.</td>
+            <td><strong>Add only</strong> — no edit / delete</td>
+          </tr>
+          <tr>
+            <td>Barangay Super Admin (SA)</td>
+            <td><span class="path">super_admin</span></td>
+            <td><strong>No</strong></td>
+            <td>Full (Barangay only)</td>
+            <td>Add · full edit · delete</td>
+          </tr>
+          <tr>
+            <td>Barangay Admin (A)</td>
+            <td><span class="path">admin</span></td>
+            <td><strong>No</strong></td>
+            <td>Full view + add (Barangay only)</td>
+            <td>Add / view — <strong>no edit / delete</strong></td>
           </tr>
         </tbody>
       </table>
+
+      <h3>Household survey actions</h3>
+      <table>
+        <thead><tr><th>Action</th><th>SSA / Nutrition SA</th><th>Nutrition Admin (A)</th><th>CNPC</th><th>BNS</th></tr></thead>
+        <tbody>
+          <tr><td>View / generate reports</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+          <tr><td>Add new survey</td><td>Yes</td><td>Yes</td><td><strong>No</strong></td><td>Yes</td></tr>
+          <tr><td>Edit survey / names</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Delete survey</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Create / manage user accounts</td><td>Yes (SSA global · SA hub-scoped)</td><td><strong>No</strong></td><td><strong>No</strong></td><td><strong>No</strong></td></tr>
+          <tr><td>Settings (officer name)</td><td>Yes</td><td>View only</td><td>Per role</td><td>No</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Account management</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Create / manage staff accounts</th></tr></thead>
+        <tbody>
+          <tr><td><strong>SSA</strong></td><td>Yes — system-wide across all levels, hubs, and portals</td></tr>
+          <tr><td><strong>Super Admin (SA)</strong></td><td>Yes — within assigned hub only (Barangay Hub or Nutrition Portal)</td></tr>
+          <tr><td><strong>Admin (A), CNPC, BNS</strong></td><td><strong>No</strong> — Household Survey data and reports only</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">Nutrition SA may create Nutrition Admin (A), CNPC, and BNS. Nutrition Super Admin accounts are SSA-only. Barangay Hub SA manages Barangay Hub roles only (not Nutrition).</p>
     </section>
 
     <section class="section-break">
@@ -369,7 +412,7 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
           <li>Open <span class="path">login.php</span> (brand: <strong>City of Valencia Portal</strong>).</li>
           <li>Sign in with the correct credentials.</li>
           <li><strong>Nutrition Super Admin</strong> (<span class="path">nutrition.superadmin</span>) lands directly on <strong>Nutrition Portal</strong> city dashboard.</li>
-          <li>City Super Admin: from City of Valencia Super Admin, click <strong>Nutrition Portal / Nutrition Dashboard</strong>.</li>
+          <li><strong>SSA only:</strong> from City of Valencia Super Admin, click <strong>Switch to Nutrition Hub</strong>.</li>
           <li>Confirm the left sidebar shows <strong>Nutrition Portal</strong> (not City of Valencia Portal menus).</li>
         </ol>
       </div>
@@ -388,6 +431,7 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
           <li>Confirm sidebar brand is <strong>Nutrition Portal</strong>.</li>
           <li>Review <strong>City Overview</strong> cards (see table below).</li>
           <li>Use Quick Actions or the barangay table to open a barangay, MELLPI, or print reports.</li>
+          <li><strong>Nutrition Admin (A):</strong> click <strong>Encode Survey</strong> on a barangay row (or <strong>Open</strong> then sidebar → Household Survey). A barangay must be selected before encoding.</li>
           <li>My Profile opens Nutrition Account Profile (stays inside Nutrition Portal).</li>
         </ol>
       </div>
@@ -430,7 +474,7 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
           <tr><td>MELLPI City Profile</td><td>Register MELLPI PRO FORM CM</td></tr>
           <tr><td>Print City Report</td><td>MELLPI + BNP C1–C9 + e-OPT Plus</td></tr>
           <tr><td>User Guide (PDF)</td><td>This printable manual (keep updated when the system changes)</td></tr>
-          <tr><td>Users → BNS / BNS Admin</td><td>Nutrition staff accounts</td></tr>
+          <tr><td>Users → Nutrition SA / Admin (A) / CNPC / BNS</td><td>Nutrition staff accounts (see §2)</td></tr>
           <tr><td>My Profile</td><td>Nutrition Account Profile only</td></tr>
         </tbody>
       </table>
@@ -461,18 +505,20 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
       </div>
       <?php $shot('06-mellpi-city-profile.png', 'Figure 6 — MELLPI City Profile'); ?>
 
-      <h3>4.6 City pregnant families &amp; BNS accounts</h3>
+      <h3>4.6 City pregnant families &amp; nutrition staff accounts</h3>
       <div class="steps-box">
         <strong>Pregnant families</strong>
         <ol>
           <li>Dashboard → <strong>Pregnant Families</strong> / Teenage Pregnant card.</li>
           <li>Print or download the city-wide pregnant families profile (BNP columns A–E, including Teenage).</li>
         </ol>
-        <strong>BNS accounts (Nutrition / City Super Admin)</strong>
+        <strong>Nutrition staff accounts (SSA / Nutrition SA only)</strong>
         <ol>
-          <li>Users → BNS Accounts / BNS Admin Accounts.</li>
-          <li>Create or edit accounts and assign barangays.</li>
-          <li>Nutrition Super Admin may manage BNS roles only (not all city staff roles).</li>
+          <li>Users → <strong>Nutrition Super Admin (SA)</strong> · <strong>Nutrition Admin (A)</strong> · <strong>CNPC Accounts</strong> · <strong>BNS Accounts</strong>.</li>
+          <li>Create or edit accounts; assign barangay(s) for BNS and CNPC.</li>
+          <li>Nutrition SA manages nutrition roles only (not Barangay Hub staff). Nutrition SA peers are SSA-only.</li>
+          <li><strong>Admin (A), CNPC, and BNS cannot create user accounts</strong> — survey data and reports only.</li>
+          <li>Share role limits from §2 with each new account.</li>
         </ol>
       </div>
       <?php $shot('11-pregnant-families-city.png', 'Figure 7 — City pregnant families print'); ?>
@@ -494,15 +540,35 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
       <?php $shot('13-barangay-dashboard.png', 'Figure 9 — Barangay nutrition dashboard'); ?>
       <?php $shot('14-barangay-sidebar.png', 'Figure 10 — Barangay nutrition sidebar'); ?>
 
+      <h3>5.1a Barangay sidebar menu</h3>
+      <table>
+        <thead><tr><th>Section</th><th>Item</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Overview</td><td>Dashboard</td><td>—</td></tr>
+          <tr><td>Data Entry</td><td>Household Survey</td><td>Shown when role can add (hidden for CNPC). Admin A / SA / BNS / SSA</td></tr>
+          <tr><td>Reports</td><td>BNP Reports 2026</td><td>—</td></tr>
+          <tr><td>Reports</td><td>e-OPT Plus Tool</td><td>On-screen + print pack</td></tr>
+          <tr><td>Reports</td><td>MELLPI PRO Form</td><td>Per-barangay profile</td></tr>
+          <tr><td>Reports</td><td>Consolidated Report</td><td>Name edit / full edit per §2</td></tr>
+          <tr><td>Reports</td><td>Families with Pregnant, Nutrition Profiles, Generate Report</td><td>—</td></tr>
+          <tr><td>Help</td><td>User Guide (PDF)</td><td>This manual — <span class="path">nutritionHubGuidePrint.php</span></td></tr>
+          <tr><td>Help</td><td>Process Form (PDF)</td><td>SOP checklist — <span class="path">nutritionProcessFormPrint.php</span></td></tr>
+          <tr><td>Account</td><td>Account Profile</td><td>—</td></tr>
+          <tr><td>Account</td><td>Settings</td><td>Hidden for BNS and Nutrition Admin (A)</td></tr>
+          <tr><td>Switch</td><td>All Barangays, Switch Barangay, City of Valencia Portal, Logout</td><td>Nutrition SA / Admin A / CNPC / SSA: All Barangays + Switch Barangay. City Portal hidden for nutrition-only roles</td></tr>
+        </tbody>
+      </table>
+
       <h3>5.2 Household Survey (primary data entry)</h3>
+      <p><strong>Who can do what:</strong> <strong>Add:</strong> SSA, Nutrition SA, Nutrition Admin (A), BNS. <strong>Edit / delete:</strong> SSA, Nutrition SA, Nutrition Admin (A), CNPC. <strong>CNPC cannot add</strong> new surveys (no Encode Survey / sidebar Household Survey). Full edit via Consolidated Report → green <strong>Edit</strong> or <span class="path">nutritionHouseholdSurvey.php?edit=…</span>.</p>
       <p>Include preschool/school-age children (weight, height, status) and pregnant/lactating flags. Pregnant nutrition status options: Normal, <strong>Teenage</strong>, Underweight, Overweight, Old Age. This data drives BNP, e-OPT, pregnant reports, and MELLPI live fields.</p>
       <div class="steps-box">
-        <strong>Steps</strong>
+        <strong>Steps (add: BNS / SSA / Nutrition SA / Nutrition Admin A · edit: + CNPC)</strong>
         <ol>
-          <li>Sidebar → <strong>Household Survey</strong>.</li>
-          <li>Add a new survey (or edit existing).</li>
+          <li><strong>To add:</strong> Super Dashboard → <strong>Encode Survey</strong> (or sidebar → <strong>Household Survey</strong>). BNS: sidebar → <strong>Household Survey</strong>. CNPC skips add — open Consolidated Report to edit.</li>
+          <li>Add a new survey (or edit existing if you have edit rights).</li>
           <li>Enter household head (or search/prefill resident).</li>
-          <li>Set purok, 4Ps, water/toilet, food security, PRF fields.</li>
+          <li>Set purok (number and/or letters, e.g. 1, 1A, A), 4Ps, water/toilet, food security, PRF fields.</li>
           <li>Add family members: children + pregnant/lactating as needed (mark Teenage when applicable).</li>
           <li>Save and confirm it appears in the list.</li>
         </ol>
@@ -510,7 +576,41 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
       <?php $shot('15-household-survey-list.png', 'Figure 11 — Household survey list'); ?>
       <?php $shot('16-household-survey-form.png', 'Figure 12 — Household survey form'); ?>
 
-      <h3>5.3 New Assessment</h3>
+      <h3>5.3 Consolidated Report (view, edit names, full edit)</h3>
+      <p class="muted">URL: <span class="path">nutritionBarangaySurvey.php</span></p>
+      <div class="steps-box">
+        <ol>
+          <li>Sidebar → <strong>Consolidated Report</strong>.</li>
+          <li>Filter by purok/date if needed.</li>
+          <li><strong>SSA / Nutrition SA / Nutrition Admin (A) / CNPC:</strong> green <strong>Edit</strong> to reopen full survey form, or use name-edit tools; may <strong>delete</strong> surveys.</li>
+          <li><strong>BNS:</strong> view / reports only on this page (no edit / delete).</li>
+          <li>Print or review all household surveys for the barangay.</li>
+        </ol>
+      </div>
+      <?php $shot('20-consolidated-report.png', 'Figure 13 — Consolidated report'); ?>
+
+      <h3>5.4 MELLPI PRO Form (barangay)</h3>
+      <p class="muted">URL: <span class="path">nutritionMellpiBarangayProfile.php</span></p>
+      <div class="steps-box">
+        <ol>
+          <li>Sidebar → <strong>MELLPI PRO Form</strong>.</li>
+          <li>Complete barangay MELLPI profile sections and save.</li>
+          <li>Use with BNP and e-OPT barangay reporting.</li>
+        </ol>
+      </div>
+
+      <h3>5.5 e-OPT Plus Tool</h3>
+      <p class="muted">On-screen: <span class="path">nutritionBnpReport.php?type=eopt</span> · Print: <span class="path">nutritionEoptPrint.php</span></p>
+      <div class="steps-box">
+        <ol>
+          <li>Sidebar → <strong>e-OPT Plus Tool</strong>.</li>
+          <li>Review Nut_StatusTool, Form 1A/1B summaries, at-risk lists, monitoring tables.</li>
+          <li>Open <span class="path">nutritionEoptPrint.php</span> for the full barangay print pack.</li>
+          <li><strong>Form 1B</strong> prints on <strong>A4 landscape</strong> (age bands, 0–59 Prev, F1K, IP children).</li>
+        </ol>
+      </div>
+
+      <h3>5.6 New Assessment</h3>
       <p>Child assessments are for residents aged <strong>0–<?= (int) $childMaxAge ?></strong> years (Nutrition Portal only).</p>
       <div class="steps-box">
         <ol>
@@ -519,18 +619,18 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
           <li>Verify under Nutrition Profiles / At-Risk filters.</li>
         </ol>
       </div>
-      <?php $shot('17-new-assessment.png', 'Figure 13 — New assessment'); ?>
+      <?php $shot('17-new-assessment.png', 'Figure 14 — New assessment'); ?>
 
-      <h3>5.4 Consolidated, pregnant, profiles, settings</h3>
+      <h3>5.7 Reports, profiles, settings</h3>
       <div class="steps-box">
         <ol>
-          <li><strong>Consolidated Report</strong> — filter/print all household surveys.</li>
           <li><strong>Families with Pregnant</strong> — barangay C7-style report (includes Teenage column B); Print / Download PDF.</li>
           <li><strong>Nutrition Profiles</strong> — browse by status.</li>
-          <li><strong>Settings</strong> — officer/BNS name; <strong>Account Profile</strong> — nutrition user details.</li>
+          <li><strong>Settings</strong> — officer/BNS name (hidden for BNS and Nutrition Admin A).</li>
+          <li><strong>Account Profile</strong> — nutrition user details.</li>
+          <li><strong>Process Form (PDF)</strong> — SOP checklist under Help.</li>
         </ol>
       </div>
-      <?php $shot('20-consolidated-report.png', 'Figure 14 — Consolidated report'); ?>
       <?php $shot('21-pregnant-families-brgy.png', 'Figure 15 — Barangay pregnant families'); ?>
       <?php $shot('22-nutrition-profiles.png', 'Figure 16 — Nutrition profiles'); ?>
       <?php $shot('23-settings.png', 'Figure 17 — Settings'); ?>
@@ -565,6 +665,7 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
         </tbody>
       </table>
       <p class="muted">Barangay signatories: BNS (prepared), Midwife (checked), Punong Barangay (noted). City: City Nutrition Head and City Mayor / CNC Chairperson.</p>
+      <p class="muted"><strong>C1 — Total Actual Population</strong> comes from <strong>registered household surveys</strong> (household member counts), not residence-status alone. Complete household surveys so C1 reflects true household size.</p>
     </section>
 
     <section class="section-break">
@@ -574,9 +675,11 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
         <ol>
           <li>Hub → <strong>Print City Report</strong>.</li>
           <li>Review sections in order: Cover → MELLPI → BNP C1–C9 → e-OPT Plus → city signatures.</li>
+          <li>Most sections are A4 portrait; <strong>e-OPT Form 1B uses A4 landscape</strong> — use browser Print for best results.</li>
           <li>Use browser Print or <strong>Download PDF</strong> / <span class="path">?download=1</span>.</li>
         </ol>
       </div>
+      <p class="muted">e-OPT measured preschooler counts (0–59 months with OPT data) may differ from BNP C1 total household population.</p>
       <?php $shot('07-city-print-report-cover.png', 'Figure 20 — City report cover'); ?>
       <?php $shot('08-city-print-mellpi.png', 'Figure 21 — City report MELLPI'); ?>
       <?php $shot('09-city-print-bnp.png', 'Figure 22 — City report BNP'); ?>
@@ -588,11 +691,12 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
       <div class="steps-box">
         <strong>Recommended order</strong>
         <ol>
-          <li>Create BNS / BNS Admin accounts (Nutrition or City Super Admin).</li>
-          <li>Per barangay: encode household surveys with children and pregnant/lactating data (including Teenage when applicable).</li>
+          <li>Create nutrition staff: BNS, CNPC, Nutrition Admin (A) as needed (SSA / Nutrition SA).</li>
+          <li>Per barangay: encode household surveys (BNS / Nutrition Admin A / SA) with children and pregnant/lactating data.</li>
+          <li>Complete <strong>MELLPI PRO Form</strong> per barangay and <strong>MELLPI City Profile</strong>.</li>
           <li>Assess children aged 0–<?= (int) $childMaxAge ?> as needed.</li>
-          <li>Review barangay BNP C1–C9 and pregnant reports.</li>
-          <li>Complete or refresh <strong>MELLPI City Profile</strong>.</li>
+          <li>Review BNP C1–C9, e-OPT Plus, and pregnant reports.</li>
+          <li>CNPC / Nutrition Admin (A) / SA: edit or delete surveys on Consolidated Report as needed. BNS: add-only (no edit/delete).</li>
           <li>Print <strong>City Report</strong> (MELLPI + BNP + e-OPT) for CNC / NNC.</li>
         </ol>
       </div>
@@ -614,7 +718,14 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
           <tr><td>Barangay nutrition dashboard</td><td>nutritionDashboard.php</td></tr>
           <tr><td>Household survey</td><td>nutritionHouseholdSurvey.php</td></tr>
           <tr><td>New assessment (0–<?= (int) $childMaxAge ?>)</td><td>nutritionAssess.php</td></tr>
-          <tr><td>BNP reports</td><td>nutritionBnpReport.php</td></tr>
+          <tr><td>Consolidated report</td><td>nutritionBarangaySurvey.php</td></tr>
+          <tr><td>MELLPI barangay</td><td>nutritionMellpiBarangayProfile.php</td></tr>
+          <tr><td>e-OPT on-screen</td><td>nutritionBnpReport.php?type=eopt</td></tr>
+          <tr><td>e-OPT print (barangay)</td><td>nutritionEoptPrint.php</td></tr>
+          <tr><td>Process Form (PDF)</td><td>nutritionProcessFormPrint.php</td></tr>
+          <tr><td>Pregnant (barangay)</td><td>nutritionBnpReport.php?type=pregnant</td></tr>
+          <tr><td>Profiles</td><td>nutritionProfiles.php</td></tr>
+          <tr><td>Settings</td><td>nutritionSettings.php</td></tr>
           <tr><td>Markdown source</td><td>../docs/NUTRITION_HUB.md</td></tr>
         </tbody>
       </table>
@@ -647,11 +758,20 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
         <tbody>
           <tr><td>Portal branding (City of Valencia Portal / Nutrition Portal)</td><td>§1, §3, cover, screenshots 01–05</td></tr>
           <tr><td>Nutrition Super Admin (nutrition-only access)</td><td>§2, §3, §4.1</td></tr>
-          <tr><td>Children age 0–<?= (int) $childMaxAge ?> (nutrition only)</td><td>§4.2, §5.1, §5.3, §8</td></tr>
+          <tr><td>Nutrition Admin (A) — add · edit · delete surveys</td><td>§2, §4.1, §5.2–5.3, §8</td></tr>
+          <tr><td>Nutrition Admin (A) Super Dashboard → Encode Survey</td><td>§4.1, §5.2</td></tr>
+          <tr><td>CNPC — edit · delete only (no add)</td><td>§2, §5.2–5.3, §8</td></tr>
+          <tr><td>BNS — add only (no edit / delete)</td><td>§2, §5.2–5.3, §8</td></tr>
+          <tr><td>CNPC role + assigned barangays</td><td>§2, §4.6, §5</td></tr>
+          <tr><td>Children age 0–<?= (int) $childMaxAge ?> (nutrition only)</td><td>§4.2, §5.1, §5.6, §8</td></tr>
           <tr><td>Pregnant &amp; Teenage Pregnant city cards</td><td>§4.2, §4.6, §5.1</td></tr>
           <tr><td>At-Risk assessment categories</td><td>§4.3</td></tr>
           <tr><td>Nutrition barangay picker filters / coverage</td><td>§4.4, screenshot 05</td></tr>
           <tr><td>Account Profile inside Nutrition Portal</td><td>§1, §4.1, URL reference</td></tr>
+          <tr><td>MELLPI barangay + e-OPT sidebar items</td><td>§5.4–5.5, URLs</td></tr>
+          <tr><td>Full household survey edit (SSA / Nutrition SA)</td><td>§2, §5.2–5.3</td></tr>
+          <tr><td>BNP C1 actual population from surveys</td><td>§6</td></tr>
+          <tr><td>e-OPT Form 1B landscape + Nut_StatusTool columns</td><td>§5.5, §7, screenshots 07–10</td></tr>
           <tr><td>BNP / MELLPI / e-OPT print layout</td><td>§6, §7, screenshots 07–10, 18–19</td></tr>
         </tbody>
       </table>

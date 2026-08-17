@@ -379,7 +379,7 @@ if (!function_exists('rice_distribution_import_workbook')) {
         }
 
         if (!$infoStmt || !$statusStmt || !$userStmt) {
-            throw RuntimeException('Could not prepare import statements: ' . $con->error);
+            throw new RuntimeException('Could not prepare import statements: ' . $con->error);
         }
 
         $con->autocommit(false);

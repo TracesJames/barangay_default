@@ -23,6 +23,8 @@
     }
 
     global.jQuery.ajaxPrefilter(function (options) {
+      options.xhrFields = options.xhrFields || {};
+      options.xhrFields.withCredentials = true;
       if (!options.type || options.type.toUpperCase() !== 'POST') {
         return;
       }

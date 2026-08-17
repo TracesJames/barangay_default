@@ -7,6 +7,13 @@ require_once '../includes/nutrition_context.php';
 header('Content-Type: application/json; charset=utf-8');
 nutrition_ensure_module_tables($con);
 
+$userId = (string) ($_SESSION['user_id'] ?? '');
+if (!nutrition_user_can_save_settings($con, $userId)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'You do not have permission to change nutrition settings.']);
+    exit;
+}
+
 $barangayId = (string) ($barangay_id ?? '');
 if ($barangayId === '') {
     http_response_code(400);

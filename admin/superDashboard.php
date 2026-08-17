@@ -133,42 +133,42 @@ $brandLogo = barangay_default_logo_url('../');
           </div>
           <div class="dashboard-stat dashboard-stat--population">
             <i class="fas fa-users dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['population']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['population'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Total Population</div>
           </div>
           <div class="dashboard-stat dashboard-stat--voters">
             <i class="fas fa-user-check dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['voters']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['voters'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Registered Voters</div>
           </div>
           <div class="dashboard-stat dashboard-stat--senior">
             <i class="fas fa-blind dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['senior']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['senior'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Senior Citizens</div>
           </div>
           <div class="dashboard-stat dashboard-stat--children">
             <i class="fas fa-child dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['children']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['children'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Children (0–17)</div>
           </div>
           <div class="dashboard-stat dashboard-stat--pwd">
             <i class="fas fa-wheelchair dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['pwd']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['pwd'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">PWD</div>
           </div>
           <div class="dashboard-stat dashboard-stat--single">
             <i class="fas fa-user-tie dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($totalOfficials) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) $totalOfficials) ?></div>
             <div class="dashboard-stat-label">Officials</div>
           </div>
           <div class="dashboard-stat dashboard-stat--ip">
             <i class="fas fa-feather-alt dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['indigenous']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['indigenous'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Indigenous People</div>
           </div>
           <div class="dashboard-stat dashboard-stat--blotter">
             <i class="fas fa-book dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($hubTotals['blotter']) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['blotter'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Blotter Records</div>
           </div>
         </div>

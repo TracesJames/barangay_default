@@ -323,6 +323,7 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
         $.ajax({
           url: 'loginForm.php',
           type: 'POST',
+          xhrFields: { withCredentials: true },
           data: $(this).serialize(),
           success:function(data){
               data = (data || '').toString().trim();

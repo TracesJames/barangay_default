@@ -10,10 +10,10 @@ require_once '../includes/datatables_helper.php';
 
 try{
 
-    $var_date_request = $con->real_escape_string($_REQUEST['date_request']);
-    $var_date_issued = $con->real_escape_string($_REQUEST['date_issued']);
-    $var_date_expired = $con->real_escape_string($_REQUEST['date_expired']);
-    $var_status = $con->real_escape_string($_REQUEST['status']);
+    $var_date_request = $con->real_escape_string((string) ($_REQUEST['date_request'] ?? ''));
+    $var_date_issued = $con->real_escape_string((string) ($_REQUEST['date_issued'] ?? ''));
+    $var_date_expired = $con->real_escape_string((string) ($_REQUEST['date_expired'] ?? ''));
+    $var_status = $con->real_escape_string((string) ($_REQUEST['status'] ?? ''));
   
 
     $whereClause = barangay_certificates_where_clause($con, ['1=1']);
@@ -120,7 +120,7 @@ while($row_residency = $query_residency->fetch_assoc()){
 
 
 $json_residency = [
-  'draw' => intval($_REQUEST['draw']),
+  'draw' => intval($_REQUEST['draw'] ?? 0),
   'recordsTotal' => intval($totalData),
   'recordsFiltered' => intval($totalData),
   'data' => $data,
