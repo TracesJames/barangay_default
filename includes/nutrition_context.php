@@ -702,6 +702,211 @@ if (!function_exists('nutrition_growth_result_badge_class')) {
     }
 }
 
+if (!function_exists('nutrition_member_age_years')) {
+    function nutrition_member_age_years(?int $ageMonths, ?string $birthDate, ?string $referenceDate = null): ?int
+    {
+        $birthYmd = nutrition_normalize_date_to_ymd($birthDate);
+        if ($birthYmd !== null) {
+            $referenceYmd = nutrition_normalize_date_to_ymd($referenceDate ?? date('Y-m-d')) ?? date('Y-m-d');
+            try {
+                $birth = new DateTime($birthYmd);
+                $reference = new DateTime($referenceYmd);
+            } catch (Exception $e) {
+                return null;
+            }
+            if ($birth > $reference) {
+                return null;
+            }
+
+            return $birth->diff($reference)->y;
+        }
+
+        if ($ageMonths !== null && $ageMonths >= 0) {
+            return intdiv($ageMonths, 12);
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('nutrition_member_is_child_0_to_19')) {
+    function nutrition_member_is_child_0_to_19(?int $ageMonths, ?string $birthDate, ?string $referenceDate = null): bool
+    {
+        $ageYears = nutrition_member_age_years($ageMonths, $birthDate, $referenceDate);
+
+        return $ageYears !== null && $ageYears <= nutrition_child_max_age_years();
+    }
+}
+
+if (!function_exists('nutrition_survey_growth_label_to_status')) {
+    function nutrition_survey_growth_label_to_status(string $label): ?string
+    {
+        $label = strtolower(trim($label));
+        if ($label === '' || $label === '—' || $label === '-') {
+            return null;
+        }
+
+        return match (true) {
+            in_array($label, ['normal', 'n'], true) => 'normal',
+            in_array($label, ['underweight', 'uw', 'muw'], true) => 'underweight',
+            in_array($label, ['severely underweight', 'suw'], true) => 'underweight',
+            in_array($label, ['wasted', 'mw'], true) => 'wasted',
+            in_array($label, ['severely wasted', 'sev wasted', 'sw'], true) => 'severely_wasted',
+            in_array($label, ['stunted', 'st', 'mst'], true) => 'stunted',
+            in_array($label, ['severely stunted', 'sst'], true) => 'stunted',
+            in_array($label, ['overweight', 'ow'], true) => 'overweight',
+            in_array($label, ['obese', 'ob'], true) => 'obese',
+            default => null,
+        };
+    }
+}
+
+if (!function_exists('nutrition_survey_member_is_assessed')) {
+    function nutrition_survey_member_is_assessed(array $member): bool
+    {
+        $weight = $member['weight_kg'] ?? null;
+        $height = $member['height_cm'] ?? null;
+        $muac = $member['muac_cm'] ?? null;
+
+        if ($weight !== null && $weight !== '' && (float) $weight > 0) {
+            return true;
+        }
+        if ($height !== null && $height !== '' && (float) $height > 0) {
+            return true;
+        }
+        if ($muac !== null && $muac !== '' && (float) $muac > 0) {
+            return true;
+        }
+
+        foreach (['weight_for_age', 'height_for_age', 'weight_for_height', 'muac_status'] as $field) {
+            if (trim((string) ($member[$field] ?? '')) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('nutrition_survey_member_dashboard_status')) {
+    function nutrition_survey_member_dashboard_status(array $member): ?string
+    {
+        $statuses = [];
+        foreach (['weight_for_age', 'height_for_age', 'weight_for_height'] as $field) {
+            $status = nutrition_survey_growth_label_to_status((string) ($member[$field] ?? ''));
+            if ($status !== null) {
+                $statuses[] = $status;
+            }
+        }
+
+        if ($statuses === []) {
+            return null;
+        }
+
+        foreach ($statuses as $status) {
+            if ($status !== 'normal') {
+                return $status;
+            }
+        }
+
+        return 'normal';
+    }
+}
+
+if (!function_exists('nutrition_survey_children_totals')) {
+    /**
+     * Dashboard totals for children recorded in household surveys.
+     *
+     * @return array{
+     *   children:int,
+     *   assessed:int,
+     *   pending:int,
+     *   normal:int,
+     *   underweight:int,
+     *   wasted:int,
+     *   severely_wasted:int,
+     *   stunted:int,
+     *   overweight:int,
+     *   obese:int,
+     *   this_month:int
+     * }
+     */
+    function nutrition_survey_children_totals(mysqli $con, ?string $barangayId = null): array
+    {
+        $totals = [
+            'children' => 0,
+            'assessed' => 0,
+            'pending' => 0,
+            'normal' => 0,
+            'underweight' => 0,
+            'wasted' => 0,
+            'severely_wasted' => 0,
+            'stunted' => 0,
+            'overweight' => 0,
+            'obese' => 0,
+            'this_month' => 0,
+        ];
+
+        if (!barangay_table_exists($con, 'nutrition_household_family_member')
+            || !barangay_table_exists($con, 'nutrition_household_survey')) {
+            return $totals;
+        }
+
+        $sql = 'SELECT m.*, s.survey_date
+            FROM nutrition_household_family_member m
+            INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id';
+        if ($barangayId !== null && $barangayId !== '') {
+            $sql .= " WHERE m.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
+        }
+
+        $result = $con->query($sql);
+        if (!$result) {
+            return $totals;
+        }
+
+        $monthStart = date('Y-m-01');
+        while ($member = $result->fetch_assoc()) {
+            $ageMonths = isset($member['age_months']) && $member['age_months'] !== null && $member['age_months'] !== ''
+                ? (int) $member['age_months']
+                : null;
+            if ($ageMonths === null) {
+                $ageMonths = nutrition_age_in_months(
+                    trim((string) ($member['birth_date'] ?? '')) !== '' ? (string) $member['birth_date'] : null
+                );
+            }
+
+            if (!nutrition_member_is_child_0_to_19($ageMonths, (string) ($member['birth_date'] ?? ''))) {
+                continue;
+            }
+
+            $totals['children']++;
+
+            if (!nutrition_survey_member_is_assessed($member)) {
+                continue;
+            }
+
+            $totals['assessed']++;
+            $status = nutrition_survey_member_dashboard_status($member);
+            if ($status !== null && isset($totals[$status])) {
+                $totals[$status]++;
+            }
+
+            $measuredOn = trim((string) ($member['date_measured'] ?? ''));
+            if ($measuredOn === '') {
+                $measuredOn = trim((string) ($member['survey_date'] ?? ''));
+            }
+            $measuredYmd = nutrition_normalize_date_to_ymd($measuredOn);
+            if ($measuredYmd !== null && $measuredYmd >= $monthStart) {
+                $totals['this_month']++;
+            }
+        }
+
+        $totals['pending'] = max(0, $totals['children'] - $totals['assessed']);
+
+        return $totals;
+    }
+}
+
 if (!function_exists('nutrition_children_where')) {
     /**
      * @return array<int, string>
@@ -813,7 +1018,16 @@ if (!function_exists('nutrition_scoped_totals')) {
             'teenage_pregnant' => 0,
         ];
 
+        $surveyTotals = nutrition_survey_children_totals($con, $barangayId);
+        foreach (['children', 'assessed', 'this_month', 'normal', 'underweight', 'wasted', 'severely_wasted', 'stunted', 'overweight', 'obese'] as $key) {
+            $defaults[$key] += (int) ($surveyTotals[$key] ?? 0);
+        }
+
         if (!nutrition_table_exists($con) || !barangay_column_exists($con, 'residence_status', 'barangay_id')) {
+            $defaults['pending'] = max(0, $defaults['children'] - $defaults['assessed']);
+            $defaults['teenage_pregnant'] = nutrition_teenage_pregnant_count($con, $barangayId);
+            $defaults['pregnant'] = nutrition_pregnant_count($con, $barangayId);
+
             return $defaults;
         }
 
@@ -824,7 +1038,7 @@ if (!function_exists('nutrition_scoped_totals')) {
             INNER JOIN residence_status rs ON ri.residence_id = rs.residence_id'
             . barangay_sql_where($childWhere);
         $childResult = $con->query($childSql);
-        $defaults['children'] = (int) ($childResult ? $childResult->fetch_assoc()['total'] ?? 0 : 0);
+        $defaults['children'] += (int) ($childResult ? $childResult->fetch_assoc()['total'] ?? 0 : 0);
 
         $latestSql = "SELECT na.residence_id, na.nutritional_status, na.assessment_date
             FROM nutrition_assessment na
@@ -860,7 +1074,7 @@ if (!function_exists('nutrition_scoped_totals')) {
         if ($monthStmt) {
             $monthStmt->bind_param('s', $barangayId);
             $monthStmt->execute();
-            $defaults['this_month'] = (int) ($monthStmt->get_result()->fetch_assoc()['total'] ?? 0);
+            $defaults['this_month'] += (int) ($monthStmt->get_result()->fetch_assoc()['total'] ?? 0);
             $monthStmt->close();
         }
 
@@ -889,7 +1103,23 @@ if (!function_exists('nutrition_hub_totals')) {
             'teenage_pregnant' => 0,
         ];
 
+        $surveyTotals = nutrition_survey_children_totals($con);
+        $totals['children'] = (int) ($surveyTotals['children'] ?? 0);
+        $totals['assessed'] = (int) ($surveyTotals['assessed'] ?? 0);
+        $totals['this_month'] = (int) ($surveyTotals['this_month'] ?? 0);
+        $surveyAtRisk = (int) ($surveyTotals['underweight'] ?? 0)
+            + (int) ($surveyTotals['wasted'] ?? 0)
+            + (int) ($surveyTotals['severely_wasted'] ?? 0)
+            + (int) ($surveyTotals['stunted'] ?? 0)
+            + (int) ($surveyTotals['overweight'] ?? 0)
+            + (int) ($surveyTotals['obese'] ?? 0);
+        $totals['at_risk'] = $surveyAtRisk;
+
         if (!nutrition_table_exists($con) || !barangay_column_exists($con, 'residence_status', 'barangay_id')) {
+            $totals['pending'] = max(0, $totals['children'] - $totals['assessed']);
+            $totals['pregnant'] = nutrition_pregnant_count($con);
+            $totals['teenage_pregnant'] = nutrition_teenage_pregnant_count($con);
+
             return $totals;
         }
 
@@ -899,7 +1129,7 @@ if (!function_exists('nutrition_hub_totals')) {
             INNER JOIN residence_status rs ON ri.residence_id = rs.residence_id'
             . barangay_sql_where($childWhere);
         $childResult = $con->query($childSql);
-        $totals['children'] = (int) ($childResult ? $childResult->fetch_assoc()['total'] ?? 0 : 0);
+        $totals['children'] += (int) ($childResult ? $childResult->fetch_assoc()['total'] ?? 0 : 0);
 
         $latestSql = "SELECT COUNT(*) AS total,
             SUM(CASE WHEN nutritional_status != 'normal' THEN 1 ELSE 0 END) AS at_risk
@@ -912,8 +1142,8 @@ if (!function_exists('nutrition_hub_totals')) {
         $latestResult = $con->query($latestSql);
         if ($latestResult) {
             $row = $latestResult->fetch_assoc() ?: [];
-            $totals['assessed'] = (int) ($row['total'] ?? 0);
-            $totals['at_risk'] = (int) ($row['at_risk'] ?? 0);
+            $totals['assessed'] += (int) ($row['total'] ?? 0);
+            $totals['at_risk'] += (int) ($row['at_risk'] ?? 0);
         }
 
         $totals['pending'] = max(0, $totals['children'] - $totals['assessed']);
@@ -922,7 +1152,7 @@ if (!function_exists('nutrition_hub_totals')) {
             "SELECT COUNT(*) AS total FROM nutrition_assessment
              WHERE assessment_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')"
         );
-        $totals['this_month'] = (int) ($monthResult ? $monthResult->fetch_assoc()['total'] ?? 0 : 0);
+        $totals['this_month'] += (int) ($monthResult ? $monthResult->fetch_assoc()['total'] ?? 0 : 0);
         $totals['pregnant'] = nutrition_pregnant_count($con);
         $totals['teenage_pregnant'] = nutrition_teenage_pregnant_count($con);
 
@@ -969,6 +1199,11 @@ if (!function_exists('nutrition_hub_status_totals')) {
             if (isset($totals[$status])) {
                 $totals[$status]++;
             }
+        }
+
+        $surveyTotals = nutrition_survey_children_totals($con);
+        foreach (['normal', 'underweight', 'wasted', 'severely_wasted', 'stunted', 'overweight', 'obese'] as $key) {
+            $totals[$key] += (int) ($surveyTotals[$key] ?? 0);
         }
 
         return $totals;

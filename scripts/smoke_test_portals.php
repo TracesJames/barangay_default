@@ -82,6 +82,8 @@ assert_true('Purok input from PUROK 1A is 1A', nutrition_purok_input_from_label(
 $hub = nutrition_hub_totals($con);
 assert_true('Hub totals return children', isset($hub['children']));
 assert_true('Hub totals return assessed', isset($hub['assessed']));
+assert_true('Hub totals reflect household survey children', (int) ($hub['children'] ?? 0) >= 3, (string) ($hub['children'] ?? 0));
+assert_true('Hub totals reflect household survey assessments', (int) ($hub['assessed'] ?? 0) >= 3, (string) ($hub['assessed'] ?? 0));
 assert_true('Hub totals return pregnant', isset($hub['pregnant']));
 assert_true('Hub totals return teenage_pregnant', isset($hub['teenage_pregnant']));
 
