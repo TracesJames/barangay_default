@@ -177,7 +177,13 @@ $open = open_barangay($barangayId, $csrf, 'barangay');
 echo "ssa_open=$open\n";
 $fail += check('brgy', 'admin/dashboard.php');
 $fail += check('brgy', 'admin/allResidence.php');
+$fail += check('brgy', 'admin/newResidence.php');
+$fail += check('brgy', 'admin/allOfficial.php');
+$fail += check('brgy', 'admin/newOfficial.php');
+$fail += check('brgy', 'admin/blotterRecord.php');
 $fail += check('brgy', 'admin/certificateTable.php');
+$fail += check('brgy', 'admin/position.php');
+$fail += check('brgy', 'admin/myProfile.php');
 
 echo "=== Secretary ===\n";
 $L = login('secretary123', $pw, 'barangay');
