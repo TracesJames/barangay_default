@@ -1,6 +1,10 @@
 # Harden webroot: block dumps, scripts, backups, and directory listing.
 Options -Indexes
 
+<Files "connection.php">
+  Require all denied
+</Files>
+
 <FilesMatch "(?i)\.(sql|bak|env|ini|log|md)$">
   Require all denied
 </FilesMatch>
@@ -8,3 +12,9 @@ Options -Indexes
 <FilesMatch "(?i)^(composer\.(json|lock)|package(-lock)?\.json|\.gitignore|\.gitattributes)$">
   Require all denied
 </FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

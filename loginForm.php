@@ -1,6 +1,7 @@
 <?php
 include_once 'connection.php';
 require_once 'includes/helpers.php';
+require_once 'includes/security.php';
 barangay_start_session();
 include_once 'userInfo.php';
 require_once 'includes/csrf.php';
@@ -10,21 +11,24 @@ require_once 'includes/session_guard.php';
 csrf_verify();
 
 try{
-  $username = $con->real_escape_string($_POST['username']);
-$password = $con->real_escape_string(($_POST['password']));
-$forceLogin = ((string) ($_POST['force_login'] ?? '')) === '1';
+  $username = trim((string) ($_POST['username'] ?? ''));
+  $password = (string) ($_POST['password'] ?? '');
+  $forceLogin = ((string) ($_POST['force_login'] ?? '')) === '1';
 
+  $rateLimited = barangay_login_rate_limit_check($username);
+  if ($rateLimited !== null) {
+      exit($rateLimited);
+  }
 
+  $hasBarangayId = function_exists('barangay_column_exists')
+    ? barangay_column_exists($con, 'users', 'barangay_id')
+    : false;
 
-$hasBarangayId = function_exists('barangay_column_exists')
-  ? barangay_column_exists($con, 'users', 'barangay_id')
-  : false;
-
-$sql = "SELECT `id`,`username`, `password`, `user_type`, `first_name`, `middle_name`, `last_name`"
-  . ($hasBarangayId ? ", `barangay_id`" : "")
-  . " FROM `users` WHERE (username = ? OR id = ?)";
-$stmt = $con->prepare($sql) or die ($con->error);
-$stmt->bind_param('ss',$username,$username);
+  $sql = "SELECT `id`,`username`, `password`, `user_type`, `first_name`, `middle_name`, `last_name`"
+    . ($hasBarangayId ? ", `barangay_id`" : "")
+    . " FROM `users` WHERE (username = ? OR id = ?)";
+  $stmt = $con->prepare($sql) or die ($con->error);
+  $stmt->bind_param('ss', $username, $username);
 $stmt->execute();
 $result = $stmt->get_result();
 $row = $result->fetch_assoc();
@@ -57,6 +61,7 @@ if($count > 0){
       $_SESSION['user_id'] = $user_id;
       $_SESSION['username'] = $checkUsername;
       $_SESSION['user_type'] = $user_type;
+      barangay_login_rate_limit_success($username);
       barangay_session_guard_issue($con, (string) $user_id);
 
       date_default_timezone_set('Asia/Manila');
@@ -188,12 +193,14 @@ if($count > 0){
         
     }else{
 
+      barangay_login_rate_limit_fail($username);
       exit('errorPassword');
 
     }
 
 }else{
 
+  barangay_login_rate_limit_fail($username);
   exit('errorUsername');
 
 }

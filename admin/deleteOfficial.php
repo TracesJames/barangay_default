@@ -23,7 +23,10 @@ try{
     $result = $stmt->get_result();
 
     $row = $result->fetch_assoc();
-
+    if (!$row) {
+        http_response_code(404);
+        exit('Official not found');
+    }
 
     $official_id_end = $row['official_id'];
     $first_name = $row['first_name'];

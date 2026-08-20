@@ -4,10 +4,8 @@ include_once '../includes/auth_admin.php';
 
 barangay_require_post();
 require_once '../includes/barangay_context.php';
-require_once '../includes/csrf.php';
 
 header('Content-Type: application/json; charset=utf-8');
-csrf_verify();
 
 if (!barangay_user_is_super_admin($con, (string) $_SESSION['user_id'])) {
     http_response_code(403);

@@ -1033,12 +1033,10 @@ if (!function_exists('nutrition_scoped_totals')) {
 
         $childWhere = nutrition_children_where($con);
         $childWhere[] = "rs.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
-        $childSql = 'SELECT COUNT(*) AS total
-            FROM residence_information ri
-            INNER JOIN residence_status rs ON ri.residence_id = rs.residence_id'
-            . barangay_sql_where($childWhere);
-        $childResult = $con->query($childSql);
-        $defaults['children'] += (int) ($childResult ? $childResult->fetch_assoc()['total'] ?? 0 : 0);
+        if (!function_exists('nutrition_count_residence_children_excluding_survey_duplicates')) {
+            require_once __DIR__ . '/nutrition_residence_sync.php';
+        }
+        $defaults['children'] += nutrition_count_residence_children_excluding_survey_duplicates($con, $barangayId);
 
         $latestSql = "SELECT na.residence_id, na.nutritional_status, na.assessment_date
             FROM nutrition_assessment na
@@ -1124,12 +1122,10 @@ if (!function_exists('nutrition_hub_totals')) {
         }
 
         $childWhere = nutrition_children_where($con);
-        $childSql = 'SELECT COUNT(*) AS total
-            FROM residence_information ri
-            INNER JOIN residence_status rs ON ri.residence_id = rs.residence_id'
-            . barangay_sql_where($childWhere);
-        $childResult = $con->query($childSql);
-        $totals['children'] += (int) ($childResult ? $childResult->fetch_assoc()['total'] ?? 0 : 0);
+        if (!function_exists('nutrition_count_residence_children_excluding_survey_duplicates')) {
+            require_once __DIR__ . '/nutrition_residence_sync.php';
+        }
+        $totals['children'] += nutrition_count_residence_children_excluding_survey_duplicates($con);
 
         $latestSql = "SELECT COUNT(*) AS total,
             SUM(CASE WHEN nutritional_status != 'normal' THEN 1 ELSE 0 END) AS at_risk

@@ -3,6 +3,7 @@
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 require_once '../includes/nutrition_context.php';
+require_once '../includes/nutrition_residence_sync.php';
 
 header('Content-Type: application/json; charset=utf-8');
 nutrition_ensure_module_tables($con);
@@ -410,9 +411,29 @@ $stmt->close();
 
 nutrition_save_household_family_members($con, $surveyId, $barangayId, $familyMembers);
 
-echo json_encode([
+$autoLinked = false;
+if ($linkedResidenceId === '') {
+    $autoLink = nutrition_auto_link_survey_by_head($con, $surveyId, $barangayId, $userId);
+    if ($autoLink['ok'] && !empty($autoLink['matched']) && !empty($autoLink['residence_id'])) {
+        $linkedResidenceId = (string) $autoLink['residence_id'];
+        $autoLinked = true;
+    }
+} elseif ($linkedResidenceId !== '') {
+    nutrition_sync_survey_children_to_dependents($con, $surveyId, $linkedResidenceId, $barangayId);
+}
+
+$response = [
     'ok' => true,
     'survey_id' => $surveyId,
     'house_hold_id' => $houseHoldId,
     'message' => 'Household survey saved.',
-]);
+];
+if ($linkedResidenceId !== '') {
+    $response['residence_id'] = $linkedResidenceId;
+}
+if ($autoLinked) {
+    $response['auto_linked'] = true;
+    $response['message'] = 'Household survey saved and linked to matching resident.';
+}
+
+echo json_encode($response);

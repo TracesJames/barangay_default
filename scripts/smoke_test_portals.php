@@ -9,6 +9,7 @@ require_once dirname(__DIR__) . '/connection.php';
 require_once dirname(__DIR__) . '/includes/barangay_context.php';
 require_once dirname(__DIR__) . '/includes/staff_permissions.php';
 require_once dirname(__DIR__) . '/includes/nutrition_context.php';
+require_once dirname(__DIR__) . '/includes/nutrition_residence_sync.php';
 
 $failed = 0;
 $passed = 0;
@@ -86,6 +87,14 @@ assert_true('Hub totals reflect household survey children', (int) ($hub['childre
 assert_true('Hub totals reflect household survey assessments', (int) ($hub['assessed'] ?? 0) >= 3, (string) ($hub['assessed'] ?? 0));
 assert_true('Hub totals return pregnant', isset($hub['pregnant']));
 assert_true('Hub totals return teenage_pregnant', isset($hub['teenage_pregnant']));
+
+assert_true('nutrition_residence_sync helpers load', function_exists('nutrition_person_match_key'));
+assert_true('nutrition_person_match_key stable', nutrition_person_match_key(' Juan ', 'M', 'Dela Cruz', '', '2010-05-01') === nutrition_person_match_key('juan', 'm', 'dela cruz', '', '2010-05-01'));
+$unlinked = nutrition_list_unlinked_surveys($con, null, 5);
+assert_true('nutrition_list_unlinked_surveys returns array', is_array($unlinked));
+$surveyKeys = nutrition_survey_child_person_keys($con);
+assert_true('nutrition_survey_child_person_keys returns array', is_array($surveyKeys));
+assert_true('Residence dedupe count is non-negative', nutrition_count_residence_children_excluding_survey_duplicates($con) >= 0);
 
 $pregnant = nutrition_pregnant_count($con);
 $teenage = nutrition_teenage_pregnant_count($con);
@@ -390,6 +399,17 @@ if ($surveyCount > 0 && $assessmentCount > 0) {
     assert_true('Assessments present', true, (string) $assessmentCount);
 } else {
     echo "[WARN] Nutrition data empty — surveys={$surveyCount}, assessments={$assessmentCount} (schema OK; re-import or seed if needed)" . PHP_EOL;
+}
+
+$prodScripts = [
+    'scripts/production_readiness.php',
+    'scripts/harden_security.php',
+    'scripts/daily_backup.php',
+    'scripts/nutrition_sync_unlinked.php',
+    'includes/nutrition_residence_sync.php',
+];
+foreach ($prodScripts as $rel) {
+    assert_true("Production/sync file {$rel}", is_file(dirname(__DIR__) . '/' . $rel));
 }
 
 echo PHP_EOL . "=== HTTP smoke test ===" . PHP_EOL;

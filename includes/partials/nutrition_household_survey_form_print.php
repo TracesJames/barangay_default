@@ -29,7 +29,7 @@ $feedingOptions = [
 ];
 ?>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;0,800&display=swap');
+  @import url('../../assets/css/local-fonts.css');
   .nutrition-form-print { font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #111; font-size: 12px; line-height: 1.35; }
   .nutrition-form-print h1 { font-size: 18px; margin: 0 0 4px; text-align: center; text-transform: uppercase; }
   .nutrition-form-print .form-subtitle { text-align: center; color: #444; margin-bottom: 14px; }

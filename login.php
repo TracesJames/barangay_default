@@ -330,6 +330,9 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
               if(data == 'errorUsername' || data == 'errorPassword'){
                 $('#force_login').val('0');
                 barangayError('Login failed', 'Incorrect username or password.');
+              }else if(data == 'errorRateLimited'){
+                $('#force_login').val('0');
+                barangayError('Too many attempts', 'Please wait 15 minutes before trying again.');
               }else if(data == 'errorAlreadyLoggedIn'){
                 Swal.fire({
                   title: 'Already signed in',

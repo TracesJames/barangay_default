@@ -36,7 +36,7 @@ $barangayLabel = trim((string) ($barangay ?? ''));
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nutrition Portal Process Form (PDF) | City of Valencia</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;0,800&display=swap');
+    @import url('../assets/css/local-fonts.css');
     :root {
       --ink: #0f172a;
       --muted: #475569;

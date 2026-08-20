@@ -80,7 +80,14 @@ if (barangay_table_exists($con, 'nutrition_household_survey')) {
     <section class="content">
       <div class="container-fluid">
         <div class="card">
-          <div class="card-header">Showing <?= count($rows) ?> (max 500)</div>
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px;">
+            <span>Showing <?= count($rows) ?> (max 500)</span>
+            <?php if ($rows !== []): ?>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="btnAutoLinkAll">
+              <i class="fas fa-magic mr-1"></i> Auto-match by head name
+            </button>
+            <?php endif; ?>
+          </div>
           <div class="card-body table-responsive p-0">
             <table class="table table-striped table-sm mb-0" id="unlinkedTable">
               <thead>
@@ -202,6 +209,43 @@ if (barangay_table_exists($con, 'nutrition_household_survey')) {
       Swal.fire({ title: 'Error', text: msg, type: 'error' });
     }).always(function () {
       $btn.prop('disabled', false);
+    });
+  });
+
+  $('#btnAutoLinkAll').on('click', function () {
+    var $btn = $(this);
+    Swal.fire({
+      title: 'Auto-match surveys?',
+      text: 'Links unlinked households when the survey head name matches a resident in the same barangay.',
+      type: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Run auto-match'
+    }).then(function (choice) {
+      if (!choice.value) {
+        return;
+      }
+      $btn.prop('disabled', true);
+      $.post('nutritionAutoLinkSurveys.php', {
+        limit: 500,
+        csrf_token: csrfToken()
+      }, function (res) {
+        Swal.fire({
+          title: 'Auto-match complete',
+          text: (res && res.message) ? res.message : 'Done.',
+          type: 'success'
+        }).then(function () {
+          window.location.reload();
+        });
+      }, 'json').fail(function (xhr) {
+        var msg = 'Auto-match failed.';
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (data.error) msg = data.error;
+        } catch (e) {}
+        Swal.fire({ title: 'Error', text: msg, type: 'error' });
+      }).always(function () {
+        $btn.prop('disabled', false);
+      });
     });
   });
 })(jQuery);

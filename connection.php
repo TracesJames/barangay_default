@@ -63,6 +63,9 @@ if (getenv('FRONTEND_URLS') === false || getenv('FRONTEND_URLS') === '') {
 }
 
 require_once __DIR__ . '/includes/cors.php';
+require_once __DIR__ . '/includes/helpers.php';
+require_once __DIR__ . '/includes/security.php';
+barangay_send_security_headers();
 
 if (!defined('DB_HOST')) {
     define('DB_HOST', (string) ($dbConfig['host'] ?? 'localhost'));

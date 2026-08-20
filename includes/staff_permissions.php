@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/security.php';
 
 if (!defined('STAFF_ROLE_SSA')) {
     /** Super Super Admin — both Barangay Hub and Nutrition Hub */
@@ -475,6 +476,20 @@ if (!function_exists('barangay_user_can_manage_staff_accounts')) {
         return barangay_user_is_ssa($con, $userId)
             || barangay_user_is_barangay_hub_super_admin($con, $userId)
             || barangay_user_is_nutrition_portal_admin($con, $userId);
+    }
+}
+
+if (!function_exists('barangay_require_staff_account_management')) {
+    function barangay_require_staff_account_management(mysqli $con, string $message = 'You do not have permission to manage staff accounts.'): void
+    {
+        barangay_require_permission(barangay_user_can_manage_staff_accounts($con), $message);
+    }
+}
+
+if (!function_exists('barangay_require_backup_access')) {
+    function barangay_require_backup_access(mysqli $con, string $message = 'Only the system administrator can manage backups.'): void
+    {
+        barangay_require_permission(barangay_user_can_backup($con), $message);
     }
 }
 

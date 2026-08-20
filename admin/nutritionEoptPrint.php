@@ -27,7 +27,7 @@ $pdfFilename = 'eOPT-Plus-' . $safeBarangay . '-' . $calendarYear . '.pdf';
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>e-OPT Plus | <?= barangay_h($barangay) ?></title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;0,800&display=swap');
+    @import url('../assets/css/local-fonts.css');
     body { font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:#111; margin:16px; background:#fff; }
     .no-print { margin-bottom:10px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .no-print button, .no-print a.btn-linkish {

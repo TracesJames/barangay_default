@@ -71,7 +71,7 @@ foreach ($cityBnpReports as $pack) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>City BNP + e-OPT Plus Report | Valencia City</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;0,800&display=swap');
+    @import url('../assets/css/local-fonts.css');
     @page {
       size: A4 portrait;
       margin: 12mm 10mm 14mm 10mm;
