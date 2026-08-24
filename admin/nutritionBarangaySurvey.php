@@ -14,10 +14,6 @@ $filters = [
 ];
 
 $report = nutrition_household_consolidated_report($con, (string) $barangay_id, $filters);
-$koboSubmissions = nutrition_kobo_list_submissions($con, (string) $barangay_id);
-$koboConfigured = nutrition_kobo_is_configured($nutritionSettings);
-$koboFormUrl = trim((string) ($nutritionSettings['kobo_form_url'] ?? ''));
-$koboLastSynced = trim((string) ($nutritionSettings['kobo_last_synced_at'] ?? ''));
 $nutritionIncludeScriptsCsrf = true;
 $nutritionExtraCss = ['../assets/plugins/sweetalert2/css/sweetalert2.min.css'];
 $nutritionExtraJs = [
@@ -161,30 +157,6 @@ $(document).on('click', '.nutrition-delete-survey-btn', function () {
       Swal.fire({ title: 'Deleted', text: res.message || 'Household survey removed.', type: 'success' })
         .then(function () { window.location.reload(); });
     });
-  });
-});
-</script>
-HTML;
-}
-
-if ($koboConfigured) {
-    $nutritionPageScript .= <<<'HTML'
-<script>
-$('#syncKoboBtn').on('click', function () {
-  var $btn = $(this).prop('disabled', true);
-  if (typeof barangaySyncCsrfForms === 'function') barangaySyncCsrfForms();
-  $.post('syncNutritionKobo.php', { csrf_token: $('input[name="csrf_token"]').val() || (window.barangayCsrfToken ? window.barangayCsrfToken() : '') }, function (res) {
-    Swal.fire({
-      title: 'Synced',
-      text: (res.message || 'KoBoToolbox data synced.') + ' (' + (res.synced || 0) + ' records)',
-      type: 'success'
-    }).then(function () { window.location.reload(); });
-  }, 'json').fail(function (xhr) {
-    var msg = 'Could not sync KoBoToolbox data.';
-    try { var data = JSON.parse(xhr.responseText); if (data.error) msg = data.error; } catch (e) {}
-    Swal.fire({ title: 'Sync failed', text: msg, type: 'error' });
-  }).always(function () {
-    $btn.prop('disabled', false);
   });
 });
 </script>

@@ -18,6 +18,16 @@ $hazards = $m['hazards'] ?? [];
 $landUse = $m['land_use'] ?? [];
 $assetPrefix = $assetPrefix ?? '../';
 $nncLogo = $assetPrefix . 'assets/logo/national-nutrition-council.png';
+$lguLogoFilePng = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'logo' . DIRECTORY_SEPARATOR . 'valencia-city-lgu.png';
+$lguLogoFileJpg = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'logo' . DIRECTORY_SEPARATOR . 'valencia-city-lgu.jpg';
+if (is_file($lguLogoFilePng)) {
+    $lguLogo = $assetPrefix . 'assets/logo/valencia-city-lgu.png';
+} elseif (is_file($lguLogoFileJpg)) {
+    $lguLogo = $assetPrefix . 'assets/logo/valencia-city-lgu.jpg';
+} else {
+    $lguLogo = $assetPrefix . 'assets/logo/valencia-city.png';
+}
+$lguLogoAlt = 'City of Valencia, Province of Bukidnon';
 
 $val = static function ($v): string {
     $s = trim((string) $v);
@@ -43,12 +53,15 @@ $yearCols = static function (array $row) use ($years, $num): void {
 ?>
 <div class="mellpi-form">
   <div class="mellpi-header">
-    <div class="mellpi-logo">
+    <div class="mellpi-logo mellpi-logo--nnc">
       <img src="<?= barangay_h($nncLogo) ?>" alt="National Nutrition Council">
     </div>
     <div class="mellpi-title-block">
       <div class="mellpi-form-code"><?= barangay_h((string) ($meta['form'] ?? 'MELLPI PRO FORM CM')) ?></div>
       <div class="mellpi-title"><?= barangay_h((string) ($meta['title'] ?? 'CITY/MUNICIPALITY PROFILE SHEET')) ?></div>
+    </div>
+    <div class="mellpi-logo mellpi-logo--lgu">
+      <img src="<?= barangay_h($lguLogo) ?>" alt="<?= barangay_h($lguLogoAlt) ?>">
     </div>
   </div>
 

@@ -21,18 +21,12 @@ $printQuery = http_build_query(array_filter([
     'date_from' => $filterDateFrom,
     'date_to' => $filterDateTo,
 ]));
-$koboSubmissions = $koboSubmissions ?? [];
-$koboConfigured = $koboConfigured ?? nutrition_kobo_is_configured($nutritionSettings ?? []);
-$koboFormUrl = $koboFormUrl ?? trim((string) ($nutritionSettings['kobo_form_url'] ?? ''));
-$koboLastSynced = $koboLastSynced ?? trim((string) ($nutritionSettings['kobo_last_synced_at'] ?? ''));
-$koboEnabled = ($nutritionSettings['kobo_enabled'] ?? 'NO') === 'YES';
 $sessionUserId = (string) ($_SESSION['user_id'] ?? '');
 $canEditHouseholdSurveyNames = nutrition_user_can_edit_household_survey_names($con, $sessionUserId);
 $canDeleteHouseholdSurveys = nutrition_user_can_delete_household_surveys($con, $sessionUserId);
 $canAddHouseholdSurveys = nutrition_user_can_add_household_surveys($con, $sessionUserId);
 $canEditHouseholdSurveys = nutrition_user_can_edit_household_surveys($con, $sessionUserId);
 $canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHouseholdSurveys || $canEditHouseholdSurveys;
-$canManageNutritionSettings = nutrition_user_can_save_settings($con, $sessionUserId);
 ?>
         <?php
         $nutritionPageIcon = 'fa-poll';
@@ -149,73 +143,6 @@ $canManageNutritionSettings = nutrition_user_can_save_settings($con, $sessionUse
                 <a href="nutritionBarangaySurvey.php" class="btn btn-outline-light btn-block mt-2">Reset</a>
               </div>
             </form>
-          </div>
-        </div>
-
-        <div class="card nutrition-panel mb-4">
-          <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <h3 class="card-title mb-0"><i class="fas fa-tablet-alt mr-2"></i>KoBoToolbox Data</h3>
-            <div class="d-flex flex-wrap gap-2">
-              <?php if ($koboFormUrl !== '') : ?>
-              <a href="<?= barangay_h($koboFormUrl) ?>" target="_blank" rel="noopener" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-external-link-alt mr-1"></i> Open KoBo Form
-              </a>
-              <?php endif; ?>
-              <?php if ($canAddHouseholdSurveys && $koboConfigured) : ?>
-              <button type="button" class="btn btn-success btn-sm" id="syncKoboBtn">
-                <i class="fas fa-sync-alt mr-1"></i> Sync from KoBo
-              </button>
-              <?php endif; ?>
-              <?php if ($canManageNutritionSettings) : ?>
-              <a href="nutritionSettings.php" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-cog mr-1"></i> KoBo Settings
-              </a>
-              <?php endif; ?>
-            </div>
-          </div>
-          <div class="card-body">
-            <?php if (!$koboEnabled) : ?>
-            <p class="text-muted mb-0"><?= $canManageNutritionSettings
-                ? 'KoBoToolbox is not enabled. Turn it on under <a href="nutritionSettings.php">Nutrition Settings</a> to collect field data with KoBo forms and sync submissions here.'
-                : 'KoBoToolbox is not enabled for this barangay.' ?></p>
-            <?php elseif (!$koboConfigured) : ?>
-            <p class="text-muted mb-0"><?= $canManageNutritionSettings
-                ? 'KoBoToolbox is enabled but not fully configured. Add your server URL, API token, and form Asset UID in <a href="nutritionSettings.php">Nutrition Settings</a>.'
-                : 'KoBoToolbox is enabled but not fully configured.' ?></p>
-            <?php else : ?>
-            <p class="text-muted small mb-3">
-              Last synced: <?= $koboLastSynced !== '' ? barangay_h(date('M j, Y g:i A', strtotime($koboLastSynced))) : 'Not yet synced' ?>
-              · <?= number_format(count($koboSubmissions)) ?> submission<?= count($koboSubmissions) === 1 ? '' : 's' ?> stored locally
-            </p>
-            <div class="table-responsive">
-              <table class="table table-dark table-striped mb-0">
-                <thead>
-                  <tr>
-                    <th>Submitted</th>
-                    <th>Household / ID</th>
-                    <th>Purok</th>
-                    <th>Respondent</th>
-                    <th>Synced</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <?php if ($koboSubmissions === []) : ?>
-                  <tr><td colspan="5" class="text-center text-muted py-4">No KoBo submissions synced yet. Click <strong>Sync from KoBo</strong> after data is collected in the field.</td></tr>
-                  <?php else : ?>
-                  <?php foreach ($koboSubmissions as $koboRow) : ?>
-                  <tr>
-                    <td><?= ($koboRow['submitted_at'] ?? '') !== '' ? barangay_h(date('M j, Y g:i A', strtotime((string) $koboRow['submitted_at']))) : '—' ?></td>
-                    <td><?= barangay_h((string) ($koboRow['household_label'] ?? '—')) ?></td>
-                    <td><?= barangay_h((string) ($koboRow['purok_label'] ?? '—')) ?></td>
-                    <td><?= barangay_h((string) ($koboRow['respondent_name'] ?? '—')) ?></td>
-                    <td><?= ($koboRow['date_synced'] ?? '') !== '' ? barangay_h(date('M j, Y g:i A', strtotime((string) $koboRow['date_synced']))) : '—' ?></td>
-                  </tr>
-                  <?php endforeach; ?>
-                  <?php endif; ?>
-                </tbody>
-              </table>
-            </div>
-            <?php endif; ?>
           </div>
         </div>
 

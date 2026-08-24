@@ -1156,6 +1156,111 @@ if (!function_exists('nutrition_hub_totals')) {
     }
 }
 
+if (!function_exists('nutrition_recent_activity_rows')) {
+    /**
+     * Recent nutrition activity for a barangay: residence assessments + assessed survey children.
+     *
+     * @return array<int, array{name:string,date:string,status:string,source:string,age_label:string}>
+     */
+    function nutrition_recent_activity_rows(mysqli $con, string $barangayId, int $limit = 8): array
+    {
+        $rows = [];
+        $limit = max(1, min(50, $limit));
+
+        $recentSql = "SELECT na.assessment_date, na.nutritional_status, na.date_created,
+                ri.first_name, ri.last_name, ri.age
+            FROM nutrition_assessment na
+            INNER JOIN residence_information ri ON na.residence_id = ri.residence_id
+            WHERE na.barangay_id = ?
+            ORDER BY na.assessment_date DESC, na.date_created DESC
+            LIMIT ?";
+        $recentStmt = $con->prepare($recentSql);
+        if ($recentStmt) {
+            $recentStmt->bind_param('si', $barangayId, $limit);
+            $recentStmt->execute();
+            $result = $recentStmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $date = trim((string) ($row['assessment_date'] ?? ''));
+                $rows[] = [
+                    'name' => trim((string) ($row['last_name'] ?? '') . ', ' . (string) ($row['first_name'] ?? ''), ' ,'),
+                    'date' => $date,
+                    'status' => (string) ($row['nutritional_status'] ?? 'normal'),
+                    'source' => 'assessment',
+                    'age_label' => trim((string) ($row['age'] ?? '')) !== ''
+                        ? 'Age ' . trim((string) $row['age'])
+                        : '',
+                    '_sort' => $date . ' ' . (string) ($row['date_created'] ?? ''),
+                ];
+            }
+            $recentStmt->close();
+        }
+
+        if (barangay_table_exists($con, 'nutrition_household_family_member')
+            && barangay_table_exists($con, 'nutrition_household_survey')) {
+            $sql = "SELECT m.member_name, m.birth_date, m.age_months, m.date_measured, m.weight_for_age,
+                           m.height_for_age, m.weight_for_height, m.muac_status, s.survey_date
+                    FROM nutrition_household_family_member m
+                    INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
+                    WHERE m.barangay_id = ?
+                    ORDER BY COALESCE(m.date_measured, s.survey_date) DESC, m.member_id DESC
+                    LIMIT 40";
+            $stmt = $con->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param('s', $barangayId);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($member = $result->fetch_assoc()) {
+                    $ageMonths = isset($member['age_months']) && $member['age_months'] !== null && $member['age_months'] !== ''
+                        ? (int) $member['age_months']
+                        : nutrition_age_in_months(
+                            trim((string) ($member['birth_date'] ?? '')) !== '' ? (string) $member['birth_date'] : null
+                        );
+                    if (!nutrition_member_is_child_0_to_19($ageMonths, (string) ($member['birth_date'] ?? ''))) {
+                        continue;
+                    }
+                    if (!nutrition_survey_member_is_assessed($member)) {
+                        continue;
+                    }
+                    $status = nutrition_survey_member_dashboard_status($member);
+                    if ($status === null) {
+                        continue;
+                    }
+                    $date = trim((string) ($member['date_measured'] ?? ''));
+                    if ($date === '') {
+                        $date = trim((string) ($member['survey_date'] ?? ''));
+                    }
+                    $ageLabel = '';
+                    if ($ageMonths !== null) {
+                        $years = (int) floor($ageMonths / 12);
+                        $ageLabel = $years > 0 ? ('Age ' . $years) : ($ageMonths . ' mo');
+                    }
+                    $rows[] = [
+                        'name' => trim((string) ($member['member_name'] ?? '')),
+                        'date' => $date,
+                        'status' => $status,
+                        'source' => 'survey',
+                        'age_label' => $ageLabel,
+                        '_sort' => $date,
+                    ];
+                }
+                $stmt->close();
+            }
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            return strcmp((string) ($b['_sort'] ?? ''), (string) ($a['_sort'] ?? ''));
+        });
+
+        $out = [];
+        foreach (array_slice($rows, 0, $limit) as $row) {
+            unset($row['_sort']);
+            $out[] = $row;
+        }
+
+        return $out;
+    }
+}
+
 if (!function_exists('nutrition_hub_status_totals')) {
     /**
      * City-wide nutritional status breakdown (latest assessment per resident).
@@ -1920,30 +2025,7 @@ if (!function_exists('nutrition_ensure_module_tables')) {
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'edema', "VARCHAR(16) NOT NULL DEFAULT '' AFTER `muac_status`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'disability', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `edema`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'pregnant_nutrition_status', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `pregnancy_months`");
-        nutrition_ensure_column($con, 'nutrition_settings', 'kobo_enabled', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `enable_barangay_survey`");
-        nutrition_ensure_column($con, 'nutrition_settings', 'kobo_server_url', "VARCHAR(255) NOT NULL DEFAULT '' AFTER `kobo_enabled`");
-        nutrition_ensure_column($con, 'nutrition_settings', 'kobo_api_token', "VARCHAR(255) NOT NULL DEFAULT '' AFTER `kobo_server_url`");
-        nutrition_ensure_column($con, 'nutrition_settings', 'kobo_asset_uid', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `kobo_api_token`");
-        nutrition_ensure_column($con, 'nutrition_settings', 'kobo_form_url', "VARCHAR(500) NOT NULL DEFAULT '' AFTER `kobo_asset_uid`");
-        nutrition_ensure_column($con, 'nutrition_settings', 'kobo_last_synced_at', 'DATETIME DEFAULT NULL AFTER `kobo_form_url`');
-        nutrition_ensure_column($con, 'nutrition_settings', 'bnp_form_c1', "LONGTEXT NULL AFTER `kobo_last_synced_at`");
-
-        if (!barangay_table_exists($con, 'nutrition_kobo_submission')) {
-            $con->query("CREATE TABLE IF NOT EXISTS `nutrition_kobo_submission` (
-                `submission_id` VARCHAR(64) NOT NULL,
-                `barangay_id` VARCHAR(32) NOT NULL,
-                `asset_uid` VARCHAR(64) NOT NULL DEFAULT '',
-                `submitted_at` DATETIME DEFAULT NULL,
-                `household_label` VARCHAR(255) NOT NULL DEFAULT '',
-                `purok_label` VARCHAR(64) NOT NULL DEFAULT '',
-                `respondent_name` VARCHAR(255) NOT NULL DEFAULT '',
-                `raw_payload` LONGTEXT DEFAULT NULL,
-                `date_synced` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (`submission_id`),
-                KEY `idx_nks_barangay` (`barangay_id`),
-                KEY `idx_nks_submitted` (`submitted_at`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
-        }
+        nutrition_ensure_column($con, 'nutrition_settings', 'bnp_form_c1', "LONGTEXT NULL AFTER `enable_barangay_survey`");
 
         if (is_file(__DIR__ . '/nutrition_mellpi.php')) {
             require_once __DIR__ . '/nutrition_mellpi.php';
@@ -2030,12 +2112,6 @@ if (!function_exists('nutrition_default_settings')) {
             'psfc_code' => $psgc,
             'enable_household_survey' => 'YES',
             'enable_barangay_survey' => 'YES',
-            'kobo_enabled' => 'NO',
-            'kobo_server_url' => 'https://kf.kobotoolbox.org',
-            'kobo_api_token' => '',
-            'kobo_asset_uid' => '',
-            'kobo_form_url' => '',
-            'kobo_last_synced_at' => '',
             'bnp_form_c1' => '',
         ];
     }
@@ -2083,9 +2159,8 @@ if (!function_exists('nutrition_save_settings')) {
         $stmt = $con->prepare(
             'INSERT INTO nutrition_settings
              (barangay_id, nutrition_officer, contact_number, assessment_frequency, report_header, psfc_code,
-              enable_household_survey, enable_barangay_survey, kobo_enabled, kobo_server_url, kobo_api_token,
-              kobo_asset_uid, kobo_form_url, bnp_form_c1, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+              enable_household_survey, enable_barangay_survey, bnp_form_c1, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE
              nutrition_officer = VALUES(nutrition_officer),
              contact_number = VALUES(contact_number),
@@ -2094,11 +2169,6 @@ if (!function_exists('nutrition_save_settings')) {
              psfc_code = VALUES(psfc_code),
              enable_household_survey = VALUES(enable_household_survey),
              enable_barangay_survey = VALUES(enable_barangay_survey),
-             kobo_enabled = VALUES(kobo_enabled),
-             kobo_server_url = VALUES(kobo_server_url),
-             kobo_api_token = VALUES(kobo_api_token),
-             kobo_asset_uid = VALUES(kobo_asset_uid),
-             kobo_form_url = VALUES(kobo_form_url),
              bnp_form_c1 = VALUES(bnp_form_c1),
              updated_at = NOW()'
         );
@@ -2112,7 +2182,7 @@ if (!function_exists('nutrition_save_settings')) {
             $bnpFormC1 = (string) ($existing['bnp_form_c1'] ?? '');
         }
         $stmt->bind_param(
-            'ssssssssssssss',
+            'sssssssss',
             $barangayId,
             $data['nutrition_officer'],
             $data['contact_number'],
@@ -2121,11 +2191,6 @@ if (!function_exists('nutrition_save_settings')) {
             $data['psfc_code'],
             $data['enable_household_survey'],
             $data['enable_barangay_survey'],
-            $data['kobo_enabled'],
-            $data['kobo_server_url'],
-            $data['kobo_api_token'],
-            $data['kobo_asset_uid'],
-            $data['kobo_form_url'],
             $bnpFormC1
         );
         $stmt->execute();
@@ -2133,271 +2198,6 @@ if (!function_exists('nutrition_save_settings')) {
         $stmt->close();
 
         return $ok;
-    }
-}
-
-if (!function_exists('nutrition_kobo_is_configured')) {
-    function nutrition_kobo_is_configured(array $settings): bool
-    {
-        if (($settings['kobo_enabled'] ?? 'NO') !== 'YES') {
-            return false;
-        }
-
-        return trim((string) ($settings['kobo_server_url'] ?? '')) !== ''
-            && trim((string) ($settings['kobo_api_token'] ?? '')) !== ''
-            && trim((string) ($settings['kobo_asset_uid'] ?? '')) !== '';
-    }
-}
-
-if (!function_exists('nutrition_kobo_normalize_server_url')) {
-    function nutrition_kobo_normalize_server_url(string $serverUrl): string
-    {
-        $serverUrl = trim($serverUrl);
-        if ($serverUrl === '') {
-            return '';
-        }
-
-        return rtrim($serverUrl, '/');
-    }
-}
-
-if (!function_exists('nutrition_kobo_api_request')) {
-    /**
-     * @return array{ok:bool,status:int,body:string,error?:string}
-     */
-    function nutrition_kobo_api_request(string $serverUrl, string $apiToken, string $path): array
-    {
-        $serverUrl = nutrition_kobo_normalize_server_url($serverUrl);
-        if ($serverUrl === '' || $apiToken === '') {
-            return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'KoBoToolbox server URL and API token are required.'];
-        }
-
-        $url = $serverUrl . $path;
-        if (!function_exists('curl_init')) {
-            return ['ok' => false, 'status' => 0, 'body' => '', 'error' => 'PHP cURL extension is required for KoBoToolbox sync.'];
-        }
-
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 45,
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Token ' . $apiToken,
-                'Accept: application/json',
-            ],
-        ]);
-        $body = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($body === false) {
-            return ['ok' => false, 'status' => $status, 'body' => '', 'error' => $curlError !== '' ? $curlError : 'KoBoToolbox request failed.'];
-        }
-
-        return [
-            'ok' => $status >= 200 && $status < 300,
-            'status' => $status,
-            'body' => (string) $body,
-            'error' => $status >= 200 && $status < 300 ? '' : 'KoBoToolbox API returned HTTP ' . $status,
-        ];
-    }
-}
-
-if (!function_exists('nutrition_kobo_extract_field')) {
-    function nutrition_kobo_extract_field(array $payload, array $keys): string
-    {
-        foreach ($keys as $key) {
-            if (!array_key_exists($key, $payload)) {
-                continue;
-            }
-            $value = trim((string) $payload[$key]);
-            if ($value !== '') {
-                return $value;
-            }
-        }
-
-        return '';
-    }
-}
-
-if (!function_exists('nutrition_kobo_parse_submission')) {
-    /**
-     * @return array{household_label:string,purok_label:string,respondent_name:string,submitted_at:?string}
-     */
-    function nutrition_kobo_parse_submission(array $payload): array
-    {
-        $submittedAt = trim((string) ($payload['_submission_time'] ?? $payload['end'] ?? ''));
-        $submittedAtValue = $submittedAt !== '' ? date('Y-m-d H:i:s', strtotime($submittedAt)) : null;
-
-        return [
-            'household_label' => nutrition_kobo_extract_field($payload, [
-                'household_id', 'house_hold_id', 'household_head', 'head_of_household', 'respondent_household',
-            ]),
-            'purok_label' => nutrition_kobo_extract_field($payload, ['purok', 'purok_number', 'purok_label']),
-            'respondent_name' => nutrition_kobo_extract_field($payload, [
-                'respondent_name', 'head_last_name', 'head_first_name', 'enumerator', 'name',
-            ]),
-            'submitted_at' => $submittedAtValue,
-        ];
-    }
-}
-
-if (!function_exists('nutrition_kobo_fetch_submissions')) {
-    /**
-     * @return array{ok:bool,submissions:array<int,array<string,mixed>>,error?:string}
-     */
-    function nutrition_kobo_fetch_submissions(array $settings): array
-    {
-        if (!nutrition_kobo_is_configured($settings)) {
-            return ['ok' => false, 'submissions' => [], 'error' => 'KoBoToolbox is not configured for this barangay.'];
-        }
-
-        $serverUrl = nutrition_kobo_normalize_server_url((string) $settings['kobo_server_url']);
-        $apiToken = trim((string) $settings['kobo_api_token']);
-        $assetUid = trim((string) $settings['kobo_asset_uid']);
-        $submissions = [];
-        $nextUrl = '/api/v2/assets/' . rawurlencode($assetUid) . '/data/?format=json';
-
-        while ($nextUrl !== '') {
-            $response = nutrition_kobo_api_request($serverUrl, $apiToken, $nextUrl);
-            if (!$response['ok']) {
-                return ['ok' => false, 'submissions' => [], 'error' => $response['error'] ?? 'Could not fetch KoBoToolbox submissions.'];
-            }
-
-            $decoded = json_decode($response['body'], true);
-            if (!is_array($decoded)) {
-                return ['ok' => false, 'submissions' => [], 'error' => 'Invalid KoBoToolbox response.'];
-            }
-
-            $results = $decoded['results'] ?? [];
-            if (!is_array($results)) {
-                $results = [];
-            }
-
-            foreach ($results as $row) {
-                if (is_array($row)) {
-                    $submissions[] = $row;
-                }
-            }
-
-            $next = trim((string) ($decoded['next'] ?? ''));
-            if ($next === '') {
-                $nextUrl = '';
-                continue;
-            }
-
-            $parsed = parse_url($next);
-            $nextUrl = ($parsed['path'] ?? '') . (isset($parsed['query']) ? '?' . $parsed['query'] : '');
-        }
-
-        return ['ok' => true, 'submissions' => $submissions];
-    }
-}
-
-if (!function_exists('nutrition_kobo_sync_submissions')) {
-    /**
-     * @return array{ok:bool,synced:int,total:int,error?:string}
-     */
-    function nutrition_kobo_sync_submissions(mysqli $con, string $barangayId, array $settings): array
-    {
-        nutrition_ensure_module_tables($con);
-        $fetch = nutrition_kobo_fetch_submissions($settings);
-        if (!$fetch['ok']) {
-            return ['ok' => false, 'synced' => 0, 'total' => 0, 'error' => $fetch['error'] ?? 'Sync failed.'];
-        }
-
-        $assetUid = trim((string) ($settings['kobo_asset_uid'] ?? ''));
-        $stmt = $con->prepare(
-            'INSERT INTO nutrition_kobo_submission
-             (submission_id, barangay_id, asset_uid, submitted_at, household_label, purok_label, respondent_name, raw_payload, date_synced)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-             ON DUPLICATE KEY UPDATE
-             asset_uid = VALUES(asset_uid),
-             submitted_at = VALUES(submitted_at),
-             household_label = VALUES(household_label),
-             purok_label = VALUES(purok_label),
-             respondent_name = VALUES(respondent_name),
-             raw_payload = VALUES(raw_payload),
-             date_synced = NOW()'
-        );
-        if (!$stmt) {
-            return ['ok' => false, 'synced' => 0, 'total' => 0, 'error' => 'Database error: ' . $con->error];
-        }
-
-        $synced = 0;
-        foreach ($fetch['submissions'] as $payload) {
-            if (!is_array($payload)) {
-                continue;
-            }
-
-            $submissionId = trim((string) ($payload['_id'] ?? $payload['id'] ?? ''));
-            if ($submissionId === '') {
-                continue;
-            }
-
-            $parsed = nutrition_kobo_parse_submission($payload);
-            $rawJson = json_encode($payload, JSON_UNESCAPED_UNICODE);
-            $submittedAt = $parsed['submitted_at'] ?? '';
-            $stmt->bind_param(
-                'ssssssss',
-                $submissionId,
-                $barangayId,
-                $assetUid,
-                $submittedAt,
-                $parsed['household_label'],
-                $parsed['purok_label'],
-                $parsed['respondent_name'],
-                $rawJson
-            );
-            if ($stmt->execute()) {
-                $synced++;
-            }
-        }
-        $stmt->close();
-
-        $update = $con->prepare('UPDATE nutrition_settings SET kobo_last_synced_at = NOW() WHERE barangay_id = ?');
-        if ($update) {
-            $update->bind_param('s', $barangayId);
-            $update->execute();
-            $update->close();
-        }
-
-        return [
-            'ok' => true,
-            'synced' => $synced,
-            'total' => count($fetch['submissions']),
-        ];
-    }
-}
-
-if (!function_exists('nutrition_kobo_list_submissions')) {
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    function nutrition_kobo_list_submissions(mysqli $con, string $barangayId, int $limit = 100): array
-    {
-        if (!barangay_table_exists($con, 'nutrition_kobo_submission')) {
-            return [];
-        }
-
-        $stmt = $con->prepare(
-            'SELECT submission_id, submitted_at, household_label, purok_label, respondent_name, date_synced
-             FROM nutrition_kobo_submission
-             WHERE barangay_id = ?
-             ORDER BY submitted_at DESC, date_synced DESC
-             LIMIT ?'
-        );
-        if (!$stmt) {
-            return [];
-        }
-
-        $stmt->bind_param('si', $barangayId, $limit);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $rows ?: [];
     }
 }
 

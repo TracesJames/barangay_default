@@ -24,10 +24,20 @@ try{
     // Drop stale/taken sessions before auto-redirecting into the portal.
     barangay_session_guard_enforce($con, 'login.php');
 
-    $user_id = $_SESSION['user_id'];
-    $sql = "SELECT * FROM users WHERE id = '$user_id'";
-    $query = $con->query($sql) or die ($con->error);
-    $row = $query->fetch_assoc();
+    $user_id = (string) $_SESSION['user_id'];
+    $stmt = $con->prepare('SELECT id, user_type FROM users WHERE id = ? LIMIT 1');
+    if (!$stmt) {
+      die($con->error);
+    }
+    $stmt->bind_param('s', $user_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+      unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['username']);
+      header('Location: login.php');
+      exit;
+    }
     $account_type = $row['user_type'];
     if ($account_type == 'admin') {
       $nutritionToken = nutrition_admin_login_token($con, (string) $user_id);

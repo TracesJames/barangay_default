@@ -7,24 +7,29 @@ require_once '../includes/partials/nutrition_init.php';
 $activePage = 'dashboard';
 $nutritionPageTitle = 'Nutrition Dashboard';
 
-$totals = nutrition_scoped_totals($con, (string) $barangay_id);
-$atRisk = $totals['underweight'] + $totals['wasted'] + $totals['severely_wasted'] + $totals['stunted'] + $totals['overweight'] + $totals['obese'];
+$barangayId = (string) $barangay_id;
+$totals = nutrition_scoped_totals($con, $barangayId);
+$atRisk = $totals['underweight'] + $totals['wasted'] + $totals['severely_wasted']
+    + $totals['stunted'] + $totals['overweight'] + $totals['obese'];
 
-$recentRows = [];
-$recentSql = "SELECT na.assessment_date, na.nutritional_status, na.weight_kg, na.height_cm, na.bmi,
-    ri.first_name, ri.last_name, ri.age
-    FROM nutrition_assessment na
-    INNER JOIN residence_information ri ON na.residence_id = ri.residence_id
-    WHERE na.barangay_id = ?
-    ORDER BY na.assessment_date DESC, na.date_created DESC
-    LIMIT 8";
-$recentStmt = $con->prepare($recentSql);
-if ($recentStmt) {
-    $recentStmt->bind_param('s', $barangay_id);
-    $recentStmt->execute();
-    $recentRows = $recentStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $recentStmt->close();
+$householdSurveyCount = 0;
+if (barangay_table_exists($con, 'nutrition_household_survey')) {
+    $surveyCountStmt = $con->prepare(
+        'SELECT COUNT(*) AS total FROM nutrition_household_survey WHERE barangay_id = ?'
+    );
+    if ($surveyCountStmt) {
+        $surveyCountStmt->bind_param('s', $barangayId);
+        $surveyCountStmt->execute();
+        $householdSurveyCount = (int) ($surveyCountStmt->get_result()->fetch_assoc()['total'] ?? 0);
+        $surveyCountStmt->close();
+    }
 }
+
+$coverage = ((int) $totals['children'] > 0)
+    ? (int) round(((int) $totals['assessed'] / (int) $totals['children']) * 100)
+    : 0;
+
+$recentRows = nutrition_recent_activity_rows($con, $barangayId, 8);
 
 require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
 ?>
@@ -50,6 +55,15 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
             </div>
           </div>
         </div>
+
+        <?php if ((int) $totals['children'] === 0 && $householdSurveyCount === 0) : ?>
+        <div class="alert alert-dark border-success nutrition-empty-hint mb-4">
+          <i class="fas fa-info-circle mr-2 text-success"></i>
+          No household surveys or child assessments yet for <strong><?= barangay_h($barangay) ?></strong>.
+          Start with <a href="nutritionHouseholdSurvey.php" class="text-success font-weight-bold">Household Survey</a>
+          or <a href="nutritionAssess.php" class="text-success font-weight-bold">New Assessment</a>.
+        </div>
+        <?php endif; ?>
 
         <h2 class="nutrition-section-heading"><i class="fas fa-bolt mr-2"></i>Quick Actions</h2>
         <div class="nutrition-workflow-grid">
@@ -82,19 +96,19 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
 
         <h2 class="nutrition-section-heading"><i class="fas fa-chart-bar mr-2"></i>Overview</h2>
         <div class="nutrition-stats">
-          <a href="allResidence.php?filter=children" class="nutrition-stat nutrition-stat--children">
+          <a href="nutritionBarangaySurvey.php" class="nutrition-stat nutrition-stat--children">
             <i class="fas fa-child nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($totals['children']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) $totals['children']) ?></div>
             <div class="nutrition-stat-label"><?= barangay_h(nutrition_children_age_label()) ?></div>
           </a>
           <a href="nutritionProfiles.php" class="nutrition-stat nutrition-stat--assessed">
             <i class="fas fa-clipboard-check nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($totals['assessed']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) $totals['assessed']) ?></div>
             <div class="nutrition-stat-label">Assessed</div>
           </a>
-          <a href="nutritionAssess.php" class="nutrition-stat nutrition-stat--pending">
+          <a href="nutritionHouseholdSurvey.php" class="nutrition-stat nutrition-stat--pending">
             <i class="fas fa-hourglass-half nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($totals['pending']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) $totals['pending']) ?></div>
             <div class="nutrition-stat-label">Pending Assessment</div>
           </a>
           <a href="nutritionProfiles.php?status=at_risk" class="nutrition-stat nutrition-stat--risk">
@@ -102,9 +116,14 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
             <div class="nutrition-stat-value"><?= number_format($atRisk) ?></div>
             <div class="nutrition-stat-label">At-Risk Cases</div>
           </a>
-          <div class="nutrition-stat nutrition-stat--month">
+          <a href="nutritionBarangaySurvey.php" class="nutrition-stat nutrition-stat--surveys">
+            <i class="fas fa-home nutrition-stat-icon"></i>
+            <div class="nutrition-stat-value"><?= number_format($householdSurveyCount) ?></div>
+            <div class="nutrition-stat-label">Household Surveys</div>
+          </a>
+          <div class="nutrition-stat nutrition-stat--month" title="Based on measurement / assessment date in the current month">
             <i class="fas fa-calendar-check nutrition-stat-icon"></i>
-            <div class="nutrition-stat-value"><?= number_format($totals['this_month']) ?></div>
+            <div class="nutrition-stat-value"><?= number_format((int) $totals['this_month']) ?></div>
             <div class="nutrition-stat-label">Assessments This Month</div>
           </div>
           <a href="nutritionPregnantFamiliesReport.php" class="nutrition-stat nutrition-stat--pregnant">
@@ -117,6 +136,11 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
             <div class="nutrition-stat-value"><?= number_format((int) ($totals['teenage_pregnant'] ?? 0)) ?></div>
             <div class="nutrition-stat-label">Teenage Pregnant</div>
           </a>
+          <div class="nutrition-stat nutrition-stat--coverage">
+            <i class="fas fa-percentage nutrition-stat-icon"></i>
+            <div class="nutrition-stat-value"><?= number_format($coverage) ?>%</div>
+            <div class="nutrition-stat-label">Assessment Coverage</div>
+          </div>
         </div>
 
         <div class="row">
@@ -140,7 +164,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                   foreach ($statusCards as $card) :
                   ?>
                   <a href="nutritionProfiles.php?status=<?= urlencode($card['key']) ?>" class="nutrition-status-chip <?= barangay_h($card['class']) ?>">
-                    <span class="nutrition-status-count"><?= number_format($totals[$card['key']] ?? 0) ?></span>
+                    <span class="nutrition-status-count"><?= number_format((int) ($totals[$card['key']] ?? 0)) ?></span>
                     <span class="nutrition-status-name"><?= barangay_h($card['label']) ?></span>
                   </a>
                   <?php endforeach; ?>
@@ -151,28 +175,49 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
           <div class="col-lg-5">
             <div class="card nutrition-panel">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="card-title mb-0"><i class="fas fa-history mr-2"></i>Recent Assessments</h3>
-                <a href="nutritionProfiles.php" class="btn btn-xs btn-outline-success">View all</a>
+                <h3 class="card-title mb-0"><i class="fas fa-history mr-2"></i>Recent Activity</h3>
+                <a href="nutritionBarangaySurvey.php" class="btn btn-xs btn-outline-success">Surveys</a>
               </div>
               <div class="card-body p-0">
                 <?php if ($recentRows === []) : ?>
-                <div class="p-4 text-center text-muted">No assessments recorded yet. <a href="nutritionAssess.php" class="text-success">Add the first assessment</a>.</div>
+                <div class="p-4 text-center text-muted">
+                  No assessments yet for this barangay.
+                  <a href="nutritionHouseholdSurvey.php" class="text-success">Add a household survey</a>
+                  or
+                  <a href="nutritionAssess.php" class="text-success">new assessment</a>.
+                </div>
                 <?php else : ?>
                 <div class="table-responsive">
                   <table class="table table-dark table-sm mb-0 nutrition-recent-table">
                     <thead>
                       <tr>
-                        <th>Resident</th>
+                        <th>Child / Resident</th>
                         <th>Date</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <?php foreach ($recentRows as $row) : ?>
+                      <?php foreach ($recentRows as $row) :
+                          $dateRaw = trim((string) ($row['date'] ?? ''));
+                          $dateLabel = $dateRaw !== '' ? date('M j, Y', strtotime($dateRaw)) : '—';
+                          $sourceLabel = ($row['source'] ?? '') === 'survey' ? 'Survey' : 'Assessment';
+                      ?>
                       <tr>
-                        <td><?= barangay_h($row['last_name'] . ', ' . $row['first_name']) ?><br><small class="text-muted">Age <?= barangay_h((string) ($row['age'] ?? '')) ?></small></td>
-                        <td><?= barangay_h(date('M j, Y', strtotime((string) $row['assessment_date']))) ?></td>
-                        <td><span class="badge <?= nutrition_status_badge_class((string) $row['nutritional_status']) ?>"><?= barangay_h(nutrition_status_label((string) $row['nutritional_status'])) ?></span></td>
+                        <td>
+                          <?= barangay_h((string) ($row['name'] ?? '')) ?>
+                          <br>
+                          <small class="text-muted">
+                            <?= barangay_h((string) ($row['age_label'] ?? '')) ?>
+                            <?= ($row['age_label'] ?? '') !== '' ? ' · ' : '' ?>
+                            <?= barangay_h($sourceLabel) ?>
+                          </small>
+                        </td>
+                        <td><?= barangay_h($dateLabel) ?></td>
+                        <td>
+                          <span class="badge <?= nutrition_status_badge_class((string) ($row['status'] ?? 'normal')) ?>">
+                            <?= barangay_h(nutrition_status_label((string) ($row['status'] ?? 'normal'))) ?>
+                          </span>
+                        </td>
                       </tr>
                       <?php endforeach; ?>
                     </tbody>

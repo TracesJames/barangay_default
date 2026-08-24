@@ -227,12 +227,34 @@ foreach ($cityBnpReports as $pack) {
     .mellpi-header {
       display:flex;
       align-items:center;
+      justify-content:space-between;
       gap:12px;
       margin-bottom:10px;
       padding-bottom:8px;
       border-bottom:2px solid #166534;
     }
-    .mellpi-logo img { width:64px; height:64px; object-fit:contain; }
+    .mellpi-logo {
+      flex:0 0 auto;
+      width:88px;
+    }
+    .mellpi-logo img {
+      width:88px;
+      height:auto;
+      max-height:96px;
+      object-fit:contain;
+      display:block;
+      background:transparent;
+      border:0;
+    }
+    .mellpi-logo--lgu img {
+      width:92px;
+      max-height:110px;
+    }
+    .mellpi-title-block {
+      flex:1 1 auto;
+      text-align:center;
+      min-width:0;
+    }
     .mellpi-form-code { font-size:9pt; color:#444; }
     .mellpi-title { font-size:12.5pt; font-weight:800; letter-spacing:.03em; }
     .mellpi-meta-table, .mellpi-summary, .mellpi-table {

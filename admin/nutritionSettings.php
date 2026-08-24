@@ -19,7 +19,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
         <?php
         $nutritionPageIcon = 'fa-cog';
         $nutritionPageHeading = 'Settings';
-        $nutritionPageDescription = 'Configure nutrition officer details, PSGC, assessment frequency, and KoBoToolbox integration for ' . $barangay . '.';
+        $nutritionPageDescription = 'Configure nutrition officer details, PSGC, and assessment frequency for ' . $barangay . '.';
         require __DIR__ . '/../includes/partials/nutrition_page_header.php';
         ?>
         <div class="row justify-content-center">
@@ -121,35 +121,6 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                     <?php endforeach; ?>
                   </div>
 
-                  <hr class="my-4">
-                  <h5 class="mb-3"><i class="fas fa-tablet-alt mr-2"></i>KoBoToolbox Integration</h5>
-                  <p class="text-muted small">Connect a KoBoToolbox form for field data collection. Submissions can be synced into the Barangay Nutrition Survey report.</p>
-                  <div class="form-group">
-                    <label>Enable KoBoToolbox</label>
-                    <select class="form-control" name="kobo_enabled">
-                      <option value="NO" <?= ($nutritionSettings['kobo_enabled'] ?? 'NO') === 'NO' ? 'selected' : '' ?>>No</option>
-                      <option value="YES" <?= ($nutritionSettings['kobo_enabled'] ?? '') === 'YES' ? 'selected' : '' ?>>Yes</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>KoBo Server URL</label>
-                    <input type="url" class="form-control" name="kobo_server_url" value="<?= barangay_h($nutritionSettings['kobo_server_url'] ?? 'https://kf.kobotoolbox.org') ?>" placeholder="https://kf.kobotoolbox.org">
-                  </div>
-                  <div class="form-group">
-                    <label>KoBo API Token</label>
-                    <input type="password" class="form-control" name="kobo_api_token" value="<?= barangay_h($nutritionSettings['kobo_api_token'] ?? '') ?>" placeholder="Paste API token from KoBo Account Settings">
-                    <small class="text-muted">Found in KoBoToolbox → Account Settings → Security → API Token</small>
-                  </div>
-                  <div class="form-group">
-                    <label>Form Asset UID</label>
-                    <input type="text" class="form-control" name="kobo_asset_uid" value="<?= barangay_h($nutritionSettings['kobo_asset_uid'] ?? '') ?>" placeholder="e.g. aBcdEfGhIjKlMnOpQrStUv">
-                    <small class="text-muted">Project UID from your KoBo form URL</small>
-                  </div>
-                  <div class="form-group mb-0">
-                    <label>Public Form Link (Enketo)</label>
-                    <input type="url" class="form-control" name="kobo_form_url" value="<?= barangay_h($nutritionSettings['kobo_form_url'] ?? '') ?>" placeholder="https://ee.kobotoolbox.org/...">
-                    <small class="text-muted">Optional link for enumerators to collect data on mobile or web</small>
-                  </div>
                 </div>
                 <?php if ($canSaveNutritionSettings) : ?>
                 <div class="card-footer text-right">

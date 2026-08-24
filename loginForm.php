@@ -15,6 +15,13 @@ try{
   $password = (string) ($_POST['password'] ?? '');
   $forceLogin = ((string) ($_POST['force_login'] ?? '')) === '1';
 
+  // Allow-list only (never concatenate into SQL). ZAP flagged preferred_hub as SQLi vector.
+  $preferredHubRaw = strtolower(trim((string) ($_POST['preferred_hub'] ?? '')));
+  $preferredHub = in_array($preferredHubRaw, ['barangay', 'nutrition'], true)
+      ? $preferredHubRaw
+      : 'barangay';
+  $_SESSION['preferred_hub'] = $preferredHub;
+
   $rateLimited = barangay_login_rate_limit_check($username);
   if ($rateLimited !== null) {
       exit($rateLimited);

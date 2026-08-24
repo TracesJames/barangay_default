@@ -29,11 +29,6 @@ $data = [
     'psfc_code' => nutrition_barangay_psgc_code($con, $barangayId, (string) ($barangay ?? '')),
     'enable_household_survey' => ($_POST['enable_household_survey'] ?? 'YES') === 'NO' ? 'NO' : 'YES',
     'enable_barangay_survey' => ($_POST['enable_barangay_survey'] ?? 'YES') === 'NO' ? 'NO' : 'YES',
-    'kobo_enabled' => ($_POST['kobo_enabled'] ?? 'NO') === 'YES' ? 'YES' : 'NO',
-    'kobo_server_url' => nutrition_kobo_normalize_server_url(trim((string) ($_POST['kobo_server_url'] ?? ''))),
-    'kobo_api_token' => trim((string) ($_POST['kobo_api_token'] ?? '')),
-    'kobo_asset_uid' => trim((string) ($_POST['kobo_asset_uid'] ?? '')),
-    'kobo_form_url' => trim((string) ($_POST['kobo_form_url'] ?? '')),
 ];
 
 require_once __DIR__ . '/../includes/nutrition_bnp_reports.php';
@@ -42,11 +37,6 @@ foreach (array_keys($formC1) as $key) {
     $formC1[$key] = trim((string) ($_POST['bnp_c1_' . $key] ?? ''));
 }
 $data['bnp_form_c1'] = json_encode($formC1, JSON_UNESCAPED_UNICODE);
-
-$existingSettings = nutrition_load_settings($con, $barangayId, (string) ($barangay ?? ''));
-if ($data['kobo_api_token'] === '' && ($existingSettings['kobo_api_token'] ?? '') !== '') {
-    $data['kobo_api_token'] = (string) $existingSettings['kobo_api_token'];
-}
 
 if ($data['report_header'] === '') {
     $data['report_header'] = 'Barangay ' . ($barangay ?? 'Nutrition') . ' Nutrition Profiling';

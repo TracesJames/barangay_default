@@ -45,11 +45,29 @@ if (!function_exists('barangay_send_security_headers')) {
         }
         $sent = true;
 
+        // Clickjacking: SAMEORIGIN keeps AdminLTE iframes/print helpers working.
         header('X-Frame-Options: SAMEORIGIN');
         header('X-Content-Type-Options: nosniff');
         header('Referrer-Policy: strict-origin-when-cross-origin');
         header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
         header('X-XSS-Protection: 0');
+
+        // Baseline CSP. Allows self + inline (AdminLTE/SweetAlert2). Tailwind CDN on hub/register only.
+        if (!headers_sent()) {
+            $csp = implode('; ', [
+                "default-src 'self'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                "frame-ancestors 'self'",
+                "object-src 'none'",
+                "img-src 'self' data: blob:",
+                "font-src 'self' data:",
+                "style-src 'self' 'unsafe-inline'",
+                "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
+                "connect-src 'self'",
+            ]);
+            header('Content-Security-Policy: ' . $csp);
+        }
 
         $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443')

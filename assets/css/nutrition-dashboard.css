@@ -344,6 +344,27 @@ body.barangay-portal.nutrition-portal .main-footer {
   color: #f9a8d4;
 }
 
+.nutrition-stat--surveys {
+  border-top: 3px solid #38bdf8;
+}
+
+.nutrition-stat--surveys .nutrition-stat-icon {
+  color: #7dd3fc;
+}
+
+.nutrition-stat--coverage {
+  border-top: 3px solid #84cc16;
+}
+
+.nutrition-stat--coverage .nutrition-stat-icon {
+  color: #bef264;
+}
+
+.nutrition-empty-hint {
+  background: rgba(12, 24, 18, 0.75);
+  border-color: rgba(74, 222, 128, 0.35) !important;
+}
+
 .nutrition-panel {
   background: rgba(12, 24, 18, 0.82);
   border: 1px solid rgba(74, 222, 128, 0.14);
@@ -424,6 +445,16 @@ body.barangay-portal.nutrition-portal .main-footer {
   height: 120px;
   object-fit: cover;
   border: 3px solid rgba(0, 108, 53, 0.35);
+}
+
+.nutrition-account-profile-card .nutrition-role-badge {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.4rem 0.75rem;
+}
+
+.nutrition-profile-hero {
+  padding: 0.5rem 0 0.25rem;
 }
 
 .nutrition-report-stat {
