@@ -1,0 +1,4 @@
+# Sass/build sources are for local development only — not public web assets.
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>

@@ -1,0 +1,114 @@
+REPUBLIC OF THE PHILIPPINES
+Province of Bukidnon
+City of Valencia
+Office of the City Administrator
+INFORMATION TECHNOLOGY SERVICES DIVISION
+
+Website: www.cityofvalencia.gov.ph
+Mobile: (63) 912 196 6207
+
+--------------------------------------------------------------------------------
+REMEDIATION REPLY / COMPLIANCE NOTE
+Reference: Vulnerability Assessment Report No. 2026-VAR-0002
+Target Domain: barangay.valenciahub.site
+Scan Date: 20 August 2026
+Assessment Tool: OWASP ZAP v2.17.0
+Prepared For: ITSD DEVTEAM
+Reply Date: 24 August 2026
+--------------------------------------------------------------------------------
+
+SUBJECT: Remediation Status for Critical Findings under VAR No. 2026-VAR-0002
+
+Respectfully referring to the Vulnerability Assessment Report (VAR No. 2026-VAR-0002)
+and the Recommended Action Plan prepared by Computer Maintenance Technologist III
+Rey Anthony M. Mapalad, this is to submit the remediation actions undertaken on the
+Barangay / Nutrition Portal application.
+
+I. PHASE 1 — IMMEDIATE (24–48 HOURS) — COMPLETED IN APPLICATION CODE
+
+1. High Risk — SQL Injection (CWE-89 / OWASP A03:2021)
+   Finding: POST to login.php?hub=nutrition; parameter preferred_hub flagged.
+   Remediation:
+   - preferred_hub is allow-listed server-side to only: "barangay" or "nutrition".
+   - Login and session user lookups use MySQLi prepared statements (parameterized
+     queries), not string concatenation into SQL.
+   - preferred_hub is stored in session for hub routing only; it is not interpolated
+     into database queries.
+   Evidence (local codebase):
+   - loginForm.php — prepare()/bind_param() for user authentication; preferred_hub
+     allow-list before session write.
+   - login.php — session auto-redirect user query converted to prepared statement.
+
+2. High Risk — Vulnerable JavaScript Library
+   Finding: jquery.validate.min.js v1.19.3 (CVE-2022-31147, CVE-2021-43306, related).
+   Remediation:
+   - Upgraded jquery-validation to v1.19.5 (release includes ReDoS fix for CVE-2022-31147).
+   Evidence:
+   - assets/plugins/jquery-validation/jquery.validate.min.js header shows
+     "jQuery Validation Plugin - v1.19.5".
+
+II. PHASE 2 — SHORT TERM (1 WEEK) — COMPLETED IN APPLICATION / WEBROOT CONFIG
+
+   Finding: Missing CSP, clickjacking, HSTS, and MIME-sniffing protections;
+            exposed sensitive paths/files.
+   Remediation:
+   - Security response headers implemented application-wide (includes/security.php)
+     and reinforced in root .htaccess:
+       • Content-Security-Policy (baseline)
+       • X-Frame-Options: SAMEORIGIN
+       • X-Content-Type-Options: nosniff
+       • Strict-Transport-Security (when served over HTTPS)
+       • Referrer-Policy / Permissions-Policy
+   - Direct web access denied to connection.php, includes/, scripts/, and common
+     sensitive extensions (.sql, .env, .bak, etc.); directory listing disabled.
+   Evidence:
+   - includes/security.php — barangay_send_security_headers()
+   - .htaccess — FilesMatch deny rules and Header directives
+   - includes/.htaccess, scripts/.htaccess — Require all denied
+
+III. PHASE 3 — ONGOING
+
+   Recommended: Full manual penetration test to validate automated findings and
+   business-logic security.
+   Status: Pending scheduling after production deployment and re-scan.
+   Note: Automated ZAP findings for preferred_hub were treated as High Priority;
+   code review confirmed the parameter was not used in SQL, but hardening
+   (allow-list + prepared statements) was still applied as defense-in-depth.
+
+IV. RESIDUAL RISK / CONDITIONS FOR CLOSURE ON PRODUCTION
+
+   1. Remediation above is completed in the development/source codebase. Production
+      (barangay.valenciahub.site) will reflect clearance only after deployment of
+      these changes to the live host.
+   2. HSTS and full transport hardening require continuous HTTPS termination
+      (Apache and/or Cloudflare). Confirm HTTPS + header presence on production
+      after deploy.
+   3. Baseline CSP still allows 'unsafe-inline' for legacy AdminLTE / SweetAlert2
+      scripts; further CSP tightening is recommended as a follow-up hardening task.
+   4. Residual risk remains until:
+        a) production deploy is completed;
+        b) OWASP ZAP re-scan of barangay.valenciahub.site is performed;
+        c) Phase 3 manual penetration test is conducted and documented.
+
+V. REQUESTED NEXT STEPS
+
+   1. Deploy updated application build to barangay.valenciahub.site.
+   2. Verify security headers via browser DevTools / securityheaders.com (or
+      equivalent) on the production login URL.
+   3. Re-run OWASP ZAP and attach the new scan report to this VAR.
+   4. Schedule Phase 3 manual penetration testing with ITSD.
+
+Prepared by:
+_________________________________
+ITSD Development Team
+City of Valencia, Bukidnon
+
+Noted by:
+_________________________________
+REY ANTHONY M. MAPALAD
+Computer Maintenance Technologist - III
+Information Technology Services Division
+
+--------------------------------------------------------------------------------
+End of Remediation Reply — VAR No. 2026-VAR-0002
+--------------------------------------------------------------------------------

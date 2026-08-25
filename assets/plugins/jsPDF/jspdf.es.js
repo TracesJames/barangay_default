@@ -27788,4 +27788,4 @@ jsPDF.API.PDFObject = function () {
 
 export default jsPDF;
 export { AcroForm, AcroFormAppearance, AcroFormButton, AcroFormCheckBox, AcroFormChoiceField, AcroFormComboBox, AcroFormEditBox, AcroFormListBox, AcroFormPasswordField, AcroFormPushButton, AcroFormRadioButton, AcroFormTextField, GState, ShadingPattern, TilingPattern, jsPDF };
-//# sourceMappingURL=jspdf.es.js.map
+

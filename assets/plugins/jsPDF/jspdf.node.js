@@ -32744,4 +32744,4 @@ exports.ShadingPattern = ShadingPattern;
 exports.TilingPattern = TilingPattern;
 exports.default = jsPDF;
 exports.jsPDF = jsPDF;
-//# sourceMappingURL=jspdf.node.js.map
+

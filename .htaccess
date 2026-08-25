@@ -5,7 +5,7 @@ Options -Indexes
   Require all denied
 </Files>
 
-<FilesMatch "(?i)\.(sql|bak|env|ini|log|md)$">
+<FilesMatch "(?i)\.(sql|bak|env|ini|log|md|map)$">
   Require all denied
 </FilesMatch>
 
