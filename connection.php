@@ -80,22 +80,27 @@ if (!defined('DB_NAME')) {
     define('DB_NAME', (string) ($dbConfig['name'] ?? 'barangay'));
 }
 
+$previousMysqliReport = mysqli_report(MYSQLI_REPORT_OFF);
 try {
     $con = @new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-    if ($con->connect_error) {
+    $connectError = $con->connect_error ?: '';
+    if ($connectError !== '') {
         // Temporary fallback for local XAMPP if dedicated user is not ready yet.
         if (DB_USER !== 'root') {
             $fallback = @new mysqli(DB_HOST, 'root', '', DB_NAME);
             if (!$fallback->connect_error) {
                 $con = $fallback;
-            } else {
-                die('Connection failed: ' . $con->connect_error);
+                $connectError = '';
             }
-        } else {
-            die('Connection failed: ' . $con->connect_error);
         }
     }
+    if ($connectError !== '' || !($con instanceof mysqli) || $con->connect_error) {
+        $detail = $connectError !== '' ? $connectError : ($con->connect_error ?? 'unknown error');
+        die('Connection failed: ' . $detail);
+    }
     $con->set_charset('utf8mb4');
-} catch (Exception $e) {
-    die('Connection failed.');
+} catch (Throwable $e) {
+    die('Connection failed: ' . $e->getMessage());
+} finally {
+    mysqli_report($previousMysqliReport);
 }
