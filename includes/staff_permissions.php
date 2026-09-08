@@ -715,6 +715,8 @@ if (!function_exists('barangay_bns_allowed_scripts')) {
             'nutritionPrintReport.php',
             'nutritionProfiles.php',
             'nutritionAssess.php',
+            'nutritionHubGuidePrint.php',
+            'nutritionProcessFormPrint.php',
             'myProfile.php',
         ];
     }
@@ -938,6 +940,7 @@ if (!function_exists('barangay_barangay_hub_sa_denied_scripts')) {
             'nutritionAssess.php',
             'nutritionSuperPrintReport.php',
             'nutritionHubGuidePrint.php',
+            'nutritionProcessFormPrint.php',
             'nutritionMellpiCityProfile.php',
             'saveNutritionMellpiCityProfile.php',
             'nutritionMellpiBarangayProfile.php',

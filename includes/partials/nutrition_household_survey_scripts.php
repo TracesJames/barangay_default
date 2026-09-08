@@ -19,6 +19,49 @@ function nutritionRelationshipOptionsHtml(index) {
   return html;
 }
 
+function nutritionSyncRelationshipOther($card) {
+  if (!$card || !$card.length) {
+    return;
+  }
+  var $select = $card.find('select[name*="[relationship]"]');
+  var $wrap = $card.find('.family-member-relationship-other-wrap');
+  var $input = $card.find('input[name*="[relationship_other]"]');
+  var isOther = String($select.val() || '') === 'Other Relative';
+  $wrap.toggle(isOther);
+  $input.prop('disabled', !isOther);
+  if (!isOther) {
+    $input.val('');
+  }
+}
+
+function nutritionApplyRelationshipToCard($card, relationship, relationshipOther) {
+  var stored = String(relationship || '').trim();
+  var otherLabel = 'Other Relative';
+  var options = window.nutritionRelationshipOptions || [];
+  var selectVal = stored;
+  var otherVal = String(relationshipOther || '').trim();
+
+  if (!otherVal) {
+    var m = stored.match(/^Other Relative\s*:\s*(.+)$/i);
+    if (m) {
+      selectVal = otherLabel;
+      otherVal = String(m[1] || '').trim();
+    } else if (stored && options.indexOf(stored) === -1) {
+      selectVal = otherLabel;
+      otherVal = stored;
+    }
+  } else {
+    selectVal = otherLabel;
+  }
+
+  $card.find('select[name*="[relationship]"]').val(selectVal);
+  $card.find('input[name*="[relationship_other]"]').prop('disabled', false).val(otherVal);
+  nutritionSyncRelationshipOther($card);
+  if (selectVal === otherLabel && otherVal) {
+    $card.find('input[name*="[relationship_other]"]').val(otherVal);
+  }
+}
+
 function nutritionFeedingCheckboxes(index, prefix, title) {
   var base = 'family_members[' + index + '][' + prefix + '_';
   return (
@@ -61,7 +104,12 @@ function nutritionBuildFamilyMemberCard(index) {
         '</div>' +
         '<div class="col-md-6 form-group">' +
           '<label>Relationship to Head of Household</label>' +
-          '<select class="form-control" name="family_members[' + index + '][relationship]">' + nutritionRelationshipOptionsHtml(index) + '</select>' +
+          '<select class="form-control family-member-relationship" name="family_members[' + index + '][relationship]">' + nutritionRelationshipOptionsHtml(index) + '</select>' +
+          '<div class="family-member-relationship-other-wrap mt-2" style="display:none;">' +
+            '<label class="mb-1">Please specify other relationship <span class="text-danger">*</span></label>' +
+            '<input type="text" class="form-control family-member-relationship-other" name="family_members[' + index + '][relationship_other]" placeholder="e.g. Cousin, Uncle, Aunt, In-law, Stepchild" disabled maxlength="100">' +
+            '<small class="text-muted">Use this only when the relationship is not in the list above (Nephew/Niece are already listed).</small>' +
+          '</div>' +
         '</div>' +
         '<div class="col-md-4 form-group">' +
           '<label>Gender (Boy / Girl)</label>' +
@@ -435,6 +483,7 @@ $('#addFamilyMemberBtn, .nutrition-add-first-member').on('click', function () {
   var $lastCard = $('#familyMembersContainer .nutrition-family-member-card').last();
   if ($lastCard.length) {
     nutritionInitDatePickers($lastCard);
+    nutritionSyncRelationshipOther($lastCard);
     $('html, body').animate({ scrollTop: $lastCard.offset().top - 120 }, 250);
     $lastCard.find('input[name*="[member_name]"]').focus();
   }
@@ -444,6 +493,10 @@ $(document).on('click', '.remove-family-member-btn', function () {
   $(this).closest('.nutrition-family-member-card').remove();
   nutritionRefreshFamilyMemberLabels();
   nutritionUpdateFamilyMembersEmptyState();
+});
+
+$(document).on('change', '.family-member-relationship', function () {
+  nutritionSyncRelationshipOther($(this).closest('.nutrition-family-member-card'));
 });
 
 $(document).on('change', '.family-member-pregnant', function () {
@@ -643,7 +696,7 @@ function nutritionApplyResidentPrefill(resident) {
     var $card = $('#familyMembersContainer .nutrition-family-member-card').last();
     nutritionInitDatePickers($card);
     $card.find('input[name*="[member_name]"]').val(member.member_name || '');
-    $card.find('select[name*="[relationship]"]').val(member.relationship || '');
+    nutritionApplyRelationshipToCard($card, member.relationship || '', member.relationship_other || '');
     $card.find('select[name*="[gender]"]').val(member.gender || '');
     $card.find('input[name*="[birth_date]"]').val(nutritionFormatMdy(member.birth_date || ''));
     familyMemberIndex++;
@@ -872,7 +925,7 @@ function nutritionApplySurveyEditPayload(data) {
     var $card = $('#familyMembersContainer .nutrition-family-member-card').last();
     nutritionInitDatePickers($card);
     $card.find('input[name*="[member_name]"]').val(member.member_name || '');
-    $card.find('select[name*="[relationship]"]').val(member.relationship || '');
+    nutritionApplyRelationshipToCard($card, member.relationship || '', member.relationship_other || '');
     $card.find('select[name*="[gender]"]').val(member.gender || '');
     $card.find('input[name*="[birth_date]"]').val(member.birth_date || '');
     $card.find('input[name*="[weight_kg]"]').val(member.weight_kg || '');
@@ -929,6 +982,27 @@ $('#householdSurveyForm').on('submit', function (e) {
       nutritionToggleOtherSpecify($(this));
     });
   });
+
+  var missingOtherSpecify = false;
+  $('#familyMembersContainer .nutrition-family-member-card').each(function () {
+    var $card = $(this);
+    nutritionSyncRelationshipOther($card);
+    if (String($card.find('select[name*="[relationship]"]').val() || '') === 'Other Relative'
+        && $.trim($card.find('input[name*="[relationship_other]"]').val() || '') === '') {
+      missingOtherSpecify = true;
+      $card.find('input[name*="[relationship_other]"]').focus();
+      return false;
+    }
+  });
+  if (missingOtherSpecify) {
+    Swal.fire({
+      title: 'Specify relationship',
+      text: 'For “Other Relative”, please describe the relationship (e.g. Cousin, Uncle, Aunt, In-law).',
+      type: 'warning'
+    });
+    return;
+  }
+
   var linkedResidence = $.trim($('#barangay_residence_id').val() || '');
   var isEdit = $.trim($('#existing_survey_id').val() || '') !== '';
   var doSave = function () {

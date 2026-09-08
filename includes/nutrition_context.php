@@ -3075,7 +3075,82 @@ if (!function_exists('nutrition_relationship_options')) {
             'Sister',
             'Grandchild',
             'Grandparent',
+            'Nephew',
+            'Niece',
             'Other Relative',
+        ];
+    }
+}
+
+if (!function_exists('nutrition_relationship_other_label')) {
+    function nutrition_relationship_other_label(): string
+    {
+        return 'Other Relative';
+    }
+}
+
+if (!function_exists('nutrition_compose_member_relationship')) {
+    /**
+     * Store Other Relative detail in the relationship column (no schema change).
+     * Example: "Other Relative: Cousin".
+     */
+    function nutrition_compose_member_relationship(string $relationship, string $otherSpecify = ''): string
+    {
+        $relationship = trim($relationship);
+        $otherSpecify = trim($otherSpecify);
+        $otherLabel = nutrition_relationship_other_label();
+        $options = nutrition_relationship_options();
+
+        if ($relationship === $otherLabel || ($relationship !== '' && !in_array($relationship, $options, true))) {
+            if ($otherSpecify !== '') {
+                // Avoid double prefix if user typed the label again.
+                if (stripos($otherSpecify, $otherLabel . ':') === 0) {
+                    return trim($otherSpecify);
+                }
+
+                return $otherLabel . ': ' . $otherSpecify;
+            }
+
+            return $relationship === '' ? $otherLabel : $relationship;
+        }
+
+        return $relationship;
+    }
+}
+
+if (!function_exists('nutrition_split_member_relationship')) {
+    /**
+     * @return array{relationship:string,relationship_other:string}
+     */
+    function nutrition_split_member_relationship(string $stored): array
+    {
+        $stored = trim($stored);
+        $otherLabel = nutrition_relationship_other_label();
+        $options = nutrition_relationship_options();
+
+        if ($stored === '') {
+            return ['relationship' => '', 'relationship_other' => ''];
+        }
+
+        if (preg_match('/^' . preg_quote($otherLabel, '/') . '\s*:\s*(.+)$/iu', $stored, $m)) {
+            return [
+                'relationship' => $otherLabel,
+                'relationship_other' => trim((string) ($m[1] ?? '')),
+            ];
+        }
+
+        if ($stored === $otherLabel) {
+            return ['relationship' => $otherLabel, 'relationship_other' => ''];
+        }
+
+        if (in_array($stored, $options, true)) {
+            return ['relationship' => $stored, 'relationship_other' => ''];
+        }
+
+        // Legacy free-text values → treat as Other Relative specify.
+        return [
+            'relationship' => $otherLabel,
+            'relationship_other' => $stored,
         ];
     }
 }
@@ -3405,7 +3480,10 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
 
             $members[] = [
                 'member_name' => $name,
-                'relationship' => trim((string) ($row['relationship'] ?? '')),
+                'relationship' => nutrition_compose_member_relationship(
+                    trim((string) ($row['relationship'] ?? '')),
+                    trim((string) ($row['relationship_other'] ?? ''))
+                ),
                 'gender' => $gender,
                 'birth_date' => $birthDateValue,
                 'weight_kg' => $weightKg > 0 ? $weightKg : null,

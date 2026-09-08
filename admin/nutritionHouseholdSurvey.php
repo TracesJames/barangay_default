@@ -81,9 +81,11 @@ if ($editingSurvey !== null) {
 
     $memberPayload = [];
     foreach ($editingMembers as $member) {
+        $relParts = nutrition_split_member_relationship((string) ($member['relationship'] ?? ''));
         $memberPayload[] = [
             'member_name' => (string) ($member['member_name'] ?? ''),
-            'relationship' => (string) ($member['relationship'] ?? ''),
+            'relationship' => $relParts['relationship'],
+            'relationship_other' => $relParts['relationship_other'],
             'gender' => (string) ($member['gender'] ?? ''),
             'birth_date' => $fmt($member['birth_date'] ?? ''),
             'weight_kg' => $member['weight_kg'] ?? '',

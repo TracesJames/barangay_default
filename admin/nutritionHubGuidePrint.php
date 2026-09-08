@@ -21,8 +21,10 @@ $childMaxAge = nutrition_child_max_age_years();
 $childAgeLabel = nutrition_children_age_label();
 $guideVersion = '2026.08.13b';
 
+// Nutrition Portal roles only (SSA, Nutrition SA/Admin, CNPC, BNS). Not Barangay Hub–only accounts.
 if (!barangay_user_can_access_nutrition_portal($con, $user_id)) {
-    header('Location: dashboard.php');
+    http_response_code(403);
+    header('Location: ' . (barangay_user_can_access_barangay_hub($con, $user_id) ? 'dashboard.php' : '../login.php?hub=nutrition'));
     exit;
 }
 

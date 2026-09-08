@@ -18,6 +18,13 @@ $isCityAdmin = barangay_user_is_city_admin($con, $user_id);
 $isNutritionPortalAdmin = barangay_user_is_nutrition_portal_admin($con, $user_id);
 $canOpenHub = barangay_user_can_access_nutrition_portal($con, $user_id);
 
+// Nutrition Portal roles only (SSA, Nutrition SA/Admin, CNPC, BNS). Not Barangay Hub–only accounts.
+if (!$canOpenHub) {
+    http_response_code(403);
+    header('Location: ' . (barangay_user_can_access_barangay_hub($con, $user_id) ? 'dashboard.php' : '../login.php?hub=nutrition'));
+    exit;
+}
+
 date_default_timezone_set('Asia/Manila');
 $generatedAt = date('F j, Y g:i A');
 $docVersion = '2026.08.05';
