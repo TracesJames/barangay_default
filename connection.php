@@ -80,6 +80,28 @@ if (!defined('DB_NAME')) {
     define('DB_NAME', (string) ($dbConfig['name'] ?? 'barangay'));
 }
 
+if (!function_exists('barangay_die_connection_failed')) {
+    function barangay_die_connection_failed(string $detail): void
+    {
+        $wantsJson = (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || isset($_POST['ajax'])
+            || isset($_GET['ajax'])
+            || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+
+        http_response_code(503);
+        if ($wantsJson) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'error' => 'Database is not running. Start MySQL in XAMPP, then refresh this page.',
+                'detail' => 'Connection failed: ' . $detail,
+            ]);
+            exit;
+        }
+        exit('Connection failed: ' . $detail);
+    }
+}
+
 $previousMysqliReport = mysqli_report(MYSQLI_REPORT_OFF);
 try {
     $con = @new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
@@ -96,11 +118,11 @@ try {
     }
     if ($connectError !== '' || !($con instanceof mysqli) || $con->connect_error) {
         $detail = $connectError !== '' ? $connectError : ($con->connect_error ?? 'unknown error');
-        die('Connection failed: ' . $detail);
+        barangay_die_connection_failed($detail);
     }
     $con->set_charset('utf8mb4');
 } catch (Throwable $e) {
-    die('Connection failed: ' . $e->getMessage());
+    barangay_die_connection_failed($e->getMessage());
 } finally {
     mysqli_report($previousMysqliReport);
 }

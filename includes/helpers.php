@@ -125,11 +125,20 @@ if (!function_exists('barangay_require_post')) {
 if (!function_exists('barangay_deny_access')) {
     function barangay_deny_access(string $loginPath = '../login.php'): void
     {
-        if (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
-            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-            http_response_code(403);
-            header('Content-Type: text/plain; charset=utf-8');
-            exit('Unauthorized');
+        $wantsJson = (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || isset($_POST['ajax'])
+            || isset($_GET['ajax'])
+            || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+
+        if ($wantsJson) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'error' => 'Your session expired. Please refresh the page and sign in again.',
+                'login' => $loginPath,
+            ]);
+            exit;
         }
         header('Location: ' . $loginPath);
         exit;

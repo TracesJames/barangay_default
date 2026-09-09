@@ -23,8 +23,9 @@ if (!barangay_user_can_open_nutrition_city_hub($con, $user_id)) {
 }
 
 // Keep any active barangay so Household Survey encode in another tab is not wiped.
+// Mint CSRF while the session is still writable; do not close the session early —
+// early session_write_close() caused AJAX Open/Encode posts to fail CSRF/auth checks.
 csrf_token();
-barangay_release_session_lock();
 
 $stmt_user = $con->prepare('SELECT first_name, last_name, image, image_path, user_type FROM users WHERE id = ?');
 $stmt_user->bind_param('s', $user_id);
@@ -84,9 +85,7 @@ if ($isCnpc) {
     $severelyWasted = (int) ($statusTotals['severely_wasted'] ?? 0);
     $stunted = (int) ($statusTotals['stunted'] ?? 0);
     $wasted = (int) ($statusTotals['wasted'] ?? 0);
-    $atRisk = ($statusTotals['underweight'] ?? 0) + ($statusTotals['wasted'] ?? 0)
-        + ($statusTotals['severely_wasted'] ?? 0) + ($statusTotals['stunted'] ?? 0)
-        + ($statusTotals['overweight'] ?? 0) + ($statusTotals['obese'] ?? 0);
+    $atRisk = (int) ($hubTotals['at_risk'] ?? 0);
     $childrenTotal = (int) ($hubTotals['children'] ?? 0);
     $assessedTotal = (int) ($hubTotals['assessed'] ?? 0);
     $pendingTotal = (int) ($hubTotals['pending'] ?? 0);
@@ -259,7 +258,7 @@ if ($nutritionRecommendations === []) {
   <link rel="stylesheet" href="../assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
   <link rel="stylesheet" href="../assets/css/super-dashboard.css?v=20260720b">
 <?php require_once '../includes/head_csrf.php'; ?>
-  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20260805n">
+  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20260908a">
 </head>
 <body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-portal nutrition-portal nutrition-super-dashboard">
 <div class="wrapper">
@@ -538,7 +537,8 @@ if ($nutritionRecommendations === []) {
             </div>
           </div>
           <div class="card-body">
-            <table id="nutritionSuperBarangayTable" class="table table-bordered table-striped table-dark mb-0">
+            <div class="table-responsive nutrition-super-barangay-table-wrap">
+            <table id="nutritionSuperBarangayTable" class="table table-bordered table-striped table-dark mb-0 w-100">
               <thead>
                 <tr>
                   <th>Barangay</th>
@@ -549,13 +549,13 @@ if ($nutritionRecommendations === []) {
                   <th>At-Risk</th>
                   <th>Surveys</th>
                   <th>BNS Account</th>
-                  <th>Action</th>
+                  <th class="text-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody>
                 <?php foreach ($barangayRows as $row) : ?>
                 <tr>
-                  <td>
+                  <td class="text-nowrap">
                     <img src="<?= barangay_h($row['logo']) ?>" alt="" class="barangay-logo-sm mr-2" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
                     <strong><?= barangay_h($row['barangay']) ?></strong>
                   </td>
@@ -590,6 +590,7 @@ if ($nutritionRecommendations === []) {
                 <?php endforeach; ?>
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>
@@ -613,12 +614,27 @@ if ($nutritionRecommendations === []) {
 <script src="../assets/dist/js/adminlte.min.js"></script>
 <script>
 $(function () {
-  $('#nutritionSuperBarangayTable').DataTable({
-    responsive: true,
+  var table = $('#nutritionSuperBarangayTable').DataTable({
+    // Keep columns visible; CSS .table-responsive handles overflow (scrollX broke CSRF forms).
+    responsive: false,
     autoWidth: false,
     order: [[0, 'asc']],
-    pageLength: 10
+    pageLength: 10,
+    columnDefs: [
+      { orderable: false, targets: -1 }
+    ]
   });
+
+  setTimeout(function () { table.columns.adjust(); }, 150);
+
+  function nutritionCsrfToken() {
+    if (typeof barangayCsrfToken === 'function') {
+      var t = barangayCsrfToken();
+      if (t) { return t; }
+    }
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? (meta.getAttribute('content') || '') : '';
+  }
 
   $(document).on('submit', '.js-open-nutrition-form', function (e) {
     e.preventDefault();
@@ -626,16 +642,56 @@ $(function () {
     if (typeof barangaySyncCsrfForms === 'function') {
       barangaySyncCsrfForms();
     }
+    var token = nutritionCsrfToken() || String($form.find('input[name="csrf_token"]').val() || '');
+    if (token) {
+      $form.find('input[name="csrf_token"]').val(token);
+    }
+    var payload = {
+      barangay_id: String($form.find('input[name="barangay_id"]').val() || ''),
+      redirect: String($form.find('input[name="redirect"]').val() || ''),
+      csrf_token: token,
+      ajax: 1
+    };
     $.ajax({
       url: $form.attr('action') || 'selectBarangay.php',
       type: 'POST',
-      data: $form.serialize(),
+      data: payload,
       dataType: 'json',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+        'X-CSRF-Token': token
+      },
       success: function (res) {
-        window.location.href = res.redirect || 'nutritionDashboard.php';
+        if (res && res.redirect) {
+          window.location.href = res.redirect;
+          return;
+        }
+        alert((res && res.error) ? res.error : 'Could not open barangay nutrition dashboard. Please refresh and try again.');
       }
-    }).fail(function () {
-      alert('Could not open barangay nutrition dashboard. Please refresh and try again.');
+    }).fail(function (xhr) {
+      var msg = 'Could not open barangay nutrition dashboard. Please refresh and try again.';
+      var raw = (xhr && xhr.responseText) ? String(xhr.responseText) : '';
+      try {
+        var data = JSON.parse(raw);
+        if (data && data.error) {
+          msg = data.error;
+        }
+        if (data && data.login && (xhr.status === 401 || xhr.status === 403)) {
+          alert(msg);
+          window.location.href = data.login;
+          return;
+        }
+      } catch (err) {
+        if (raw.indexOf('Connection failed') !== -1) {
+          msg = 'Database is not running. Start MySQL in XAMPP, then refresh this page.';
+        } else if (raw.indexOf('CSRF') !== -1) {
+          msg = 'Invalid security token. Please refresh the page and try again.';
+        } else if (xhr.status === 401 || xhr.status === 403) {
+          msg = 'Your session expired. Please refresh the page and sign in again.';
+        }
+      }
+      alert(msg);
     });
   });
 });

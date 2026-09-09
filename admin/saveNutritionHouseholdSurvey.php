@@ -179,7 +179,7 @@ $hasCarenderia = nutrition_yes_no_from_post('has_carenderia');
 $hasSariSariStore = nutrition_yes_no_from_post('has_sari_sari_store');
 $practicesFamilyPlanning = nutrition_yes_no_from_post('practices_family_planning');
 $familyPlanningMethods = $practicesFamilyPlanning === 'YES'
-    ? nutrition_prf_methods_from_post('family_planning_methods', nutrition_prf_family_planning_method_options())
+    ? nutrition_prf_family_planning_methods_from_post()
     : '';
 $complementaryMeals = nutrition_prf_pick_option((string) ($_POST['complementary_meals'] ?? ''), nutrition_prf_complementary_meal_options());
 $complementaryMealsOther = $complementaryMeals === 'Others' ? trim((string) ($_POST['complementary_meals_other'] ?? '')) : '';

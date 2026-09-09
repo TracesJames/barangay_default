@@ -1238,6 +1238,26 @@ body.barangay-portal.nutrition-portal .main-footer {
   background: transparent;
 }
 
+.nutrition-portal .nutrition-super-barangay-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nutrition-portal .nutrition-super-barangay-table-wrap .dataTables_wrapper {
+  width: 100%;
+}
+
+.nutrition-portal .nutrition-super-barangay-table-wrap table.dataTable,
+.nutrition-portal .nutrition-super-barangay-table-wrap .dataTables_scrollHead table,
+.nutrition-portal .nutrition-super-barangay-table-wrap .dataTables_scrollBody table {
+  width: 100% !important;
+}
+
+.nutrition-portal .nutrition-super-barangay-table-wrap .table-dark th,
+.nutrition-portal .nutrition-super-barangay-table-wrap .table-dark td {
+  color: #ecfdf5;
+}
+
 .nutrition-portal .table-dark thead th {
   border-bottom-color: rgba(0, 108, 53, 0.2);
   color: var(--portal-nutrition-heading);

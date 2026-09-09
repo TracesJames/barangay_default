@@ -445,6 +445,47 @@ if (!function_exists('nutrition_age_in_months')) {
     }
 }
 
+if (!function_exists('nutrition_format_age_label')) {
+    /**
+     * Human age label with years, months, and days.
+     * Example: 1y 1m 5d (13 months)
+     */
+    function nutrition_format_age_label(?string $birthDate, ?string $referenceDate = null): ?string
+    {
+        $birthYmd = nutrition_normalize_date_to_ymd($birthDate);
+        if ($birthYmd === null) {
+            return null;
+        }
+
+        $referenceYmd = nutrition_normalize_date_to_ymd($referenceDate ?? date('Y-m-d'));
+        if ($referenceYmd === null) {
+            $referenceYmd = date('Y-m-d');
+        }
+
+        try {
+            $birth = new DateTime($birthYmd);
+            $reference = new DateTime($referenceYmd);
+        } catch (Exception $e) {
+            return null;
+        }
+
+        if ($birth > $reference) {
+            return null;
+        }
+
+        $diff = $birth->diff($reference);
+        $years = (int) $diff->y;
+        $months = (int) $diff->m;
+        $days = (int) $diff->d;
+        $ageMonths = nutrition_age_in_months($birthYmd, $referenceYmd);
+        if ($ageMonths === null) {
+            $ageMonths = ($years * 12) + $months;
+        }
+
+        return $years . 'y ' . $months . 'm ' . $days . 'd (' . $ageMonths . ' months)';
+    }
+}
+
 if (!function_exists('nutrition_growth_interpolate')) {
     /**
      * @param array<int, array{0:float|int,1:float|int}> $points
@@ -789,33 +830,75 @@ if (!function_exists('nutrition_survey_member_is_assessed')) {
 }
 
 if (!function_exists('nutrition_survey_member_dashboard_status')) {
+    /**
+     * Single primary dashboard status for a survey member (for badges / recent activity).
+     * Prefers the most severe non-normal indicator when several apply.
+     */
     function nutrition_survey_member_dashboard_status(array $member): ?string
     {
-        $statuses = [];
-        foreach (['weight_for_age', 'height_for_age', 'weight_for_height'] as $field) {
-            $status = nutrition_survey_growth_label_to_status((string) ($member[$field] ?? ''));
-            if ($status !== null) {
-                $statuses[] = $status;
-            }
-        }
-
+        $statuses = nutrition_survey_member_dashboard_statuses($member);
         if ($statuses === []) {
             return null;
         }
 
-        foreach ($statuses as $status) {
-            if ($status !== 'normal') {
-                return $status;
+        $priority = [
+            'severely_wasted',
+            'wasted',
+            'underweight',
+            'stunted',
+            'obese',
+            'overweight',
+            'normal',
+        ];
+        foreach ($priority as $key) {
+            if (in_array($key, $statuses, true)) {
+                return $key;
             }
         }
 
-        return 'normal';
+        return $statuses[0];
+    }
+}
+
+if (!function_exists('nutrition_survey_member_dashboard_statuses')) {
+    /**
+     * All distinct nutritional statuses from WFA / HFA / WFH for breakdown chips.
+     * A child who is both underweight and stunted is counted in both buckets.
+     * Normal is returned only when every present indicator is normal.
+     *
+     * @return list<string>
+     */
+    function nutrition_survey_member_dashboard_statuses(array $member): array
+    {
+        $found = [];
+        foreach (['weight_for_age', 'height_for_age', 'weight_for_height'] as $field) {
+            $status = nutrition_survey_growth_label_to_status((string) ($member[$field] ?? ''));
+            if ($status !== null) {
+                $found[$status] = true;
+            }
+        }
+
+        if ($found === []) {
+            return [];
+        }
+
+        if (count($found) === 1 && isset($found['normal'])) {
+            return ['normal'];
+        }
+
+        unset($found['normal']);
+
+        return array_keys($found);
     }
 }
 
 if (!function_exists('nutrition_survey_children_totals')) {
     /**
      * Dashboard totals for children recorded in household surveys.
+     *
+     * Status chips count each growth indicator separately (a child may appear in
+     * more than one non-normal bucket). `at_risk` counts unique children with any
+     * non-normal indicator.
      *
      * @return array{
      *   children:int,
@@ -828,7 +911,8 @@ if (!function_exists('nutrition_survey_children_totals')) {
      *   stunted:int,
      *   overweight:int,
      *   obese:int,
-     *   this_month:int
+     *   this_month:int,
+     *   at_risk:int
      * }
      */
     function nutrition_survey_children_totals(mysqli $con, ?string $barangayId = null): array
@@ -845,6 +929,7 @@ if (!function_exists('nutrition_survey_children_totals')) {
             'overweight' => 0,
             'obese' => 0,
             'this_month' => 0,
+            'at_risk' => 0,
         ];
 
         if (!barangay_table_exists($con, 'nutrition_household_family_member')
@@ -886,9 +971,14 @@ if (!function_exists('nutrition_survey_children_totals')) {
             }
 
             $totals['assessed']++;
-            $status = nutrition_survey_member_dashboard_status($member);
-            if ($status !== null && isset($totals[$status])) {
-                $totals[$status]++;
+            $statuses = nutrition_survey_member_dashboard_statuses($member);
+            foreach ($statuses as $status) {
+                if (isset($totals[$status])) {
+                    $totals[$status]++;
+                }
+            }
+            if ($statuses !== [] && !in_array('normal', $statuses, true)) {
+                $totals['at_risk']++;
             }
 
             $measuredOn = trim((string) ($member['date_measured'] ?? ''));
@@ -1014,12 +1104,13 @@ if (!function_exists('nutrition_scoped_totals')) {
             'overweight' => 0,
             'obese' => 0,
             'this_month' => 0,
+            'at_risk' => 0,
             'pregnant' => 0,
             'teenage_pregnant' => 0,
         ];
 
         $surveyTotals = nutrition_survey_children_totals($con, $barangayId);
-        foreach (['children', 'assessed', 'this_month', 'normal', 'underweight', 'wasted', 'severely_wasted', 'stunted', 'overweight', 'obese'] as $key) {
+        foreach (['children', 'assessed', 'this_month', 'normal', 'underweight', 'wasted', 'severely_wasted', 'stunted', 'overweight', 'obese', 'at_risk'] as $key) {
             $defaults[$key] += (int) ($surveyTotals[$key] ?? 0);
         }
 
@@ -1059,6 +1150,9 @@ if (!function_exists('nutrition_scoped_totals')) {
             $status = (string) ($row['nutritional_status'] ?? 'normal');
             if (isset($defaults[$status])) {
                 $defaults[$status]++;
+            }
+            if ($status !== '' && $status !== 'normal') {
+                $defaults['at_risk']++;
             }
         }
         $stmt->close();
@@ -1105,13 +1199,7 @@ if (!function_exists('nutrition_hub_totals')) {
         $totals['children'] = (int) ($surveyTotals['children'] ?? 0);
         $totals['assessed'] = (int) ($surveyTotals['assessed'] ?? 0);
         $totals['this_month'] = (int) ($surveyTotals['this_month'] ?? 0);
-        $surveyAtRisk = (int) ($surveyTotals['underweight'] ?? 0)
-            + (int) ($surveyTotals['wasted'] ?? 0)
-            + (int) ($surveyTotals['severely_wasted'] ?? 0)
-            + (int) ($surveyTotals['stunted'] ?? 0)
-            + (int) ($surveyTotals['overweight'] ?? 0)
-            + (int) ($surveyTotals['obese'] ?? 0);
-        $totals['at_risk'] = $surveyAtRisk;
+        $totals['at_risk'] = (int) ($surveyTotals['at_risk'] ?? 0);
 
         if (!nutrition_table_exists($con) || !barangay_column_exists($con, 'residence_status', 'barangay_id')) {
             $totals['pending'] = max(0, $totals['children'] - $totals['assessed']);
@@ -1372,8 +1460,7 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
             }
 
             $scoped = nutrition_scoped_totals($con, $barangayId);
-            $atRisk = $scoped['underweight'] + $scoped['wasted'] + $scoped['severely_wasted']
-                + $scoped['stunted'] + $scoped['overweight'] + $scoped['obese'];
+            $atRisk = (int) ($scoped['at_risk'] ?? 0);
 
             $rows[] = [
                 'id' => $barangayId,
@@ -1580,9 +1667,7 @@ if (!function_exists('nutrition_city_report_snapshot')) {
         }
         unset($row);
 
-        $atRisk = ($statusTotals['underweight'] ?? 0) + ($statusTotals['wasted'] ?? 0)
-            + ($statusTotals['severely_wasted'] ?? 0) + ($statusTotals['stunted'] ?? 0)
-            + ($statusTotals['overweight'] ?? 0) + ($statusTotals['obese'] ?? 0);
+        $atRisk = (int) ($hubTotals['at_risk'] ?? 0);
 
         return [
             'hub_totals' => $hubTotals,
@@ -3333,7 +3418,44 @@ if (!function_exists('nutrition_prf_family_planning_method_options')) {
     /** @return array<int, string> */
     function nutrition_prf_family_planning_method_options(): array
     {
-        return ['Natural', 'IUD', 'Pills', 'Ligation', 'Vasectomy', 'Depo', 'Implanon Implant', 'Condom', 'BTL', 'DMPA'];
+        return ['Natural', 'IUD', 'Pills', 'Ligation', 'Vasectomy', 'Depo', 'Implanon Implant', 'Condom', 'BTL', 'DMPA', 'LAM', 'Others'];
+    }
+}
+
+if (!function_exists('nutrition_prf_family_planning_methods_from_post')) {
+    /**
+     * Comma-separated FP methods. Others may include a specify suffix: "Others: …".
+     */
+    function nutrition_prf_family_planning_methods_from_post(): string
+    {
+        $methods = nutrition_prf_methods_from_post(
+            'family_planning_methods',
+            nutrition_prf_family_planning_method_options()
+        );
+        if ($methods === '') {
+            return '';
+        }
+
+        $parts = [];
+        $hasOthers = false;
+        foreach (explode(',', $methods) as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            if ($part === 'Others' || str_starts_with($part, 'Others:')) {
+                $hasOthers = true;
+                continue;
+            }
+            $parts[] = $part;
+        }
+
+        if ($hasOthers) {
+            $other = trim((string) ($_POST['family_planning_methods_other'] ?? ''));
+            $parts[] = $other !== '' ? ('Others: ' . $other) : 'Others';
+        }
+
+        return implode(', ', $parts);
     }
 }
 

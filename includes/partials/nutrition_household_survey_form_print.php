@@ -261,6 +261,7 @@ $feedingOptions = [
         <span class="checkbox-item"><span class="box"></span> <?= barangay_h($opt) ?></span>
         <?php endforeach; ?>
       </div>
+      <div style="margin-top:4px;">Others, pls. specify: _________________</div>
     </div>
 
     <div class="field col-12">

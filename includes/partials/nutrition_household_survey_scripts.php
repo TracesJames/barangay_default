@@ -233,13 +233,42 @@ function nutritionClearGrowthResults($card) {
   $card.find('.nutrition-growth-expected').text('');
 }
 
-function nutritionFormatAgeLabel(ageMonths) {
+function nutritionFormatAgeLabel(ageMonths, birthDate, referenceDate) {
+  // Prefer exact Y/M/D from birthday when available.
+  if (birthDate) {
+    var birthYmd = nutritionToYmd(birthDate);
+    var refYmd = nutritionToYmd(referenceDate || nutritionTodayMdy());
+    if (birthYmd && refYmd) {
+      var b = birthYmd.split('-').map(Number);
+      var r = refYmd.split('-').map(Number);
+      var birth = new Date(b[0], b[1] - 1, b[2]);
+      var ref = new Date(r[0], r[1] - 1, r[2]);
+      if (!isNaN(birth.getTime()) && !isNaN(ref.getTime()) && birth <= ref) {
+        var years = ref.getFullYear() - birth.getFullYear();
+        var months = ref.getMonth() - birth.getMonth();
+        var days = ref.getDate() - birth.getDate();
+        if (days < 0) {
+          months -= 1;
+          var prevMonth = new Date(ref.getFullYear(), ref.getMonth(), 0);
+          days += prevMonth.getDate();
+        }
+        if (months < 0) {
+          years -= 1;
+          months += 12;
+        }
+        var totalMonths = (typeof ageMonths === 'number' && !isNaN(ageMonths))
+          ? ageMonths
+          : (years * 12 + months);
+        return years + 'y ' + months + 'm ' + days + 'd (' + totalMonths + ' months)';
+      }
+    }
+  }
   if (ageMonths === null || ageMonths === undefined || isNaN(ageMonths)) {
     return 'Enter birthday';
   }
-  var years = Math.floor(ageMonths / 12);
-  var months = ageMonths % 12;
-  return years + 'y ' + months + 'm (' + ageMonths + ' months)';
+  var y = Math.floor(ageMonths / 12);
+  var m = ageMonths % 12;
+  return y + 'y ' + m + 'm 0d (' + ageMonths + ' months)';
 }
 
 /** Strip UTF-8 BOM / leading junk so JSON.parse / dataType:json do not fail. */
@@ -349,11 +378,11 @@ function nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabe
     nutritionClearGrowthResults($card);
     return;
   }
-  $ageLabel.text(nutritionFormatAgeLabel(ageMonths)).removeClass('text-muted');
+  $ageLabel.text(nutritionFormatAgeLabel(ageMonths, birthDate, dateMeasured)).removeClass('text-muted');
   $card.find('.family-member-age-months').val(ageMonths);
   if (ageMonths > 60) {
     $ageLabel.html(
-      $('<span>').text(nutritionFormatAgeLabel(ageMonths)).prop('outerHTML') +
+      $('<span>').text(nutritionFormatAgeLabel(ageMonths, birthDate, dateMeasured)).prop('outerHTML') +
       ' <span class="badge badge-secondary ml-1">Over 5 yrs — no OPT weighing</span>'
     );
     $anthro.hide();
@@ -412,7 +441,7 @@ function nutritionRefreshFamilyMemberGrowth($card) {
       return;
     }
 
-    $ageLabel.text(res.age_label || nutritionFormatAgeLabel(res.age_months)).removeClass('text-muted');
+    $ageLabel.text(res.age_label || nutritionFormatAgeLabel(res.age_months, birthDate, dateMeasured)).removeClass('text-muted');
     $card.find('.family-member-age-months').val(res.age_months != null ? res.age_months : '');
 
     if (!res.is_child_0_to_5) {
@@ -421,7 +450,7 @@ function nutritionRefreshFamilyMemberGrowth($card) {
       nutritionClearGrowthResults($card);
       if (res.age_months != null && res.age_months > 60) {
         $ageLabel.html(
-          $('<span>').text(res.age_label || nutritionFormatAgeLabel(res.age_months)).prop('outerHTML') +
+          $('<span>').text(res.age_label || nutritionFormatAgeLabel(res.age_months, birthDate, dateMeasured)).prop('outerHTML') +
           ' <span class="badge badge-secondary ml-1">Over 5 yrs — no OPT weighing</span>'
         );
       }
@@ -598,10 +627,24 @@ function nutritionSyncPrfToggles() {
   } else {
     $('#familyPlanningMethodsWrap').hide();
     $('#familyPlanningMethodsWrap input[type="checkbox"]').prop('checked', false);
+    $('#family_planning_methods_other').hide().prop('disabled', true).val('');
+  }
+  nutritionSyncFpOtherSpecify();
+}
+
+function nutritionSyncFpOtherSpecify() {
+  var fpYes = ($('input[name="practices_family_planning"]:checked').val() || 'NO') === 'YES';
+  var othersChecked = $('input[name="family_planning_methods[]"][value="Others"]').is(':checked');
+  var $other = $('#family_planning_methods_other');
+  if (fpYes && othersChecked) {
+    $other.show().prop('disabled', false);
+  } else {
+    $other.hide().prop('disabled', true).val('');
   }
 }
 
 $(document).on('change', 'input[name="house_ownership"], input[name="garbage_disposal"], input[name="practices_family_planning"], input[name="complementary_meals"], input[name="complementary_snacks"], input[name="child_physical_activity"]', nutritionSyncPrfToggles);
+$(document).on('change', 'input[name="family_planning_methods[]"]', nutritionSyncFpOtherSpecify);
 
 $('#is_na_member').on('change', function () {
   if (this.checked) {
@@ -895,11 +938,20 @@ function nutritionApplySurveyEditPayload(data) {
   }
   var fpMethods = String(data.family_planning_methods || '').split(/[,|]/);
   $('input[name="family_planning_methods[]"]').prop('checked', false);
+  var fpOtherDetail = '';
   fpMethods.forEach(function (m) {
     m = $.trim(m);
     if (!m) return;
+    if (m === 'Others' || m.indexOf('Others:') === 0) {
+      $('input[name="family_planning_methods[]"][value="Others"]').prop('checked', true);
+      if (m.indexOf('Others:') === 0) {
+        fpOtherDetail = $.trim(m.replace(/^Others:\s*/, ''));
+      }
+      return;
+    }
     $('input[name="family_planning_methods[]"][value="' + m.replace(/"/g, '\\"') + '"]').prop('checked', true);
   });
+  $('#family_planning_methods_other').val(fpOtherDetail);
 
   if (data.complementary_meals) {
     $('input[name="complementary_meals"][value="' + String(data.complementary_meals).replace(/"/g, '\\"') + '"]').prop('checked', true);

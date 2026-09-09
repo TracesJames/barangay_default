@@ -35,9 +35,8 @@ if ($ageMonths === null) {
     exit;
 }
 
-$years = intdiv($ageMonths, 12);
-$months = $ageMonths % 12;
-$ageLabel = $years . 'y ' . $months . 'm (' . $ageMonths . ' months)';
+$ageLabel = nutrition_format_age_label($birthDate, $referenceDate)
+    ?? ($ageMonths . ' months');
 
 $growthGender = in_array($gender, ['Male', 'Female'], true) ? $gender : '';
 $growth = nutrition_family_member_growth_assessment(

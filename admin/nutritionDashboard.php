@@ -9,8 +9,7 @@ $nutritionPageTitle = 'Nutrition Dashboard';
 
 $barangayId = (string) $barangay_id;
 $totals = nutrition_scoped_totals($con, $barangayId);
-$atRisk = $totals['underweight'] + $totals['wasted'] + $totals['severely_wasted']
-    + $totals['stunted'] + $totals['overweight'] + $totals['obese'];
+$atRisk = (int) ($totals['at_risk'] ?? 0);
 
 $householdSurveyCount = 0;
 if (barangay_table_exists($con, 'nutrition_household_survey')) {

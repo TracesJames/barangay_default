@@ -79,11 +79,14 @@ if (!function_exists('csrf_verify')) {
     {
         $token = csrf_request_token();
         if ($token === '' || empty($_SESSION['csrf_token'])
-            || !hash_equals($_SESSION['csrf_token'], $token)) {
-            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
-                && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+            || !hash_equals((string) $_SESSION['csrf_token'], $token)) {
+            $wantsJson = (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                    && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                || isset($_POST['ajax'])
+                || isset($_GET['ajax'])
+                || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
             http_response_code(403);
-            if ($isAjax) {
+            if ($wantsJson) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['error' => 'Invalid CSRF token. Please refresh the page and try again.']);
                 exit;

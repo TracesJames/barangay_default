@@ -395,6 +395,7 @@ foreach ($surveys as $surveyRow) {
                       <div id="familyPlanningMethodsWrap" class="nutrition-prf-suboptions mt-3 pt-2" style="display:none;">
                         <label class="d-block small text-muted mb-2">If yes, check method(s):</label>
                         <?php nutrition_prf_render_checkbox_group('family_planning_methods', nutrition_prf_family_planning_method_options(), 'wrap'); ?>
+                        <input type="text" class="form-control mt-2" id="family_planning_methods_other" name="family_planning_methods_other" placeholder="Others, pls. specify" style="display:none;" maxlength="120">
                       </div>
                     </div>
                   </div>
