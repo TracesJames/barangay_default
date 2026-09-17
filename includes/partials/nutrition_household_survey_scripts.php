@@ -146,33 +146,67 @@ function nutritionBuildFamilyMemberCard(index) {
       '<div class="family-child-anthropometry nutrition-child-anthro" style="display:none;">' +
         '<div class="nutrition-child-anthro-banner mb-3">' +
           '<i class="fas fa-baby mr-1"></i>' +
-          '<strong>Child 0–5 years</strong> — enter date measured, weight &amp; height. ' +
-          'Results use <span class="nutrition-growth-sex-label">boy/girl</span> growth standards.' +
+          '<strong>Child 0–5 years</strong> — enter previous (optional) and present weight &amp; height. ' +
+          'OPT results use <span class="nutrition-growth-sex-label">boy/girl</span> standards on the <strong>present</strong> date.' +
           '<div class="nutrition-growth-expected small mt-1 text-muted"></div>' +
         '</div>' +
-        '<div class="row">' +
-          '<div class="col-md-3 form-group">' +
-            '<label>Date Measured <span class="text-danger">*</span></label>' +
-            '<input type="text" class="form-control nutrition-date-mdy family-member-growth-input family-member-date-measured" name="family_members[' + index + '][date_measured]" value="" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
-            '<small class="text-muted">MM/DD/YYYY</small>' +
+        '<div class="nutrition-anthro-block mb-3">' +
+          '<div class="small text-muted font-weight-bold mb-2 text-uppercase">Previous measurement <span class="font-weight-normal">(optional)</span></div>' +
+          '<div class="row">' +
+            '<div class="col-md-3 form-group">' +
+              '<label>Previous Date Measured</label>' +
+              '<input type="text" class="form-control nutrition-date-mdy family-member-prev-date-measured" name="family_members[' + index + '][prev_date_measured]" value="" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
+              '<small class="text-muted">MM/DD/YYYY</small>' +
+            '</div>' +
+            '<div class="col-md-2 form-group">' +
+              '<label>Previous Weight (kg)</label>' +
+              '<input type="number" min="0" step="0.01" class="form-control family-member-prev-weight" name="family_members[' + index + '][prev_weight_kg]" placeholder="kg">' +
+            '</div>' +
+            '<div class="col-md-2 form-group">' +
+              '<label>Previous Height / Length (cm)</label>' +
+              '<input type="number" min="0" step="0.1" class="form-control family-member-prev-height" name="family_members[' + index + '][prev_height_cm]" placeholder="cm">' +
+            '</div>' +
+            '<div class="col-md-5 form-group">' +
+              '<label class="d-block">Nutrition Result (auto-computed from previous)</label>' +
+              '<div class="nutrition-growth-results nutrition-growth-results--prev small">' +
+                '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-prev-wfa badge badge-secondary">—</span></div>' +
+                '<div><span class="text-muted">Height for Age:</span> <span class="nutrition-growth-prev-hfa badge badge-secondary">—</span></div>' +
+                '<div><span class="text-muted">Weight for Height/Length:</span> <span class="nutrition-growth-prev-wfh badge badge-secondary">—</span></div>' +
+                '<div class="nutrition-prev-expected small mt-1 text-muted"></div>' +
+                '<input type="hidden" name="family_members[' + index + '][prev_weight_for_age]" value="">' +
+                '<input type="hidden" name="family_members[' + index + '][prev_height_for_age]" value="">' +
+                '<input type="hidden" name="family_members[' + index + '][prev_weight_for_height]" value="">' +
+              '</div>' +
+            '</div>' +
           '</div>' +
-          '<div class="col-md-2 form-group">' +
-            '<label>Weight (kg) <span class="text-danger">*</span></label>' +
-            '<input type="number" min="0" step="0.01" class="form-control family-member-growth-input" name="family_members[' + index + '][weight_kg]" placeholder="kg">' +
-          '</div>' +
-          '<div class="col-md-2 form-group">' +
-            '<label>Height / Length (cm) <span class="text-danger">*</span></label>' +
-            '<input type="number" min="0" step="0.1" class="form-control family-member-growth-input" name="family_members[' + index + '][height_cm]" placeholder="cm">' +
-          '</div>' +
-          '<div class="col-md-5 form-group">' +
-            '<label class="d-block">Nutrition Result (auto-computed)</label>' +
-            '<div class="nutrition-growth-results small">' +
-              '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-wfa badge badge-secondary">—</span></div>' +
-              '<div><span class="text-muted">Height for Age:</span> <span class="nutrition-growth-hfa badge badge-secondary">—</span></div>' +
-              '<div><span class="text-muted">Weight for Height/Length:</span> <span class="nutrition-growth-wfh badge badge-secondary">—</span></div>' +
-              '<input type="hidden" name="family_members[' + index + '][weight_for_age]" value="">' +
-              '<input type="hidden" name="family_members[' + index + '][height_for_age]" value="">' +
-              '<input type="hidden" name="family_members[' + index + '][weight_for_height]" value="">' +
+        '</div>' +
+        '<div class="nutrition-anthro-block mb-2">' +
+          '<div class="small text-muted font-weight-bold mb-2 text-uppercase">Present measurement</div>' +
+          '<div class="row">' +
+            '<div class="col-md-3 form-group">' +
+              '<label>Present Date Measured <span class="text-danger">*</span></label>' +
+              '<input type="text" class="form-control nutrition-date-mdy family-member-growth-input family-member-date-measured" name="family_members[' + index + '][date_measured]" value="" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
+              '<small class="text-muted">MM/DD/YYYY</small>' +
+            '</div>' +
+            '<div class="col-md-2 form-group">' +
+              '<label>Present Weight (kg) <span class="text-danger">*</span></label>' +
+              '<input type="number" min="0" step="0.01" class="form-control family-member-growth-input family-member-present-weight" name="family_members[' + index + '][weight_kg]" placeholder="kg">' +
+            '</div>' +
+            '<div class="col-md-2 form-group">' +
+              '<label>Present Height / Length (cm) <span class="text-danger">*</span></label>' +
+              '<input type="number" min="0" step="0.1" class="form-control family-member-growth-input family-member-present-height" name="family_members[' + index + '][height_cm]" placeholder="cm">' +
+            '</div>' +
+            '<div class="col-md-5 form-group">' +
+              '<label class="d-block">Nutrition Result (auto-computed from present)</label>' +
+              '<div class="nutrition-growth-results small">' +
+                '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-wfa badge badge-secondary">—</span></div>' +
+                '<div><span class="text-muted">Height for Age:</span> <span class="nutrition-growth-hfa badge badge-secondary">—</span></div>' +
+                '<div><span class="text-muted">Weight for Height/Length:</span> <span class="nutrition-growth-wfh badge badge-secondary">—</span></div>' +
+                '<div class="nutrition-weight-gain mt-2 text-muted"></div>' +
+                '<input type="hidden" name="family_members[' + index + '][weight_for_age]" value="">' +
+                '<input type="hidden" name="family_members[' + index + '][height_for_age]" value="">' +
+                '<input type="hidden" name="family_members[' + index + '][weight_for_height]" value="">' +
+              '</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -215,22 +249,144 @@ function nutritionGrowthBadgeClass(result) {
   return 'badge-secondary';
 }
 
-function nutritionSetGrowthResult($card, field, value) {
+function nutritionSetGrowthResult($card, field, value, which) {
+  which = which || 'present';
   var fieldMap = { wfa: 'weight_for_age', hfa: 'height_for_age', wfh: 'weight_for_height' };
+  var key = fieldMap[field];
   var display = value || '—';
   var badgeClass = value ? nutritionGrowthBadgeClass(value) : 'badge-secondary';
+  if (which === 'prev') {
+    $card.find('.nutrition-growth-prev-' + field)
+      .text(display)
+      .removeClass('badge-secondary badge-success badge-warning badge-danger badge-info badge-primary')
+      .addClass(badgeClass);
+    $card.find('input[name*="[prev_' + key + ']"]').val(value || '');
+    return;
+  }
   $card.find('.nutrition-growth-' + field)
     .text(display)
     .removeClass('badge-secondary badge-success badge-warning badge-danger badge-info badge-primary')
     .addClass(badgeClass);
-  $card.find('input[name*="[' + fieldMap[field] + ']"]').val(value || '');
+  $card.find('input').filter(function () {
+    return new RegExp('\\[' + key + '\\]$').test(this.name || '');
+  }).val(value || '');
 }
 
 function nutritionClearGrowthResults($card) {
   nutritionSetGrowthResult($card, 'wfa', '');
   nutritionSetGrowthResult($card, 'hfa', '');
   nutritionSetGrowthResult($card, 'wfh', '');
+  nutritionSetGrowthResult($card, 'wfa', '', 'prev');
+  nutritionSetGrowthResult($card, 'hfa', '', 'prev');
+  nutritionSetGrowthResult($card, 'wfh', '', 'prev');
   $card.find('.nutrition-growth-expected').text('');
+  $card.find('.nutrition-prev-expected').text('');
+  $card.find('.nutrition-weight-gain').text('').removeClass('text-success text-danger text-warning');
+}
+
+function nutritionRefreshPreviousGrowth($card) {
+  var gender = $card.find('select[name*="[gender]"]').val();
+  var birthDate = ($card.find('input[name*="[birth_date]"]').val() || '').trim();
+  var prevWeight = parseFloat($card.find('.family-member-prev-weight').val() || '0');
+  var prevHeight = parseFloat($card.find('.family-member-prev-height').val() || '0');
+  var prevDate = ($card.find('.family-member-prev-date-measured').val() || '').trim();
+  var $prevExpected = $card.find('.nutrition-prev-expected');
+
+  if (!(prevWeight > 0) || !(prevHeight > 0) || !prevDate || !birthDate || !gender) {
+    nutritionSetGrowthResult($card, 'wfa', '', 'prev');
+    nutritionSetGrowthResult($card, 'hfa', '', 'prev');
+    nutritionSetGrowthResult($card, 'wfh', '', 'prev');
+    $prevExpected.text('');
+    return;
+  }
+
+  var birthYmd = nutritionToYmd(birthDate);
+  var prevYmd = nutritionToYmd(prevDate);
+  if (!birthYmd || !prevYmd) {
+    nutritionSetGrowthResult($card, 'wfa', '', 'prev');
+    nutritionSetGrowthResult($card, 'hfa', '', 'prev');
+    nutritionSetGrowthResult($card, 'wfh', '', 'prev');
+    $prevExpected.text('');
+    return;
+  }
+
+  $.ajax({
+    url: 'nutritionFamilyMemberGrowth.php',
+    method: 'GET',
+    dataType: 'json',
+    data: {
+      gender: gender,
+      birth_date: birthYmd,
+      weight_kg: prevWeight,
+      height_cm: prevHeight,
+      date_measured: prevYmd
+    },
+    dataFilter: function (data) {
+      return nutritionStripBom(data);
+    }
+  }).done(function (res) {
+    if (!res || !res.ok || !res.is_child_0_to_5) {
+      nutritionSetGrowthResult($card, 'wfa', '', 'prev');
+      nutritionSetGrowthResult($card, 'hfa', '', 'prev');
+      nutritionSetGrowthResult($card, 'wfh', '', 'prev');
+      $prevExpected.text('');
+      return;
+    }
+    nutritionSetGrowthResult($card, 'wfa', res.weight_for_age || '', 'prev');
+    nutritionSetGrowthResult($card, 'hfa', res.height_for_age || '', 'prev');
+    nutritionSetGrowthResult($card, 'wfh', res.weight_for_height || '', 'prev');
+    if (res.expected_weight_kg && res.expected_height_cm && res.sex_label) {
+      $prevExpected.text(
+        'Expected median at previous date (' + res.sex_label + '): ~' +
+        res.expected_weight_kg + ' kg · ~' + res.expected_height_cm + ' cm'
+      );
+    } else {
+      $prevExpected.text('');
+    }
+  }).fail(function () {
+    nutritionSetGrowthResult($card, 'wfa', '', 'prev');
+    nutritionSetGrowthResult($card, 'hfa', '', 'prev');
+    nutritionSetGrowthResult($card, 'wfh', '', 'prev');
+    $prevExpected.text('');
+  });
+}
+
+function nutritionUpdateWeightGain($card) {
+  var $gain = $card.find('.nutrition-weight-gain');
+  var prevW = parseFloat($card.find('.family-member-prev-weight').val() || '');
+  var presentW = parseFloat($card.find('.family-member-present-weight').val() || '');
+  var prevDate = ($card.find('.family-member-prev-date-measured').val() || '').trim();
+  var presentDate = ($card.find('.family-member-date-measured').val() || '').trim();
+  $gain.text('').removeClass('text-success text-danger text-warning');
+
+  if (!(prevW > 0) || !(presentW > 0)) {
+    return;
+  }
+
+  var delta = Math.round((presentW - prevW) * 100) / 100;
+  var sign = delta > 0 ? '+' : '';
+  var daysText = '';
+  var prevYmd = nutritionToYmd(prevDate);
+  var presentYmd = nutritionToYmd(presentDate);
+  if (prevYmd && presentYmd) {
+    var p = prevYmd.split('-').map(Number);
+    var n = presentYmd.split('-').map(Number);
+    var prevDt = new Date(p[0], p[1] - 1, p[2]);
+    var presentDt = new Date(n[0], n[1] - 1, n[2]);
+    if (!isNaN(prevDt.getTime()) && !isNaN(presentDt.getTime()) && presentDt >= prevDt) {
+      var days = Math.round((presentDt - prevDt) / 86400000);
+      daysText = ' in ' + days + ' day' + (days === 1 ? '' : 's');
+    }
+  }
+
+  $gain.text('Weight change: ' + sign + delta.toFixed(2) + ' kg' + daysText);
+  if (delta > 0) {
+    $gain.addClass('text-success');
+  } else if (delta < 0) {
+    $gain.addClass('text-danger');
+  } else {
+    $gain.addClass('text-warning');
+  }
 }
 
 function nutritionFormatAgeLabel(ageMonths, birthDate, referenceDate) {
@@ -395,13 +551,16 @@ function nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabe
 function nutritionRefreshFamilyMemberGrowth($card) {
   var gender = $card.find('select[name*="[gender]"]').val();
   var birthDate = $card.find('input[name*="[birth_date]"]').val();
-  var weight = parseFloat($card.find('input[name*="[weight_kg]"]').val() || '0');
-  var height = parseFloat($card.find('input[name*="[height_cm]"]').val() || '0');
+  var weight = parseFloat($card.find('.family-member-present-weight').val() || '0');
+  var height = parseFloat($card.find('.family-member-present-height').val() || '0');
   var surveyDate = $('#survey_date').val();
-  var $dateMeasured = $card.find('input[name*="[date_measured]"]');
+  var $dateMeasured = $card.find('.family-member-date-measured');
   var dateMeasured = ($dateMeasured.val() || '').trim();
   var $anthro = $card.find('.family-child-anthropometry');
   var $ageLabel = $card.find('.nutrition-member-age-label');
+
+  nutritionUpdateWeightGain($card);
+  nutritionRefreshPreviousGrowth($card);
 
   if (!birthDate) {
     $ageLabel.text('Enter birthday').addClass('text-muted');
@@ -446,7 +605,8 @@ function nutritionRefreshFamilyMemberGrowth($card) {
 
     if (!res.is_child_0_to_5) {
       $anthro.hide();
-      $card.find('input[name*="[weight_kg]"], input[name*="[height_cm]"], input[name*="[date_measured]"]').val('');
+      $card.find('.family-member-present-weight, .family-member-present-height, .family-member-date-measured').val('');
+      $card.find('.family-member-prev-weight, .family-member-prev-height, .family-member-prev-date-measured').val('');
       nutritionClearGrowthResults($card);
       if (res.age_months != null && res.age_months > 60) {
         $ageLabel.html(
@@ -484,6 +644,7 @@ function nutritionRefreshFamilyMemberGrowth($card) {
       nutritionSetGrowthResult($card, 'hfa', '');
       nutritionSetGrowthResult($card, 'wfh', '');
     }
+    nutritionUpdateWeightGain($card);
   }).fail(function () {
     // Endpoint may fail (auth/BOM/HTML); still show age so staff can continue.
     nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro);
@@ -659,7 +820,7 @@ $('#is_4ps, #is_ip').on('change', function () {
 
 nutritionSyncPrfToggles();
 
-$(document).on('input change', '.family-member-growth-input, .family-member-growth-trigger', function () {
+$(document).on('input change', '.family-member-growth-input, .family-member-growth-trigger, .family-member-prev-weight, .family-member-prev-height, .family-member-prev-date-measured', function () {
   nutritionRefreshFamilyMemberGrowth($(this).closest('.nutrition-family-member-card'));
 });
 
@@ -980,9 +1141,12 @@ function nutritionApplySurveyEditPayload(data) {
     nutritionApplyRelationshipToCard($card, member.relationship || '', member.relationship_other || '');
     $card.find('select[name*="[gender]"]').val(member.gender || '');
     $card.find('input[name*="[birth_date]"]').val(member.birth_date || '');
-    $card.find('input[name*="[weight_kg]"]').val(member.weight_kg || '');
-    $card.find('input[name*="[height_cm]"]').val(member.height_cm || '');
-    $card.find('input[name*="[date_measured]"]').val(member.date_measured || '');
+    $card.find('.family-member-present-weight').val(member.weight_kg || '');
+    $card.find('.family-member-present-height').val(member.height_cm || '');
+    $card.find('.family-member-date-measured').val(member.date_measured || '');
+    $card.find('.family-member-prev-weight').val(member.prev_weight_kg || '');
+    $card.find('.family-member-prev-height').val(member.prev_height_cm || '');
+    $card.find('.family-member-prev-date-measured').val(member.prev_date_measured || '');
     $card.find('input[name*="[weight_for_age]"]').val(member.weight_for_age || '');
     $card.find('input[name*="[height_for_age]"]').val(member.height_for_age || '');
     $card.find('input[name*="[weight_for_height]"]').val(member.weight_for_height || '');

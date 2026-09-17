@@ -1987,6 +1987,9 @@ if (!function_exists('nutrition_ensure_module_tables')) {
                 `weight_kg` DECIMAL(5,2) DEFAULT NULL,
                 `height_cm` DECIMAL(5,2) DEFAULT NULL,
                 `date_measured` DATE DEFAULT NULL,
+                `prev_weight_kg` DECIMAL(5,2) DEFAULT NULL,
+                `prev_height_cm` DECIMAL(5,2) DEFAULT NULL,
+                `prev_date_measured` DATE DEFAULT NULL,
                 `age_months` INT DEFAULT NULL,
                 `weight_for_age` VARCHAR(32) NOT NULL DEFAULT '',
                 `height_for_age` VARCHAR(32) NOT NULL DEFAULT '',
@@ -2101,7 +2104,10 @@ if (!function_exists('nutrition_ensure_module_tables')) {
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'weight_kg', 'DECIMAL(5,2) DEFAULT NULL AFTER `birth_date`');
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'height_cm', 'DECIMAL(5,2) DEFAULT NULL AFTER `weight_kg`');
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'date_measured', 'DATE DEFAULT NULL AFTER `height_cm`');
-        nutrition_ensure_column($con, 'nutrition_household_family_member', 'age_months', 'INT DEFAULT NULL AFTER `date_measured`');
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'prev_weight_kg', 'DECIMAL(5,2) DEFAULT NULL AFTER `date_measured`');
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'prev_height_cm', 'DECIMAL(5,2) DEFAULT NULL AFTER `prev_weight_kg`');
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'prev_date_measured', 'DATE DEFAULT NULL AFTER `prev_height_cm`');
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'age_months', 'INT DEFAULT NULL AFTER `prev_date_measured`');
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'weight_for_age', "VARCHAR(32) NOT NULL DEFAULT '' AFTER `age_months`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'height_for_age', "VARCHAR(32) NOT NULL DEFAULT '' AFTER `weight_for_age`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'weight_for_height', "VARCHAR(32) NOT NULL DEFAULT '' AFTER `height_for_age`");
@@ -3582,6 +3588,9 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
             $weightKg = max(0, (float) ($row['weight_kg'] ?? 0));
             $heightCm = max(0, (float) ($row['height_cm'] ?? 0));
             $dateMeasured = nutrition_normalize_date_to_ymd(trim((string) ($row['date_measured'] ?? '')));
+            $prevWeightKg = max(0, (float) ($row['prev_weight_kg'] ?? 0));
+            $prevHeightCm = max(0, (float) ($row['prev_height_cm'] ?? 0));
+            $prevDateMeasured = nutrition_normalize_date_to_ymd(trim((string) ($row['prev_date_measured'] ?? '')));
             if ($dateMeasured === null) {
                 $dateMeasured = $referenceDate;
             }
@@ -3591,6 +3600,18 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
                 $weightKg = 0;
                 $heightCm = 0;
                 $dateMeasured = null;
+                $prevWeightKg = 0;
+                $prevHeightCm = 0;
+                $prevDateMeasured = null;
+            }
+            // Previous date must not be after present measurement date.
+            if ($prevDateMeasured !== null && $dateMeasured !== null && $prevDateMeasured > $dateMeasured) {
+                $prevDateMeasured = null;
+                $prevWeightKg = 0;
+                $prevHeightCm = 0;
+            }
+            if ($prevWeightKg <= 0 && $prevHeightCm <= 0) {
+                $prevDateMeasured = null;
             }
             $growth = nutrition_family_member_growth_assessment(
                 $gender,
@@ -3611,6 +3632,11 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
                 'weight_kg' => $weightKg > 0 ? $weightKg : null,
                 'height_cm' => $heightCm > 0 ? $heightCm : null,
                 'date_measured' => ($dateMeasured !== null && $dateMeasured !== '' && ($weightKg > 0 || $heightCm > 0)) ? $dateMeasured : null,
+                'prev_weight_kg' => $prevWeightKg > 0 ? $prevWeightKg : null,
+                'prev_height_cm' => $prevHeightCm > 0 ? $prevHeightCm : null,
+                'prev_date_measured' => ($prevDateMeasured !== null && $prevDateMeasured !== '' && ($prevWeightKg > 0 || $prevHeightCm > 0))
+                    ? $prevDateMeasured
+                    : null,
                 'age_months' => $growth['age_months'],
                 'weight_for_age' => (string) ($growth['weight_for_age'] ?? ''),
                 'height_for_age' => (string) ($growth['height_for_age'] ?? ''),
@@ -3655,12 +3681,12 @@ if (!function_exists('nutrition_save_household_family_members')) {
         $stmt = $con->prepare(
             'INSERT INTO nutrition_household_family_member
              (member_id, survey_id, barangay_id, member_name, relationship, gender, birth_date, weight_kg, height_cm,
-              date_measured, age_months, weight_for_age, height_for_age, weight_for_height, is_pregnant, is_lactating, pregnancy_months,
+              date_measured, prev_weight_kg, prev_height_cm, prev_date_measured, age_months, weight_for_age, height_for_age, weight_for_height, is_pregnant, is_lactating, pregnancy_months,
               pregnant_nutrition_status,
               planned_exclusive_breastfeeding, planned_mixed_feeding, planned_bottle_feeding, planned_other_feeding,
               planned_other_specify, lactating_exclusive_breastfeeding, lactating_mixed_feeding,
               lactating_bottle_feeding, lactating_other_feeding, lactating_other_specify, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$stmt) {
             return 0;
@@ -3679,6 +3705,12 @@ if (!function_exists('nutrition_save_household_family_members')) {
             $heightCmValue = $heightCm !== null ? (float) $heightCm : null;
             $dateMeasured = trim((string) ($member['date_measured'] ?? ''));
             $dateMeasuredValue = $dateMeasured !== '' ? $dateMeasured : null;
+            $prevWeightKg = $member['prev_weight_kg'] ?? null;
+            $prevHeightCm = $member['prev_height_cm'] ?? null;
+            $prevWeightKgValue = $prevWeightKg !== null ? (float) $prevWeightKg : null;
+            $prevHeightCmValue = $prevHeightCm !== null ? (float) $prevHeightCm : null;
+            $prevDateMeasured = trim((string) ($member['prev_date_measured'] ?? ''));
+            $prevDateMeasuredValue = $prevDateMeasured !== '' ? $prevDateMeasured : null;
             $sortOrder = (int) $index;
             $pregnantNutritionStatus = (string) ($member['pregnant_nutrition_status'] ?? '');
 
@@ -3687,9 +3719,11 @@ if (!function_exists('nutrition_save_household_family_members')) {
             $pregnancyMonthsBind = $pregnancyMonthsValue === null ? null : (string) $pregnancyMonthsValue;
             $weightKgBind = $weightKgValue === null ? null : (string) $weightKgValue;
             $heightCmBind = $heightCmValue === null ? null : (string) $heightCmValue;
+            $prevWeightKgBind = $prevWeightKgValue === null ? null : (string) $prevWeightKgValue;
+            $prevHeightCmBind = $prevHeightCmValue === null ? null : (string) $prevHeightCmValue;
 
             $stmt->bind_param(
-                'ssssssssssssssssssssssssssssi',
+                'sssssssssssssssssssssssssssssssi',
                 $memberId,
                 $surveyId,
                 $barangayId,
@@ -3700,6 +3734,9 @@ if (!function_exists('nutrition_save_household_family_members')) {
                 $weightKgBind,
                 $heightCmBind,
                 $dateMeasuredValue,
+                $prevWeightKgBind,
+                $prevHeightCmBind,
+                $prevDateMeasuredValue,
                 $ageMonthsBind,
                 $member['weight_for_age'],
                 $member['height_for_age'],

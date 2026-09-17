@@ -301,19 +301,19 @@ $feedingOptions = [
   </div>
 
   <div class="section-title">V. Family Members</div>
-  <p style="margin:0 0 6px;font-size:11px;">For children 0–5 years: record Weight (kg) and Height/Length (cm). WFA / HFA / WFH use boy/girl growth standards.</p>
+  <p style="margin:0 0 6px;font-size:11px;">For children 0–5 years: record previous (optional) and present Date Measured, Weight (kg), Height/Length (cm). OPT / WFA / HFA / WFH use present date and boy/girl growth standards.</p>
   <table>
     <thead>
       <tr>
-        <th style="width:16%;">Name</th>
-        <th style="width:10%;">Relationship</th>
-        <th style="width:7%;">Gender</th>
-        <th style="width:9%;">Birthday</th>
-        <th style="width:7%;">Pregnant</th>
-        <th style="width:7%;">Lactating</th>
-        <th style="width:7%;">Weight</th>
-        <th style="width:7%;">Height</th>
-        <th style="width:30%;">WFA / HFA / WFH · P/L feeding</th>
+        <th style="width:14%;">Name</th>
+        <th style="width:8%;">Relationship</th>
+        <th style="width:6%;">Gender</th>
+        <th style="width:8%;">Birthday</th>
+        <th style="width:6%;">Pregnant</th>
+        <th style="width:6%;">Lactating</th>
+        <th style="width:8%;">Prev Wt/Ht/Date</th>
+        <th style="width:8%;">Present Wt/Ht/Date</th>
+        <th style="width:36%;">WFA / HFA / WFH · P/L feeding</th>
       </tr>
     </thead>
     <tbody>
