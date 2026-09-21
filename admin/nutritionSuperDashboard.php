@@ -45,7 +45,6 @@ $isSuperAdmin = $isSuperAdmin || $isNutritionPortalAdmin;
 $activePage = 'nutrition_super_dashboard';
 $brandLogo = barangay_default_logo_url('../');
 
-$canEncodeHouseholdSurvey = nutrition_user_can_add_household_surveys($con, $user_id);
 $cnpcBarangayIds = $isCnpc ? staff_assigned_barangay_ids($con, $user_id) : null;
 $barangayRows = nutrition_super_dashboard_rows($con, $cnpcBarangayIds);
 $barangayCount = count($barangayRows);
@@ -575,16 +574,6 @@ if ($nutritionRecommendations === []) {
                         <i class="fas fa-external-link-alt mr-1"></i> Open
                       </button>
                     </form>
-                    <?php if ($canEncodeHouseholdSurvey) : ?>
-                    <form method="post" action="selectBarangay.php" class="d-inline js-open-nutrition-form">
-                      <?= csrf_field(); ?>
-                      <input type="hidden" name="barangay_id" value="<?= barangay_h($row['id']) ?>">
-                      <input type="hidden" name="redirect" value="nutritionHouseholdSurvey.php">
-                      <button type="submit" class="btn btn-sm btn-success">
-                        <i class="fas fa-home mr-1"></i> Encode Survey
-                      </button>
-                    </form>
-                    <?php endif; ?>
                   </td>
                 </tr>
                 <?php endforeach; ?>
@@ -615,7 +604,7 @@ if ($nutritionRecommendations === []) {
 <script>
 $(function () {
   var table = $('#nutritionSuperBarangayTable').DataTable({
-    // Keep columns visible; CSS .table-responsive handles overflow (scrollX broke CSRF forms).
+    // Keep columns visible; CSS .table-responsive handles overflow.
     responsive: false,
     autoWidth: false,
     order: [[0, 'asc']],
@@ -627,72 +616,12 @@ $(function () {
 
   setTimeout(function () { table.columns.adjust(); }, 150);
 
-  function nutritionCsrfToken() {
-    if (typeof barangayCsrfToken === 'function') {
-      var t = barangayCsrfToken();
-      if (t) { return t; }
-    }
-    var meta = document.querySelector('meta[name="csrf-token"]');
-    return meta ? (meta.getAttribute('content') || '') : '';
-  }
-
-  $(document).on('submit', '.js-open-nutrition-form', function (e) {
-    e.preventDefault();
-    var $form = $(this);
+  // Native POST (not AJAX): LAN/IP sessions were dropping on XHR and showing
+  // "session expired". Browser form submit always sends the session cookie.
+  $(document).on('submit', '.js-open-nutrition-form', function () {
     if (typeof barangaySyncCsrfForms === 'function') {
       barangaySyncCsrfForms();
     }
-    var token = nutritionCsrfToken() || String($form.find('input[name="csrf_token"]').val() || '');
-    if (token) {
-      $form.find('input[name="csrf_token"]').val(token);
-    }
-    var payload = {
-      barangay_id: String($form.find('input[name="barangay_id"]').val() || ''),
-      redirect: String($form.find('input[name="redirect"]').val() || ''),
-      csrf_token: token,
-      ajax: 1
-    };
-    $.ajax({
-      url: $form.attr('action') || 'selectBarangay.php',
-      type: 'POST',
-      data: payload,
-      dataType: 'json',
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json',
-        'X-CSRF-Token': token
-      },
-      success: function (res) {
-        if (res && res.redirect) {
-          window.location.href = res.redirect;
-          return;
-        }
-        alert((res && res.error) ? res.error : 'Could not open barangay nutrition dashboard. Please refresh and try again.');
-      }
-    }).fail(function (xhr) {
-      var msg = 'Could not open barangay nutrition dashboard. Please refresh and try again.';
-      var raw = (xhr && xhr.responseText) ? String(xhr.responseText) : '';
-      try {
-        var data = JSON.parse(raw);
-        if (data && data.error) {
-          msg = data.error;
-        }
-        if (data && data.login && (xhr.status === 401 || xhr.status === 403)) {
-          alert(msg);
-          window.location.href = data.login;
-          return;
-        }
-      } catch (err) {
-        if (raw.indexOf('Connection failed') !== -1) {
-          msg = 'Database is not running. Start MySQL in XAMPP, then refresh this page.';
-        } else if (raw.indexOf('CSRF') !== -1) {
-          msg = 'Invalid security token. Please refresh the page and try again.';
-        } else if (xhr.status === 401 || xhr.status === 403) {
-          msg = 'Your session expired. Please refresh the page and sign in again.';
-        }
-      }
-      alert(msg);
-    });
   });
 });
 </script>

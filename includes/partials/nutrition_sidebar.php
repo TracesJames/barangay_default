@@ -100,7 +100,7 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
         <li class="nav-item">
           <a href="nutritionAssess.php" class="nav-link <?= $nutritionActivePage === 'assess' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-weight"></i>
-            <p>New Assessment</p>
+            <p>Registration</p>
           </a>
         </li>
         <?php endif; ?>

@@ -229,13 +229,33 @@ if (!function_exists('barangay_session_guard_enforce')) {
 
         $dbToken = trim((string) ($row['active_session_token'] ?? ''));
 
-        // Legacy sessions before this feature — issue a token once.
+        // Legacy sessions, or DB token wiped (e.g. MySQL/Aria repair) while the
+        // browser session is still valid — re-bind instead of forcing logout.
         if ($dbToken === '' && $localToken === '') {
             barangay_session_guard_issue($con, $userId);
             return;
         }
+        if ($dbToken === '' && $localToken !== '') {
+            $now = date('Y-m-d H:i:s');
+            $restore = $con->prepare(
+                'UPDATE users SET active_session_token = ?, session_last_seen = ? WHERE id = ? LIMIT 1'
+            );
+            if ($restore) {
+                $restore->bind_param('sss', $localToken, $now, $userId);
+                $restore->execute();
+                $restore->close();
+            }
+            $_SESSION['session_last_touch'] = time();
+            return;
+        }
 
-        if ($localToken === '' || $dbToken === '' || !hash_equals($dbToken, $localToken)) {
+        // Authenticated PHP session missing local token (partial session loss) — re-bind.
+        if ($localToken === '') {
+            barangay_session_guard_issue($con, $userId);
+            return;
+        }
+
+        if (!hash_equals($dbToken, $localToken)) {
             unset($_SESSION['user_id'], $_SESSION['user_type'], $_SESSION['username'], $_SESSION['active_session_token']);
             $sep = str_contains($loginPath, '?') ? '&' : '?';
             barangay_deny_access($loginPath . $sep . 'reason=session_taken');

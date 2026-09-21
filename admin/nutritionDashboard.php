@@ -60,7 +60,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
           <i class="fas fa-info-circle mr-2 text-success"></i>
           No household surveys or child assessments yet for <strong><?= barangay_h($barangay) ?></strong>.
           Start with <a href="nutritionHouseholdSurvey.php" class="text-success font-weight-bold">Household Survey</a>
-          or <a href="nutritionAssess.php" class="text-success font-weight-bold">New Assessment</a>.
+          or <a href="nutritionAssess.php" class="text-success font-weight-bold">Registration</a>.
         </div>
         <?php endif; ?>
 
@@ -73,8 +73,8 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
           </a>
           <a href="nutritionAssess.php" class="nutrition-workflow-card">
             <span class="nutrition-workflow-card-icon"><i class="fas fa-weight"></i></span>
-            <span class="nutrition-workflow-card-title">New Assessment</span>
-            <span class="nutrition-workflow-card-desc">Link a nutrition assessment to an existing barangay resident record.</span>
+            <span class="nutrition-workflow-card-title">Registration</span>
+            <span class="nutrition-workflow-card-desc">Register a nutrition assessment for an existing barangay resident record.</span>
           </a>
           <a href="nutritionBarangaySurvey.php" class="nutrition-workflow-card">
             <span class="nutrition-workflow-card-icon"><i class="fas fa-poll"></i></span>
@@ -183,7 +183,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                   No assessments yet for this barangay.
                   <a href="nutritionHouseholdSurvey.php" class="text-success">Add a household survey</a>
                   or
-                  <a href="nutritionAssess.php" class="text-success">new assessment</a>.
+                  <a href="nutritionAssess.php" class="text-success">registration</a>.
                 </div>
                 <?php else : ?>
                 <div class="table-responsive">

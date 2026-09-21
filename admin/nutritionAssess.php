@@ -41,7 +41,7 @@ $statusOptions = nutrition_status_options();
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>New Nutrition Assessment | <?= barangay_h($barangay) ?></title>
+  <title>Registration | <?= barangay_h($barangay) ?></title>
   <link rel="stylesheet" href="../assets/plugins/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="../assets/plugins/overlayScrollbars/css/OverlayScrollbars.min.css">
   <link rel="stylesheet" href="../assets/dist/css/adminlte.min.css">
@@ -56,7 +56,7 @@ $statusOptions = nutrition_status_options();
   <nav class="main-header navbar navbar-expand navbar-dark nutrition-navbar">
     <ul class="navbar-nav">
       <li class="nav-item"><a class="nav-link text-white" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li>
-      <li class="nav-item d-none d-sm-inline-block"><h5 class="nav-link text-white mb-0">New Assessment</h5></li>
+      <li class="nav-item d-none d-sm-inline-block"><h5 class="nav-link text-white mb-0">Registration</h5></li>
     </ul>
   </nav>
 
@@ -67,8 +67,8 @@ $statusOptions = nutrition_status_options();
       <div class="container-fluid">
         <?php
         $nutritionPageIcon = 'fa-weight';
-        $nutritionPageHeading = 'New Nutrition Assessment';
-        $nutritionPageDescription = 'Record a nutrition assessment for a registered barangay resident (children 0–' . nutrition_child_max_age_years() . '). For household surveys with family members, use Household Survey instead.';
+        $nutritionPageHeading = 'Registration';
+        $nutritionPageDescription = 'Register a nutrition assessment for a barangay resident (children 0–' . nutrition_child_max_age_years() . '). For household surveys with family members, use Household Survey instead.';
         $nutritionPageActions = '<a href="nutritionHouseholdSurvey.php" class="btn btn-outline-light btn-sm"><i class="fas fa-home mr-1"></i> Household Survey</a>';
         require __DIR__ . '/../includes/partials/nutrition_page_header.php';
         ?>
@@ -76,7 +76,7 @@ $statusOptions = nutrition_status_options();
           <div class="col-lg-8">
             <div class="card nutrition-panel">
               <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-weight mr-2"></i>Record Nutrition Assessment</h3>
+                <h3 class="card-title"><i class="fas fa-weight mr-2"></i>Nutrition Registration</h3>
               </div>
               <form id="nutritionAssessForm">
                 <?= csrf_field(); ?>

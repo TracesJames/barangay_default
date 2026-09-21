@@ -1692,7 +1692,12 @@ if (!function_exists('barangay_assert_request_scope')) {
 
         $barangayId = trim((string) ($_REQUEST['barangay_id'] ?? ''));
         if ($barangayId !== '') {
-            barangay_assert_barangay_in_scope($con, $barangayId);
+            $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+            // selectBarangay.php exists to switch the active barangay — do not
+            // treat a different posted barangay_id as an out-of-scope request.
+            if ($script !== 'selectBarangay.php') {
+                barangay_assert_barangay_in_scope($con, $barangayId);
+            }
         }
     }
 }

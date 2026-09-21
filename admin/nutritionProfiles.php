@@ -48,7 +48,7 @@ $statusOptions = nutrition_status_options();
       <li class="nav-item d-none d-sm-inline-block"><h5 class="nav-link text-white mb-0">Nutrition Profiles</h5></li>
     </ul>
     <ul class="navbar-nav ml-auto">
-      <li class="nav-item"><a class="nav-link text-white" href="nutritionAssess.php"><i class="fas fa-plus mr-1"></i> New Assessment</a></li>
+      <li class="nav-item"><a class="nav-link text-white" href="nutritionAssess.php"><i class="fas fa-plus mr-1"></i> Registration</a></li>
     </ul>
   </nav>
 
@@ -61,7 +61,7 @@ $statusOptions = nutrition_status_options();
         $nutritionPageIcon = 'fa-clipboard-list';
         $nutritionPageHeading = 'Nutrition Profiles';
         $nutritionPageDescription = 'Browse the latest nutrition assessments for residents in ' . $barangay . '. Filter by status to focus on at-risk cases.';
-        $nutritionPageActions = '<a href="nutritionAssess.php" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> New Assessment</a>';
+        $nutritionPageActions = '<a href="nutritionAssess.php" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Registration</a>';
         require __DIR__ . '/../includes/partials/nutrition_page_header.php';
         ?>
         <div class="card nutrition-panel">
