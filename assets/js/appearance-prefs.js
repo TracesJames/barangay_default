@@ -6,15 +6,27 @@
   'use strict';
 
   var STORAGE_KEY = 'barangay_appearance_prefs_v1';
+  var TEXT_SIZES = ['normal', 'large', 'xlarge'];
+  var FONT_SCALE = { normal: '1', large: '1.12', xlarge: '1.25' };
+
+  function systemPrefersReducedMotion() {
+    try {
+      return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+      return false;
+    }
+  }
+
   var DEFAULTS = {
     accent: 'default',
     textSize: 'normal',
     highContrast: false,
-    reduceMotion: false
+    underlineLinks: false,
+    reduceMotion: systemPrefersReducedMotion()
   };
 
   var ACCENTS = {
-    default: { label: 'Default', color: '#14b8a6' },
+    default: { label: 'Teal', color: '#14b8a6' },
     'pastel-red': { label: 'Coral', color: '#FFADAD' },
     'pastel-orange': { label: 'Peach', color: '#FFD6A5' },
     'pastel-yellow': { label: 'Yellow', color: '#FDFFB6' },
@@ -48,11 +60,10 @@
       var catalog = accentCatalog();
       return {
         accent: catalog[parsed.accent] ? parsed.accent : DEFAULTS.accent,
-        textSize: ['normal', 'large', 'xlarge'].indexOf(parsed.textSize) >= 0
-          ? parsed.textSize
-          : DEFAULTS.textSize,
+        textSize: TEXT_SIZES.indexOf(parsed.textSize) >= 0 ? parsed.textSize : DEFAULTS.textSize,
         highContrast: !!parsed.highContrast,
-        reduceMotion: !!parsed.reduceMotion
+        underlineLinks: !!parsed.underlineLinks,
+        reduceMotion: typeof parsed.reduceMotion === 'boolean' ? parsed.reduceMotion : DEFAULTS.reduceMotion
       };
     } catch (e) {
       return Object.assign({}, DEFAULTS);
@@ -89,16 +100,13 @@
     body.classList.toggle('a11y-text-large', prefs.textSize === 'large');
     body.classList.toggle('a11y-text-xlarge', prefs.textSize === 'xlarge');
     body.classList.toggle('a11y-contrast', !!prefs.highContrast);
+    body.classList.toggle('a11y-underline-links', !!prefs.underlineLinks);
     body.classList.toggle('a11y-reduce-motion', !!prefs.reduceMotion);
 
-    document.documentElement.style.setProperty(
-      '--a11y-font-scale',
-      prefs.textSize === 'xlarge' ? '1.25' : prefs.textSize === 'large' ? '1.12' : '1'
-    );
+    document.documentElement.style.setProperty('--a11y-font-scale', FONT_SCALE[prefs.textSize] || '1');
 
     document.querySelectorAll('[data-appearance-preview]').forEach(function (el) {
-      el.style.background = meta.color || '#16a34a';
-      el.textContent = (meta.label || 'Default') + ' · ' + (meta.color || '');
+      el.textContent = (meta.label || 'Default') + ' \u00b7 ' + (meta.color || '');
     });
   }
 
@@ -110,20 +118,21 @@
   }
 
   function resetPrefs() {
-    writePrefs(Object.assign({}, DEFAULTS));
-    applyPrefs(DEFAULTS);
-    return Object.assign({}, DEFAULTS);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+    var prefs = Object.assign({}, DEFAULTS);
+    applyPrefs(prefs);
+    return prefs;
   }
 
   /** Early apply before paint (call from head inline script). */
   function bootEarly() {
     try {
       var prefs = readPrefs();
-      var html = document.documentElement;
-      html.style.setProperty(
-        '--a11y-font-scale',
-        prefs.textSize === 'xlarge' ? '1.25' : prefs.textSize === 'large' ? '1.12' : '1'
-      );
+      document.documentElement.style.setProperty('--a11y-font-scale', FONT_SCALE[prefs.textSize] || '1');
       if (document.body) {
         applyPrefs(prefs);
       } else {
@@ -136,92 +145,122 @@
     }
   }
 
+  var TOGGLES = {
+    appearance_high_contrast: 'highContrast',
+    appearance_underline_links: 'underlineLinks',
+    appearance_reduce_motion: 'reduceMotion'
+  };
+
   function bindPanel(root) {
     if (!root || root.getAttribute('data-appearance-bound') === '1') {
       return;
     }
     root.setAttribute('data-appearance-bound', '1');
-    var prefs = readPrefs();
 
-    function syncUi(p) {
-      root.querySelectorAll('[data-accent-choice]').forEach(function (btn) {
-        btn.classList.toggle('is-active', btn.getAttribute('data-accent-choice') === p.accent);
-      });
-      var textSel = root.querySelector('[name="appearance_text_size"]');
-      if (textSel) {
-        textSel.value = p.textSize;
+    var status = root.querySelector('[data-appearance-status]');
+    var statusIdle = status ? status.innerHTML : '';
+    var statusTimer = null;
+
+    function flashStatus(message) {
+      if (!status) {
+        return;
       }
-      var contrast = root.querySelector('[name="appearance_high_contrast"]');
-      if (contrast) {
-        contrast.checked = !!p.highContrast;
-      }
-      var motion = root.querySelector('[name="appearance_reduce_motion"]');
-      if (motion) {
-        motion.checked = !!p.reduceMotion;
-      }
+      status.classList.add('is-saved');
+      status.innerHTML = '<i class="fas fa-check-circle mr-1"></i>' + message;
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(function () {
+        status.classList.remove('is-saved');
+        status.innerHTML = statusIdle;
+      }, 2200);
     }
 
-    syncUi(prefs);
+    var swatches = Array.prototype.slice.call(root.querySelectorAll('[data-accent-choice]'));
 
-    root.querySelectorAll('[data-accent-choice]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var accent = btn.getAttribute('data-accent-choice') || 'default';
-        var next = saveAndApply({ accent: accent });
-        syncUi(next);
-        var catalog = accentCatalog();
-        var meta = catalog[next.accent] || catalog.default;
-        if (typeof global.barangaySuccess === 'function') {
-          global.barangaySuccess('Color updated', (meta.label || accent) + ' is now active.');
-        } else if (typeof global.Swal !== 'undefined') {
-          global.Swal.fire({
-            title: 'Color updated',
-            text: (meta.label || accent) + ' is now active.',
-            type: 'success',
-            timer: 1400,
-            showConfirmButton: false
-          });
-        } else {
-          /* Fallback if SweetAlert is not loaded yet */
-          var preview = root.querySelector('[data-appearance-preview]');
-          if (preview) {
-            preview.textContent = 'Applied: ' + (meta.label || accent);
+    function syncUi(p) {
+      swatches.forEach(function (btn) {
+        var active = btn.getAttribute('data-accent-choice') === p.accent;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-checked', active ? 'true' : 'false');
+        btn.setAttribute('tabindex', active ? '0' : '-1');
+      });
+      root.querySelectorAll('[name="appearance_text_size"]').forEach(function (input) {
+        input.checked = input.value === p.textSize;
+        var option = input.closest('.text-size-option');
+        if (option) {
+          option.classList.toggle('is-active', input.checked);
+        }
+      });
+      Object.keys(TOGGLES).forEach(function (name) {
+        var input = root.querySelector('[name="' + name + '"]');
+        if (input) {
+          input.checked = !!p[TOGGLES[name]];
+          var option = input.closest('.a11y-option');
+          if (option) {
+            option.classList.toggle('is-on', input.checked);
           }
         }
       });
+    }
+
+    function chooseAccent(btn) {
+      var accent = btn.getAttribute('data-accent-choice') || 'default';
+      var next = saveAndApply({ accent: accent });
+      syncUi(next);
+      var meta = accentCatalog()[next.accent] || accentCatalog().default;
+      flashStatus((meta.label || accent) + ' applied');
+    }
+
+    syncUi(readPrefs());
+
+    swatches.forEach(function (btn, index) {
+      btn.addEventListener('click', function () {
+        chooseAccent(btn);
+      });
+      btn.addEventListener('keydown', function (e) {
+        var step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+        if (e.key === 'Home') {
+          step = -index;
+        } else if (e.key === 'End') {
+          step = swatches.length - 1 - index;
+        }
+        if (step === undefined) {
+          return;
+        }
+        e.preventDefault();
+        var target = swatches[(index + step + swatches.length) % swatches.length];
+        target.focus();
+        chooseAccent(target);
+      });
     });
 
-    var textSel = root.querySelector('[name="appearance_text_size"]');
-    if (textSel) {
-      textSel.addEventListener('change', function () {
-        syncUi(saveAndApply({ textSize: textSel.value }));
+    root.querySelectorAll('[name="appearance_text_size"]').forEach(function (input) {
+      input.addEventListener('change', function () {
+        syncUi(saveAndApply({ textSize: input.value }));
+        var label = input.closest('.text-size-option');
+        flashStatus('Text size: ' + (label ? label.textContent.replace('Aa', '').trim() : input.value));
       });
-    }
+    });
 
-    var contrast = root.querySelector('[name="appearance_high_contrast"]');
-    if (contrast) {
-      contrast.addEventListener('change', function () {
-        syncUi(saveAndApply({ highContrast: contrast.checked }));
+    Object.keys(TOGGLES).forEach(function (name) {
+      var input = root.querySelector('[name="' + name + '"]');
+      if (!input) {
+        return;
+      }
+      input.addEventListener('change', function () {
+        var partial = {};
+        partial[TOGGLES[name]] = input.checked;
+        syncUi(saveAndApply(partial));
+        var title = input.closest('.a11y-option');
+        title = title ? title.querySelector('strong') : null;
+        flashStatus((title ? title.textContent : 'Option') + (input.checked ? ' on' : ' off'));
       });
-    }
-
-    var motion = root.querySelector('[name="appearance_reduce_motion"]');
-    if (motion) {
-      motion.addEventListener('change', function () {
-        syncUi(saveAndApply({ reduceMotion: motion.checked }));
-      });
-    }
+    });
 
     var resetBtn = root.querySelector('[data-appearance-reset]');
     if (resetBtn) {
       resetBtn.addEventListener('click', function () {
         syncUi(resetPrefs());
-        if (typeof global.barangaySuccess === 'function') {
-          var isNutrition = root.getAttribute('data-portal') === 'nutrition';
-          global.barangaySuccess(
-            'Appearance reset',
-            isNutrition ? 'Forest Green and accessibility restored.' : 'Default colors and accessibility restored.'
-          );
-        }
+        flashStatus('Defaults restored');
       });
     }
   }
@@ -248,11 +287,6 @@
   /* Backup: re-bind after full load (covers late-rendered panels) */
   window.addEventListener('load', function () {
     applyPrefs(readPrefs());
-    document.querySelectorAll('[data-appearance-panel]').forEach(function (panel) {
-      if (panel.getAttribute('data-appearance-bound') === '1') {
-        return;
-      }
-      bindPanel(panel);
-    });
+    document.querySelectorAll('[data-appearance-panel]').forEach(bindPanel);
   });
 })(window);

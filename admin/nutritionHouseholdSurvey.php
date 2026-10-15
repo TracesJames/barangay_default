@@ -19,6 +19,10 @@ if ($editSurveyId !== '') {
         header('Location: nutritionBarangaySurvey.php');
         exit;
     }
+    if (!staff_user_can_access_purok($con, $sessionUserId, (string) ($editingSurvey['purok_label'] ?? ''))) {
+        header('Location: nutritionHouseholdSurvey.php');
+        exit;
+    }
     $editingMembers = nutrition_list_household_family_members($con, $editSurveyId);
 } elseif (!nutrition_user_can_add_household_surveys($con, $sessionUserId)) {
     header('Location: nutritionBarangaySurvey.php');
@@ -27,11 +31,19 @@ if ($editSurveyId !== '') {
 
 $activePage = 'household_survey';
 $nutritionPageTitle = $editingSurvey ? 'Edit Household Nutrition Survey' : 'Household Nutrition Survey';
-$surveys = nutrition_list_household_surveys($con, (string) $barangay_id);
+$bnsPurokFilter = [];
+if (barangay_user_is_barangay_nutrition_scholar($con, $sessionUserId)) {
+    $bnsPurokFilter = staff_assigned_purok_labels($con, $sessionUserId, (string) $barangay_id);
+}
+$surveyListFilters = $bnsPurokFilter !== [] ? ['purok_in' => $bnsPurokFilter] : [];
+$surveys = nutrition_list_household_surveys($con, (string) $barangay_id, 50, $surveyListFilters);
 $report = nutrition_household_consolidated_report($con, (string) $barangay_id);
 $summary = $report['summary'] ?? [];
 $relationshipOptions = nutrition_relationship_options();
 $defaultPurokInput = '1';
+if ($editingSurvey === null && $bnsPurokFilter !== []) {
+    $defaultPurokInput = nutrition_purok_input_from_label($bnsPurokFilter[0]) ?: '1';
+}
 $defaultHouseholdId = nutrition_generate_household_reference(
     $con,
     (string) $barangay_id,
@@ -177,6 +189,12 @@ if ($editingSurvey !== null) {
 require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
 require __DIR__ . '/../includes/partials/nutrition_household_survey_content.php';
 ?>
+<?php if (barangay_user_is_barangay_nutrition_scholar($con, $sessionUserId)): ?>
+<style>
+  /* Results are still computed into hidden inputs and saved; BNS only does not see them. */
+  #familyMembersContainer .nutrition-growth-result-col { display: none !important; }
+</style>
+<?php endif; ?>
 <script>
 window.nutritionRelationshipOptions = <?= json_encode($relationshipOptions, JSON_UNESCAPED_UNICODE) ?>;
 window.nutritionPregnantStatusOptions = <?= json_encode(nutrition_prf_pregnant_status_options(), JSON_UNESCAPED_UNICODE) ?>;

@@ -97,6 +97,7 @@ $dataStmt->bind_param($types, ...$params);
 $dataStmt->execute();
 $result = $dataStmt->get_result();
 
+$canReassess = nutrition_user_can_view_registered_households($con, (string) ($_SESSION['user_id'] ?? ''));
 $rows = [];
 while ($row = $result->fetch_assoc()) {
     $name = trim($row['last_name'] . ', ' . $row['first_name'] . ' ' . ($row['middle_name'] ?? ''));
@@ -104,7 +105,9 @@ while ($row = $result->fetch_assoc()) {
     $statusBadge = '<span class="badge ' . nutrition_status_badge_class($status) . '">'
         . barangay_h(nutrition_status_label($status)) . '</span>';
     $assessUrl = 'nutritionAssess.php?residence_id=' . urlencode((string) $row['residence_id']);
-    $actions = '<a href="' . barangay_h($assessUrl) . '" class="btn btn-xs btn-success"><i class="fas fa-weight"></i> Re-assess</a>';
+    $actions = $canReassess
+        ? '<a href="' . barangay_h($assessUrl) . '" class="btn btn-xs btn-success"><i class="fas fa-weight"></i> Re-assess</a>'
+        : '<span class="text-muted">—</span>';
 
     $rows[] = [
         barangay_h((string) $row['residence_id']),

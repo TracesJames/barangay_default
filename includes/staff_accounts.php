@@ -60,6 +60,19 @@ if (!function_exists('staff_accounts_ensure_schema')) {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
             );
         }
+
+        $purokTable = $con->query("SHOW TABLES LIKE 'staff_purok_assignment'");
+        if ($purokTable && $purokTable->num_rows === 0) {
+            $con->query(
+                "CREATE TABLE `staff_purok_assignment` (
+                    `user_id` VARCHAR(64) NOT NULL,
+                    `barangay_id` VARCHAR(64) NOT NULL,
+                    `purok_label` VARCHAR(64) NOT NULL,
+                    PRIMARY KEY (`user_id`, `barangay_id`, `purok_label`),
+                    KEY `idx_spa_barangay` (`barangay_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+            );
+        }
     }
 }
 
@@ -474,6 +487,18 @@ if (!function_exists('staff_account_create')) {
             return ['ok' => false, 'error' => 'This barangay already has an admin account.'];
         }
 
+        $purokScope = 'all';
+        $purokLabels = [];
+        if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR) {
+            $purokScope = strtolower(trim((string) ($data['purok_scope'] ?? 'all')));
+            if (isset($data['purok_labels']) && is_array($data['purok_labels'])) {
+                $purokLabels = $data['purok_labels'];
+            }
+            if ($purokScope !== 'all' && $purokScope !== '' && $purokLabels === []) {
+                return ['ok' => false, 'error' => 'Select at least one purok for this BNS, or choose All puroks.'];
+            }
+        }
+
         $userType = staff_account_user_type_for_role($role);
         $middleName = trim((string) ($data['middle_name'] ?? ''));
         $userId = (string) hexdec(uniqid());
@@ -547,6 +572,14 @@ if (!function_exists('staff_account_create')) {
 
         if ($role === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
             staff_set_barangay_assignments($con, $userId, $assignmentIds);
+        }
+
+        if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR && $barangayId !== '') {
+            if ($purokScope === 'all' || $purokScope === '') {
+                staff_set_purok_assignments($con, $userId, $barangayId, []);
+            } else {
+                staff_set_purok_assignments($con, $userId, $barangayId, $purokLabels);
+            }
         }
 
         $roleLabel = staff_account_role_label($role);
@@ -666,6 +699,19 @@ if (!function_exists('staff_account_update')) {
             return ['ok' => false, 'error' => 'This barangay already has an admin account.'];
         }
 
+        $purokScope = strtolower(trim((string) ($data['purok_scope'] ?? 'all')));
+        $purokLabels = [];
+        if (isset($data['purok_labels']) && is_array($data['purok_labels'])) {
+            $purokLabels = $data['purok_labels'];
+        }
+        if ($newRole === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR
+            && array_key_exists('purok_scope', $data)
+            && $purokScope !== 'all'
+            && $purokScope !== ''
+            && $purokLabels === []) {
+            return ['ok' => false, 'error' => 'Select at least one purok for this BNS, or choose All puroks.'];
+        }
+
         $userType = staff_account_user_type_for_role($newRole);
 
         if (staff_role_column_exists($con) && barangay_column_exists($con, 'users', 'barangay_id')) {
@@ -716,8 +762,19 @@ if (!function_exists('staff_account_update')) {
 
         if ($newRole === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR) {
             staff_set_barangay_assignments($con, $userId, $assignmentIds);
-        } elseif ($roleChanged || array_key_exists('barangay_ids', $data)) {
+            staff_set_purok_assignments($con, $userId, '', []);
+        } elseif ($newRole === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR && $barangayId !== '') {
             staff_set_barangay_assignments($con, $userId, []);
+            if (!array_key_exists('purok_scope', $data)) {
+                // Keep existing purok assignments when edit form omitted the field.
+            } elseif ($purokScope === 'all' || $purokScope === '') {
+                staff_set_purok_assignments($con, $userId, $barangayId, []);
+            } else {
+                staff_set_purok_assignments($con, $userId, $barangayId, $purokLabels);
+            }
+        } elseif ($roleChanged || array_key_exists('barangay_ids', $data) || array_key_exists('purok_scope', $data)) {
+            staff_set_barangay_assignments($con, $userId, []);
+            staff_set_purok_assignments($con, $userId, '', []);
         }
 
         $roleNote = $roleChanged ? (' | ROLE ' . $currentRole . ' → ' . $newRole) : '';
@@ -758,6 +815,7 @@ if (!function_exists('staff_account_delete')) {
         }
 
         staff_set_barangay_assignments($con, $userId, []);
+        staff_set_purok_assignments($con, $userId, '', []);
 
         staff_account_log_activity(
             $con,

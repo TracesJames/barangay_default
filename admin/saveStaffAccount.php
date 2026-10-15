@@ -69,7 +69,7 @@ if ($isEdit) {
         $requestedRole = '';
     }
 
-    $result = staff_account_update($con, $userId, [
+    $updatePayload = [
         'staff_role' => $requestedRole,
         'first_name' => $_POST['first_name'] ?? '',
         'middle_name' => $_POST['middle_name'] ?? '',
@@ -80,7 +80,14 @@ if ($isEdit) {
         'password_changed' => ($_POST['password_changed'] ?? '') === '1' ? '1' : '',
         'barangay_id' => $_POST['barangay_id'] ?? '',
         'barangay_ids' => $assignmentIds,
-    ]);
+    ];
+    if (isset($_POST['purok_scope'])) {
+        $updatePayload['purok_scope'] = (string) $_POST['purok_scope'];
+        $updatePayload['purok_labels'] = isset($_POST['purok_labels']) && is_array($_POST['purok_labels'])
+            ? $_POST['purok_labels']
+            : [];
+    }
+    $result = staff_account_update($con, $userId, $updatePayload);
 } else {
     $assignmentIds = [];
     if (isset($_POST['barangay_ids']) && is_array($_POST['barangay_ids'])) {
@@ -90,6 +97,8 @@ if ($isEdit) {
         'staff_role' => $_POST['staff_role'] ?? '',
         'barangay_id' => $_POST['barangay_id'] ?? '',
         'barangay_ids' => $assignmentIds,
+        'purok_scope' => $_POST['purok_scope'] ?? 'all',
+        'purok_labels' => isset($_POST['purok_labels']) && is_array($_POST['purok_labels']) ? $_POST['purok_labels'] : [],
         'first_name' => $_POST['first_name'] ?? '',
         'middle_name' => $_POST['middle_name'] ?? '',
         'last_name' => $_POST['last_name'] ?? '',

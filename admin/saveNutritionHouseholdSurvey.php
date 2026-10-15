@@ -42,6 +42,17 @@ $gender = trim((string) ($_POST['gender'] ?? ''));
 $occupation = trim((string) ($_POST['occupation'] ?? ''));
 $bnsName = trim((string) ($_POST['bns_name'] ?? ''));
 
+if ($purokLabel === '') {
+    http_response_code(400);
+    echo json_encode(['error' => 'Purok is required.']);
+    exit;
+}
+
+if (!staff_user_can_access_purok($con, $userId, $purokLabel)) {
+    http_response_code(403);
+    echo json_encode(['error' => 'You are not assigned to this purok. Ask your Nutrition Admin to update your BNS purok assignment.']);
+    exit;
+}
 if ($headLastName === '' || $headFirstName === '' || $surveyDate === null || $surveyDate === '') {
     http_response_code(400);
     echo json_encode(['error' => 'Household head last name, first name, and survey date are required (use MM/DD/YYYY).']);

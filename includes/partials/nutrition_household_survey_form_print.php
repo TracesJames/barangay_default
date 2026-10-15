@@ -106,6 +106,10 @@ $feedingOptions = [
     flex-wrap: wrap;
     gap: 8px;
   }
+  .nutrition-form-print .no-print { align-items: center; }
+  .nutrition-form-print .pdf-status { font-size: 12px; color: #444; }
+  body.is-pdf-capture #householdFormPrintRoot { width: 820px !important; max-width: 820px !important; }
+  body.is-pdf-capture .nutrition-form-print .nf-pdf-page { padding: 18px 22px; background: #fff; }
   @media print {
     .nutrition-form-print .no-print { display: none !important; }
     .nutrition-form-print { font-size: 11px; }
@@ -116,13 +120,16 @@ $feedingOptions = [
 <div class="nutrition-form-print">
   <?php if ($showActions) : ?>
   <div class="no-print">
-    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+    <button type="button" id="householdFormPdfBtn">Download PDF</button>
+    <button type="button" onclick="window.print()">Print</button>
     <a href="nutritionHouseholdSurveyFormExcel.php?layout=form<?= $prefillPurok !== '' ? '&amp;purok=' . rawurlencode($prefillPurok) : '' ?><?= $memberRows > 0 ? '&amp;members=' . (int) $memberRows : '' ?>">Download Excel Form</a>
     <a href="nutritionHouseholdSurveyForm.php?download=1<?= $prefillPurok !== '' ? '&amp;purok=' . rawurlencode($prefillPurok) : '' ?>">Download HTML File</a>
     <a href="nutritionHouseholdSurvey.php">Back to Survey</a>
+    <span id="householdFormPdfStatus" class="pdf-status"></span>
   </div>
   <?php endif; ?>
 
+  <div class="nf-pdf-page" data-pdf-section>
   <h1>Survey Form (Family Profile)</h1>
   <div class="form-subtitle">City Nutrition Committee · C.Y. <?= date('Y') ?></div>
   <div class="form-meta">
@@ -244,7 +251,9 @@ $feedingOptions = [
       </div>
     </div>
   </div>
+  </div>
 
+  <div class="nf-pdf-page" data-pdf-section>
   <div class="section-title page-break">IV. Family Planning &amp; Feeding Practices</div>
   <div class="field-grid">
     <div class="field col-12">
@@ -357,5 +366,6 @@ $feedingOptions = [
       <div style="height:36px;"></div>
       <div class="signature-line">BNS / Nutrition Officer</div>
     </div>
+  </div>
   </div>
 </div>

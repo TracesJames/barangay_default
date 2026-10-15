@@ -54,6 +54,15 @@ if (!function_exists('nutrition_user_is_portal_admin')) {
     }
 }
 
+if (!function_exists('nutrition_user_can_view_registered_households')) {
+    /** Registered Households page (nutritionAssess.php): SSA and Nutrition Hub SA only. */
+    function nutrition_user_can_view_registered_households(mysqli $con, string $userId): bool
+    {
+        return $userId !== ''
+            && (barangay_user_is_ssa($con, $userId) || barangay_user_is_nutrition_portal_admin($con, $userId));
+    }
+}
+
 if (!function_exists('nutrition_user_can_manage_household_surveys')) {
     /**
      * Legacy alias for delete capability (SSA / Nutrition SA only).
@@ -939,9 +948,10 @@ if (!function_exists('nutrition_survey_children_totals')) {
 
         $sql = 'SELECT m.*, s.survey_date
             FROM nutrition_household_family_member m
-            INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id';
+            INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
+            WHERE ' . nutrition_survey_current_condition($con, 's');
         if ($barangayId !== null && $barangayId !== '') {
-            $sql .= " WHERE m.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
+            $sql .= " AND m.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
         }
 
         $result = $con->query($sql);
@@ -997,6 +1007,22 @@ if (!function_exists('nutrition_survey_children_totals')) {
     }
 }
 
+if (!function_exists('nutrition_survey_current_condition')) {
+    /**
+     * SQL condition that skips households that moved out (transferred) of the barangay.
+     * Historical reports (EOPT/BNP lists) intentionally do not use this.
+     */
+    function nutrition_survey_current_condition(mysqli $con, string $alias = ''): string
+    {
+        if (!barangay_column_exists($con, 'nutrition_household_survey', 'moved_out')) {
+            return '1=1';
+        }
+        $prefix = $alias !== '' ? $alias . '.' : '';
+
+        return "COALESCE({$prefix}moved_out, 'NO') <> 'YES'";
+    }
+}
+
 if (!function_exists('nutrition_children_where')) {
     /**
      * @return array<int, string>
@@ -1038,10 +1064,13 @@ if (!function_exists('nutrition_pregnant_count')) {
         }
 
         $total = 0;
+        $currentHead = nutrition_survey_current_condition($con);
+        $currentMember = nutrition_survey_current_condition($con, 's');
 
         $headSql = "SELECT COUNT(*) AS total
             FROM nutrition_household_survey
             WHERE UPPER(head_is_pregnant) = 'YES'
+              AND {$currentHead}
               {$statusFilterHead}
               {$barangayFilter}";
         $headResult = $con->query($headSql);
@@ -1052,6 +1081,7 @@ if (!function_exists('nutrition_pregnant_count')) {
                 FROM nutrition_household_family_member m
                 INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
                 WHERE UPPER(m.is_pregnant) = 'YES'
+                  AND {$currentMember}
                   {$statusFilterMember}
                   {$memberBarangayFilter}";
             $memberResult = $con->query($memberSql);
@@ -1423,7 +1453,8 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
 
         if (barangay_table_exists($con, 'nutrition_household_survey')) {
             $surveyResult = $con->query(
-                'SELECT barangay_id, COUNT(*) AS total FROM nutrition_household_survey GROUP BY barangay_id'
+                'SELECT barangay_id, COUNT(*) AS total FROM nutrition_household_survey WHERE '
+                . nutrition_survey_current_condition($con) . ' GROUP BY barangay_id'
             );
             if ($surveyResult) {
                 while ($surveyRow = $surveyResult->fetch_assoc()) {
@@ -2312,6 +2343,28 @@ if (!function_exists('nutrition_list_household_surveys')) {
             $sql .= ' AND purok_label = ?';
             $types .= 's';
             $params[] = $purok;
+        }
+
+        $purokIn = $filters['purok_in'] ?? null;
+        if (is_array($purokIn) && $purokIn !== []) {
+            $normalized = [];
+            foreach ($purokIn as $label) {
+                $label = function_exists('staff_normalize_purok_label')
+                    ? staff_normalize_purok_label((string) $label)
+                    : trim((string) $label);
+                if ($label !== '') {
+                    $normalized[$label] = $label;
+                }
+            }
+            $normalized = array_values($normalized);
+            if ($normalized !== []) {
+                $placeholders = implode(',', array_fill(0, count($normalized), '?'));
+                $sql .= " AND purok_label IN ($placeholders)";
+                $types .= str_repeat('s', count($normalized));
+                foreach ($normalized as $label) {
+                    $params[] = $label;
+                }
+            }
         }
 
         $dateFrom = trim((string) ($filters['date_from'] ?? ''));
@@ -4548,82 +4601,737 @@ if (!function_exists('nutrition_household_survey_build_form_layout_rows')) {
         string $nutritionOfficer = '',
         int $memberRows = 6
     ): array {
+        return nutrition_household_survey_build_form_sheet(
+            $barangayName,
+            $district,
+            $address,
+            $psgcCode,
+            $reportHeader,
+            $certHeader,
+            $relationshipOptions,
+            $prefillPurok,
+            $nutritionOfficer,
+            $memberRows
+        )['rows'];
+    }
+}
+
+if (!function_exists('nutrition_household_survey_build_form_sheet')) {
+    /**
+     * Styled single-household Excel form matching the printable / PDF survey form
+     * (all fields and ☐ checkboxes). 15 columns, landscape A4, fit to width.
+     *
+     * @return array{rows: array<int, array<int, string|array{v:string,s:int}>>, options: array<string, mixed>}
+     */
+    function nutrition_household_survey_build_form_sheet(
+        string $barangayName,
+        string $district,
+        string $address,
+        string $psgcCode,
+        string $reportHeader,
+        array $certHeader,
+        array $relationshipOptions,
+        string $prefillPurok = '',
+        string $nutritionOfficer = '',
+        int $memberRows = 6
+    ): array {
+        require_once __DIR__ . '/spreadsheet_export.php';
+
         $memberRows = max(3, min(12, $memberRows));
-        $feedingOptions = 'Exclusive Breastfeeding, Mixed Feeding, Bottle Feeding, Others';
-        $blank = '';
+        $lastCol = 14;
+        $box = "\u{2610} ";
+        $rows = [];
+        $merges = [];
+        $heights = [];
+        // Hidden column P: per-row field markers read back by nutrition_household_survey_parse_form_xlsx().
+        $keys = [0 => [NUTRITION_SURVEY_FORM_MARKER]];
 
-        $rows = [
-            ['HOUSEHOLD NUTRITION SURVEY FORM'],
-            [$reportHeader],
-            [
-                ($certHeader['country'] ?? '') . ' | '
-                . ($certHeader['province'] ?? '') . ' | '
-                . ($certHeader['city'] ?? ''),
-            ],
-            [
-                ($certHeader['barangay_line'] ?? ('Barangay ' . $barangayName))
-                . ($district !== '' ? ' | ' . $district : ''),
-            ],
-        ];
+        $cell = static fn (string $v, string $style = 'default'): array => ['v' => $v, 's' => barangay_xlsx_style($style)];
+        $ref = static fn (int $col, int $row): string => barangay_xlsx_column_letter($col) . ($row + 1);
+        $merge = static function (int $row, int $c1, int $c2) use (&$merges, $ref): void {
+            if ($c2 > $c1) {
+                $merges[] = $ref($c1, $row) . ':' . $ref($c2, $row);
+            }
+        };
+        $blankRow = static function (float $height = 6) use (&$rows, &$heights): void {
+            $heights[count($rows)] = $height;
+            $rows[] = [];
+        };
+        $wide = static function (string $text, string $style, float $height = 0) use (&$rows, &$heights, $cell, $merge, $lastCol): void {
+            $r = count($rows);
+            $line = array_fill(0, $lastCol + 1, $cell('', $style));
+            $line[0] = $cell($text, $style);
+            $rows[] = $line;
+            $merge($r, 0, $lastCol);
+            if ($height > 0) {
+                $heights[$r] = $height;
+            }
+        };
+        $section = static function (string $title) use ($wide, $blankRow): void {
+            $blankRow(8);
+            $wide($title, 'section', 20);
+        };
+        /** @param array<int, array{0:string,1:int,2:int,3?:string,4?:string}> $fields label, startCol, endCol, value, key */
+        $fields = static function (array $fields) use (&$rows, &$heights, &$keys, $cell, $merge): void {
+            $labelRow = [];
+            $inputRow = [];
+            foreach ($fields as $f) {
+                [$label, $c1, $c2] = $f;
+                $value = (string) ($f[3] ?? '');
+                $labelRow[$c1] = $cell(strtoupper($label), 'label');
+                for ($c = $c1; $c <= $c2; $c++) {
+                    $inputRow[$c] = $cell('', $value !== '' ? 'input_prefill' : 'input');
+                }
+                $inputRow[$c1] = $cell($value, $value !== '' ? 'input_prefill' : 'input');
+            }
+            ksort($labelRow);
+            ksort($inputRow);
+            $lr = count($rows);
+            $rows[] = $labelRow + array_fill(0, max(array_keys($labelRow)) + 1, '');
+            $ir = count($rows);
+            $rows[] = $inputRow + array_fill(0, max(array_keys($inputRow)) + 1, '');
+            ksort($rows[$lr]);
+            ksort($rows[$ir]);
+            $heights[$lr] = 13;
+            $heights[$ir] = 20;
+            foreach ($fields as $f) {
+                $merge($lr, $f[1], $f[2]);
+                $merge($ir, $f[1], $f[2]);
+                if (!empty($f[4])) {
+                    $keys[$ir][] = 'in:' . $f[4] . ':' . $f[1];
+                }
+            }
+        };
+        /** Options laid out across the sheet, each option spanning $span columns. */
+        $options = static function (string $label, array $opts, int $span = 3, string $key = '', int $startCol = 0, int $endCol = 14) use (&$rows, &$heights, &$keys, $cell, $merge, $box): void {
+            if ($label !== '') {
+                $r = count($rows);
+                $rows[] = array_fill(0, $startCol, '') + [$startCol => $cell(strtoupper($label), 'label')];
+                ksort($rows[$r]);
+                $merge($r, $startCol, $endCol);
+                $heights[$r] = 13;
+            }
+            $perRow = max(1, intdiv($endCol - $startCol + 1, $span));
+            $index = 0;
+            foreach (array_chunk($opts, $perRow) as $chunk) {
+                $r = count($rows);
+                $line = array_fill(0, $startCol, '');
+                $col = $startCol;
+                $map = [];
+                foreach ($chunk as $opt) {
+                    $line[$col] = $cell($box . $opt, 'option');
+                    $merge($r, $col, min($endCol, $col + $span - 1));
+                    $map[] = $col . '=' . $index++;
+                    $col += $span;
+                }
+                $rows[] = $line;
+                $heights[$r] = 17;
+                if ($key !== '') {
+                    $keys[$r][] = 'opt:' . $key . ':' . implode(',', $map);
+                }
+            }
+        };
+        $specify = static function (string $text = 'Others, pls. specify:', string $key = '', int $startCol = 0, int $endCol = 14) use (&$rows, &$heights, &$keys, $cell, $merge): void {
+            $r = count($rows);
+            $line = array_fill(0, $startCol, '');
+            $line[$startCol] = $cell($text, 'option');
+            $line[$startCol + 1] = $cell('', 'option');
+            for ($c = $startCol + 2; $c <= $endCol; $c++) {
+                $line[$c] = $cell('', 'input');
+            }
+            $rows[] = $line;
+            $merge($r, $startCol, $startCol + 1);
+            $merge($r, $startCol + 2, $endCol);
+            $heights[$r] = 18;
+            if ($key !== '') {
+                $keys[$r][] = 'in:' . $key . ':' . ($startCol + 2);
+            }
+        };
+        /** Two vertical option lists side by side (left: cols 0-6, right: cols 8-14). */
+        $columns = static function (string $leftLabel, array $leftOpts, string $rightLabel, array $rightOpts, string $leftKey, string $rightKey) use (&$rows, &$heights, &$keys, $cell, $merge, $box): void {
+            $r = count($rows);
+            $rows[] = [0 => $cell(strtoupper($leftLabel), 'label')] + array_fill(1, 7, '') + [8 => $cell(strtoupper($rightLabel), 'label')];
+            $merge($r, 0, 6);
+            $merge($r, 8, 14);
+            $heights[$r] = 13;
+            $count = max(count($leftOpts), count($rightOpts));
+            for ($i = 0; $i < $count; $i++) {
+                $r = count($rows);
+                $line = array_fill(0, 15, '');
+                if (isset($leftOpts[$i])) {
+                    $line[0] = $cell($box . $leftOpts[$i], 'option');
+                    $merge($r, 0, 6);
+                    $keys[$r][] = 'opt:' . $leftKey . ':0=' . $i;
+                }
+                if (isset($rightOpts[$i])) {
+                    $line[8] = $cell($box . $rightOpts[$i], 'option');
+                    $merge($r, 8, 14);
+                    $keys[$r][] = 'opt:' . $rightKey . ':8=' . $i;
+                }
+                $rows[] = $line;
+                $heights[$r] = 17;
+            }
+        };
 
+        // Header
+        $wide('SURVEY FORM (FAMILY PROFILE)', 'title', 24);
+        $wide('City Nutrition Committee · C.Y. ' . date('Y') . ($reportHeader !== '' ? ' · ' . $reportHeader : ''), 'subtitle');
+        $wide(
+            trim(($certHeader['country'] ?? '') . ' · ' . ($certHeader['province'] ?? '') . ' · ' . ($certHeader['city'] ?? ''), ' ·'),
+            'subtitle'
+        );
+        $barangayLine = (string) ($certHeader['barangay_line'] ?? ('Barangay ' . $barangayName));
+        $wide($barangayLine . ($district !== '' ? ' · ' . $district : ''), 'subtitle');
+        $metaParts = [];
         if ($psgcCode !== '') {
-            $rows[] = ['Barangay PSGC', $psgcCode];
+            $metaParts[] = 'Barangay PSGC: ' . $psgcCode;
         }
         if ($nutritionOfficer !== '') {
-            $rows[] = ['Nutrition Officer', $nutritionOfficer];
+            $metaParts[] = 'Nutrition Officer: ' . $nutritionOfficer;
+        }
+        if ($metaParts !== []) {
+            $wide(implode('   ·   ', $metaParts), 'subtitle');
+        }
+        $wide(
+            'How to fill in Excel: type on the lines. To check a box, replace ☐ with ☑ or type X before the option. '
+            . 'Save the file and use "Upload Excel" on the Household Nutrition Survey page. Household No. is generated automatically.',
+            'note',
+            26
+        );
+
+        // I. Survey Information
+        $section('I. SURVEY INFORMATION');
+        $fields([
+            ['Name of Barangay', 0, 3, $barangayName],
+            ['Purok', 5, 8, $prefillPurok, 'purok_number'],
+            ['Household No. (auto-generated)', 10, 14],
+        ]);
+        $fields([
+            ['Name of BNS', 0, 3, '', 'bns_name'],
+            ['No. of Household members', 5, 8],
+            ['Survey Date (MM/DD/YYYY)', 10, 14, '', 'survey_date'],
+        ]);
+
+        // II. Household Head
+        $section('II. HOUSEHOLD HEAD');
+        $fields([
+            ['Last Name', 0, 2, '', 'head_last_name'],
+            ['First Name', 4, 6, '', 'head_first_name'],
+            ['Middle Name', 8, 11, '', 'head_middle_name'],
+            ['Suffix', 13, 14, '', 'head_suffix'],
+        ]);
+        $fields([
+            ['Birthday (MM/DD/YYYY)', 0, 2, '', 'birth_date'],
+            ['Occupation', 8, 14, '', 'occupation'],
+        ]);
+        $r = count($rows) - 2;
+        $rows[$r][4] = $cell('GENDER', 'label');
+        $merge($r, 4, 6);
+        $rows[$r + 1][4] = $cell($box . 'Male', 'option');
+        $rows[$r + 1][5] = $cell($box . 'Female', 'option');
+        $keys[$r + 1][] = 'opt:gender:4=0,5=1';
+        ksort($rows[$r]);
+        ksort($rows[$r + 1]);
+        $options('Household classification', nutrition_household_survey_form_option_sets()['classification'], 3, 'classification');
+
+        // III. Living Conditions
+        $section('III. LIVING CONDITIONS');
+        $wide('Housing', 'subsection', 16);
+        $options('III-A. Type of House', nutrition_prf_house_ownership_options(), 3, 'house_ownership');
+        $specify('Others, pls. specify:', 'house_ownership_other');
+        $options('III-E. Types of Dwelling Unit', nutrition_prf_dwelling_options(), 3, 'dwelling_type');
+        $wide('Sanitation', 'subsection', 16);
+        $options('III-B. Type of Toilet', nutrition_prf_toilet_options(), 3, 'toilet_type');
+        $options('III-C. Type of Garbage Disposal', nutrition_prf_garbage_options(), 3, 'garbage_disposal');
+        $options('If Uncollected', nutrition_prf_garbage_uncollected_options(), 3, 'garbage_uncollected_type');
+        $wide('Water & Food Security', 'subsection', 16);
+        $options('III-D. Type of Water Source', nutrition_prf_water_source_options(), 3, 'water_source');
+        $options('III-F. Food Production Activities (check all that apply)', nutrition_prf_food_production_activity_options(), 3, 'food_production');
+        $options('III-G. Check below if:', nutrition_household_survey_form_option_sets()['hh_checks'], 4, 'hh_checks');
+
+        // IV. Family Planning & Feeding Practices
+        $section('IV. FAMILY PLANNING & FEEDING PRACTICES');
+        $wide('Family Planning', 'subsection', 16);
+        $options('IV-A. Practices Family Planning', ['Yes', 'No'], 3, 'practices_family_planning');
+        $options('If yes, check method(s):', nutrition_prf_family_planning_method_options(), 3, 'family_planning_methods');
+        $specify('Others, pls. specify:', 'family_planning_methods_other');
+        $wide('Complementary Feeding (6–23 months)', 'subsection', 16);
+        $columns(
+            'IV-B. Common Meals Given',
+            nutrition_prf_complementary_meal_options(),
+            'IV-C. Common Snacks Given',
+            nutrition_prf_complementary_snack_options(),
+            'complementary_meals',
+            'complementary_snacks'
+        );
+        $r = count($rows);
+        $specify('Others (meals):', 'complementary_meals_other', 0, 6);
+        $specLine = array_pop($rows);
+        $right = [];
+        $right[8] = $cell('Others (snacks):', 'option');
+        $right[9] = $cell('', 'option');
+        for ($c = 10; $c <= 14; $c++) {
+            $right[$c] = $cell('', 'input');
+        }
+        $rows[] = $specLine + array_fill(7, 1, '') + $right;
+        ksort($rows[$r]);
+        $merge($r, 8, 9);
+        $merge($r, 10, 14);
+        $keys[$r][] = 'in:complementary_snacks_other:10';
+        $wide('Child Physical Activity', 'subsection', 16);
+        $options('IV-D. Physical Activity of children (1–5 years old)', nutrition_prf_physical_activity_options(), 5, 'child_physical_activity');
+        $specify('Others, pls. specify:', 'child_physical_activity_other');
+
+        // V. Family Members
+        $section('V. FAMILY MEMBERS');
+        $wide(
+            'For children 0–5 years: record previous (optional) and present Date Measured, Weight (kg), Height/Length (cm). '
+            . 'WFA / HFA / WFH use the present date and boy/girl growth standards.',
+            'note',
+            26
+        );
+        $r = count($rows);
+        $group = array_fill(0, 15, $cell('', 'th'));
+        $group[0] = $cell('Family member', 'group_th');
+        for ($c = 1; $c <= 5; $c++) {
+            $group[$c] = $cell('', 'group_th');
+        }
+        $group[6] = $cell('Previous measurement (optional)', 'group_th');
+        $group[7] = $cell('', 'group_th');
+        $group[8] = $cell('', 'group_th');
+        $group[9] = $cell('Present measurement', 'group_th');
+        $group[10] = $cell('', 'group_th');
+        $group[11] = $cell('', 'group_th');
+        $group[12] = $cell('Nutrition result', 'group_th');
+        $group[13] = $cell('', 'group_th');
+        $group[14] = $cell('', 'group_th');
+        $rows[] = $group;
+        $merge($r, 0, 5);
+        $merge($r, 6, 8);
+        $merge($r, 9, 11);
+        $merge($r, 12, 14);
+        $heights[$r] = 16;
+
+        $r = count($rows);
+        $headers = [
+            'Name', 'Relationship to Head', "Gender\n(M / F)", "Birthday\n(MM/DD/YYYY)", "Pregnant\n\u{2610}", "Lactating\n\u{2610}",
+            'Date', 'Weight (kg)', 'Height (cm)', 'Date', 'Weight (kg)', 'Height (cm)', 'WFA', 'HFA', 'WFH',
+        ];
+        $rows[] = array_map(static fn (string $h): array => $cell($h, 'th'), $headers);
+        $heights[$r] = 30;
+        for ($i = 0; $i < $memberRows; $i++) {
+            $keys[count($rows)][] = 'member';
+            $heights[count($rows)] = 24;
+            $rows[] = array_fill(0, 15, $cell('', 'td'));
         }
 
-        $rows[] = [];
-        $rows[] = ['I. SURVEY INFORMATION'];
-        $rows[] = ['Survey Date (YYYY-MM-DD)', $blank];
-        $rows[] = ['Purok No.', $prefillPurok];
-        $rows[] = [];
-        $rows[] = ['II. HOUSEHOLD HEAD'];
-        $rows[] = ['Last Name', $blank];
-        $rows[] = ['First Name', $blank];
-        $rows[] = ['Middle Name', $blank];
-        $rows[] = ['Suffix', $blank];
-        $rows[] = ['Birthday (YYYY-MM-DD)', $blank];
-        $rows[] = ['Gender (Male/Female)', $blank];
-        $rows[] = ['Occupation', $blank];
-        $rows[] = [];
-        $rows[] = ['III. HOUSEHOLD CLASSIFICATION'];
-        $rows[] = ['4Ps Member (YES/NO)', $blank];
-        $rows[] = ['PWD (YES/NO)', $blank];
-        $rows[] = ['IP Member (YES/NO)', $blank];
-        $rows[] = ['Solo Parent (YES/NO)', $blank];
-        $rows[] = [];
-        $rows[] = ['IV. FAMILY MEMBERS'];
-        $rows[] = [
-            'Name',
-            'Relationship',
-            'Gender',
-            'Birthday',
-            'Pregnant (YES/NO)',
-            'Lactating (YES/NO)',
-            'Weight (kg)',
-            'Height (cm)',
-            'Nutrition Result (WFA / HFA / WFH)',
+        $blankRow(6);
+        $options('Relationship options (write in column B)', $relationshipOptions, 2);
+        $options('Pregnant: nutritional status', nutrition_prf_pregnant_status_options(), 3, 'pregnant_nutrition_status');
+        $fields([
+            ['Pregnant: how many months', 0, 3, '', 'pregnancy_months'],
+        ]);
+        $feeding = nutrition_household_survey_form_option_sets()['feeding'];
+        $options('Planned infant feeding method (pregnant)', $feeding, 3, 'planned_feeding');
+        $options('Infant feeding method (lactating)', $feeding, 3, 'lactating_feeding');
+        $specify('Other feeding, specify:', 'feeding_other');
+
+        // VI. Acknowledgement
+        $section('VI. ACKNOWLEDGEMENT');
+        $wide('I certify that the information provided above is true and correct to the best of my knowledge.', 'option', 18);
+        $blankRow(30);
+        $r = count($rows);
+        $sig = array_fill(0, 15, '');
+        foreach ([[0, 3, 'Signature of Household Head'], [5, 8, 'Date'], [10, 14, 'BNS / Nutrition Officer']] as [$c1, $c2, $label]) {
+            for ($c = $c1; $c <= $c2; $c++) {
+                $sig[$c] = $cell('', 'signature');
+            }
+            $sig[$c1] = $cell($label, 'signature');
+            $merge($r, $c1, $c2);
+        }
+        $rows[] = $sig;
+
+        foreach ($keys as $i => $specs) {
+            $rows[$i][NUTRITION_SURVEY_FORM_KEY_COL] = implode('|', $specs);
+        }
+        foreach ($rows as $i => $line) {
+            if ($line !== []) {
+                $rows[$i] = $line + array_fill(0, max(array_keys($line)) + 1, '');
+                ksort($rows[$i]);
+            }
+        }
+
+        return [
+            'rows' => $rows,
+            'options' => [
+                'cols' => [24, 15, 9, 13, 9, 9, 11, 9, 9, 11, 9, 9, 7, 7, 7],
+                'hidden_cols' => [NUTRITION_SURVEY_FORM_KEY_COL],
+                'merges' => $merges,
+                'heights' => $heights,
+                'landscape' => true,
+                'fit_width' => true,
+            ],
+        ];
+    }
+}
+
+if (!defined('NUTRITION_SURVEY_FORM_MARKER')) {
+    define('NUTRITION_SURVEY_FORM_MARKER', 'form:nutrition_household_v2');
+    define('NUTRITION_SURVEY_FORM_KEY_COL', 15);
+}
+
+if (!function_exists('nutrition_household_survey_form_option_sets')) {
+    /**
+     * Option lists used only by the Excel survey form (others come from nutrition_prf_*_options()).
+     *
+     * @return array<string, array<int, string>>
+     */
+    function nutrition_household_survey_form_option_sets(): array
+    {
+        return [
+            'gender' => ['Male', 'Female'],
+            'classification' => ["4P's Member", "IP's Member", 'N/A', 'PWD', 'Solo Parent'],
+            'hh_checks' => [
+                'HH using Iodized Salt',
+                'HH using Products with Sangkap Pinoy Seal',
+                'HH with Carenderia/Eatery',
+                'HH with Sari-Sari Store',
+            ],
+            'practices_family_planning' => ['Yes', 'No'],
+            'feeding' => ['Exclusive Breastfeeding', 'Mixed Feeding', 'Bottle Feeding', 'Others'],
+        ];
+    }
+}
+
+if (!function_exists('nutrition_household_survey_form_cell_checked')) {
+    /**
+     * A ☐ option cell counts as checked once the box is replaced or marked (☑, ☒, ✓, X, etc.).
+     */
+    function nutrition_household_survey_form_cell_checked(string $text, string $label): bool
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return false;
+        }
+        $pos = mb_stripos($text, $label);
+        $mark = $pos === false ? $text : trim(mb_substr($text, 0, $pos) . mb_substr($text, $pos + mb_strlen($label)));
+        $mark = trim(str_replace("\u{2610}", '', $mark));
+
+        return $mark !== '';
+    }
+}
+
+if (!function_exists('nutrition_household_survey_form_date_mdy')) {
+    /**
+     * Excel date serial, Y-m-d or M/D/Y text → MM/DD/YYYY (empty when unreadable).
+     */
+    function nutrition_household_survey_form_date_mdy(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+        if (is_numeric($value) && (float) $value > 1000 && (float) $value < 80000) {
+            $ts = ((int) floor((float) $value) - 25569) * 86400;
+
+            return gmdate('m/d/Y', $ts);
+        }
+        $ymd = nutrition_normalize_date_to_ymd($value);
+        if ($ymd !== null && $ymd !== '') {
+            $ts = strtotime($ymd);
+
+            return $ts ? date('m/d/Y', $ts) : '';
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('nutrition_household_survey_parse_form_xlsx')) {
+    /**
+     * Read a filled "Survey Form (Family Profile)" Excel file back into the
+     * survey edit payload shape used by nutritionApplySurveyEditPayload().
+     *
+     * @return array{ok:bool, error?:string, payload?:array<string,mixed>, warnings?:array<int,string>}
+     */
+    function nutrition_household_survey_parse_form_xlsx(string $path): array
+    {
+        if (!class_exists('ZipArchive')) {
+            return ['ok' => false, 'error' => 'Excel upload requires the PHP zip extension.'];
+        }
+        $zip = new ZipArchive();
+        if ($zip->open($path) !== true) {
+            return ['ok' => false, 'error' => 'Could not open the Excel file. Save it as .xlsx and try again.'];
+        }
+
+        $shared = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($sharedXml !== false && ($sx = @simplexml_load_string($sharedXml)) !== false) {
+            foreach ($sx->si as $si) {
+                if (isset($si->t)) {
+                    $shared[] = (string) $si->t;
+                    continue;
+                }
+                $text = '';
+                foreach ($si->r as $run) {
+                    $text .= (string) $run->t;
+                }
+                $shared[] = $text;
+            }
+        }
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+        $sheet = $sheetXml !== false ? @simplexml_load_string($sheetXml) : false;
+        if ($sheet === false || !isset($sheet->sheetData->row)) {
+            return ['ok' => false, 'error' => 'The Excel file has no readable survey sheet.'];
+        }
+
+        /** @var array<int, array<int, string>> $grid */
+        $grid = [];
+        foreach ($sheet->sheetData->row as $row) {
+            $rowNum = (int) $row['r'];
+            foreach ($row->c as $c) {
+                if (!preg_match('/^([A-Z]+)(\d+)$/', (string) $c['r'], $m)) {
+                    continue;
+                }
+                $col = barangay_xlsx_column_index_from_letters($m[1]);
+                $type = (string) ($c['t'] ?? '');
+                if ($type === 's') {
+                    $value = $shared[(int) $c->v] ?? '';
+                } elseif ($type === 'inlineStr') {
+                    $value = '';
+                    if (isset($c->is->t)) {
+                        $value = (string) $c->is->t;
+                    } else {
+                        foreach ($c->is->r as $run) {
+                            $value .= (string) $run->t;
+                        }
+                    }
+                } else {
+                    $value = (string) ($c->v ?? '');
+                }
+                $grid[$rowNum ?: (int) $m[2]][$col] = trim($value);
+            }
+        }
+
+        $keyCol = NUTRITION_SURVEY_FORM_KEY_COL;
+        $hasMarker = false;
+        foreach ($grid as $cells) {
+            if (($cells[$keyCol] ?? '') === NUTRITION_SURVEY_FORM_MARKER) {
+                $hasMarker = true;
+                break;
+            }
+        }
+        if (!$hasMarker) {
+            return [
+                'ok' => false,
+                'error' => 'This is not the current Household Survey Excel Form. Download it again with the "Excel Form" button, fill it in, then upload.',
+            ];
+        }
+
+        $sets = nutrition_household_survey_form_option_sets();
+        $optionLists = [
+            'gender' => $sets['gender'],
+            'classification' => $sets['classification'],
+            'house_ownership' => nutrition_prf_house_ownership_options(),
+            'dwelling_type' => nutrition_prf_dwelling_options(),
+            'toilet_type' => nutrition_prf_toilet_options(),
+            'garbage_disposal' => nutrition_prf_garbage_options(),
+            'garbage_uncollected_type' => nutrition_prf_garbage_uncollected_options(),
+            'water_source' => nutrition_prf_water_source_options(),
+            'food_production' => nutrition_prf_food_production_activity_options(),
+            'hh_checks' => $sets['hh_checks'],
+            'practices_family_planning' => $sets['practices_family_planning'],
+            'family_planning_methods' => nutrition_prf_family_planning_method_options(),
+            'complementary_meals' => nutrition_prf_complementary_meal_options(),
+            'complementary_snacks' => nutrition_prf_complementary_snack_options(),
+            'child_physical_activity' => nutrition_prf_physical_activity_options(),
+            'pregnant_nutrition_status' => nutrition_prf_pregnant_status_options(),
+            'planned_feeding' => $sets['feeding'],
+            'lactating_feeding' => $sets['feeding'],
         ];
 
-        for ($i = 0; $i < $memberRows; $i++) {
-            $rows[] = array_fill(0, 9, $blank);
+        $inputs = [];
+        $checked = [];
+        $memberLines = [];
+        foreach ($grid as $cells) {
+            $spec = (string) ($cells[$keyCol] ?? '');
+            if ($spec === '') {
+                continue;
+            }
+            foreach (explode('|', $spec) as $part) {
+                $bits = explode(':', $part, 3);
+                if ($bits[0] === 'member') {
+                    $memberLines[] = $cells;
+                } elseif ($bits[0] === 'in' && count($bits) === 3) {
+                    $inputs[$bits[1]] = trim((string) ($cells[(int) $bits[2]] ?? ''));
+                } elseif ($bits[0] === 'opt' && count($bits) === 3 && isset($optionLists[$bits[1]])) {
+                    foreach (explode(',', $bits[2]) as $pair) {
+                        [$col, $idx] = array_map('intval', explode('=', $pair) + [1 => -1]);
+                        $label = $optionLists[$bits[1]][$idx] ?? null;
+                        if ($label !== null && nutrition_household_survey_form_cell_checked((string) ($cells[$col] ?? ''), $label)) {
+                            $checked[$bits[1]][] = $label;
+                        }
+                    }
+                }
+            }
         }
 
-        $rows[] = [];
-        $rows[] = ['Notes'];
-        $rows[] = ['Relationship options', implode(', ', $relationshipOptions)];
-        $rows[] = ['Pregnancy months (if pregnant)', $blank];
-        $rows[] = ['Feeding methods', $feedingOptions];
-        $rows[] = ['Other feeding specify', $blank];
-        $rows[] = [];
-        $rows[] = ['V. ACKNOWLEDGEMENT'];
-        $rows[] = ['I certify that the information provided above is true and correct to the best of my knowledge.'];
-        $rows[] = [];
-        $rows[] = ['Signature of Household Head', 'Date', 'Enumerator / Nutrition Officer'];
-        $rows[] = array_fill(0, 3, $blank);
+        $warnings = [];
+        $single = static function (string $key) use (&$checked, &$warnings): string {
+            $values = $checked[$key] ?? [];
+            if (count($values) > 1) {
+                $warnings[] = 'More than one option checked for ' . str_replace('_', ' ', $key) . '; using "' . $values[0] . '".';
+            }
 
-        return $rows;
+            return (string) ($values[0] ?? '');
+        };
+        $has = static fn (string $key, string $label): bool => in_array($label, $checked[$key] ?? [], true);
+
+        $classification = $checked['classification'] ?? [];
+        $fpMethods = $checked['family_planning_methods'] ?? [];
+        $fpOther = trim((string) ($inputs['family_planning_methods_other'] ?? ''));
+        if ($fpOther !== '' && in_array('Others', $fpMethods, true)) {
+            $fpMethods = array_map(static fn (string $m): string => $m === 'Others' ? 'Others: ' . $fpOther : $m, $fpMethods);
+        }
+
+        $relationshipOptions = nutrition_relationship_options();
+        $members = [];
+        foreach ($memberLines as $cells) {
+            $name = trim((string) ($cells[0] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $relationship = trim((string) ($cells[1] ?? ''));
+            foreach ($relationshipOptions as $opt) {
+                if (strcasecmp($opt, $relationship) === 0) {
+                    $relationship = $opt;
+                    break;
+                }
+            }
+            $genderRaw = strtolower(trim((string) ($cells[2] ?? '')));
+            $gender = in_array($genderRaw, ['m', 'male', 'boy', 'lalaki'], true)
+                ? 'Male'
+                : (in_array($genderRaw, ['f', 'female', 'girl', 'babae'], true) ? 'Female' : '');
+            $truthy = static function (string $v): bool {
+                $v = strtolower(trim(str_replace("\u{2610}", '', $v)));
+
+                return $v !== '' && !in_array($v, ['no', 'n', '0', '-', 'none', 'false'], true);
+            };
+            $num = static function (string $v): string {
+                $v = trim(str_replace(',', '.', $v));
+
+                return is_numeric($v) && (float) $v > 0 ? (string) round((float) $v, 2) : '';
+            };
+            $members[] = [
+                'member_name' => $name,
+                'relationship' => $relationship,
+                'relationship_other' => '',
+                'gender' => $gender,
+                'birth_date' => nutrition_household_survey_form_date_mdy((string) ($cells[3] ?? '')),
+                'is_pregnant' => $gender === 'Female' && $truthy((string) ($cells[4] ?? '')),
+                'is_lactating' => $gender === 'Female' && $truthy((string) ($cells[5] ?? '')),
+                'prev_date_measured' => nutrition_household_survey_form_date_mdy((string) ($cells[6] ?? '')),
+                'prev_weight_kg' => $num((string) ($cells[7] ?? '')),
+                'prev_height_cm' => $num((string) ($cells[8] ?? '')),
+                'date_measured' => nutrition_household_survey_form_date_mdy((string) ($cells[9] ?? '')),
+                'weight_kg' => $num((string) ($cells[10] ?? '')),
+                'height_cm' => $num((string) ($cells[11] ?? '')),
+            ];
+        }
+
+        $feedingOther = trim((string) ($inputs['feeding_other'] ?? ''));
+        $monthsRaw = preg_replace('/\D+/', '', (string) ($inputs['pregnancy_months'] ?? '')) ?? '';
+        $pregnantStatus = $single('pregnant_nutrition_status');
+        foreach ($members as $i => $member) {
+            if ($member['is_pregnant']) {
+                $members[$i] += [
+                    'pregnancy_months' => $monthsRaw !== '' && (int) $monthsRaw >= 1 && (int) $monthsRaw <= 9 ? (int) $monthsRaw : '',
+                    'pregnant_nutrition_status' => $pregnantStatus,
+                    'planned_exclusive_breastfeeding' => $has('planned_feeding', 'Exclusive Breastfeeding'),
+                    'planned_mixed_feeding' => $has('planned_feeding', 'Mixed Feeding'),
+                    'planned_bottle_feeding' => $has('planned_feeding', 'Bottle Feeding'),
+                    'planned_other_feeding' => $has('planned_feeding', 'Others'),
+                    'planned_other_specify' => $has('planned_feeding', 'Others') ? $feedingOther : '',
+                ];
+                break;
+            }
+        }
+        foreach ($members as $i => $member) {
+            if ($member['is_lactating']) {
+                $members[$i] += [
+                    'lactating_exclusive_breastfeeding' => $has('lactating_feeding', 'Exclusive Breastfeeding'),
+                    'lactating_mixed_feeding' => $has('lactating_feeding', 'Mixed Feeding'),
+                    'lactating_bottle_feeding' => $has('lactating_feeding', 'Bottle Feeding'),
+                    'lactating_other_feeding' => $has('lactating_feeding', 'Others'),
+                    'lactating_other_specify' => $has('lactating_feeding', 'Others') ? $feedingOther : '',
+                ];
+                break;
+            }
+        }
+
+        $purokInput = trim((string) ($inputs['purok_number'] ?? ''));
+        $purokInput = (string) (nutrition_purok_input_from_label($purokInput) ?: $purokInput);
+
+        $payload = [
+            'purok_number' => $purokInput,
+            'purok_input' => $purokInput,
+            'survey_date' => nutrition_household_survey_form_date_mdy((string) ($inputs['survey_date'] ?? '')),
+            'bns_name' => (string) ($inputs['bns_name'] ?? ''),
+            'house_hold_id' => '',
+            'head_last_name' => (string) ($inputs['head_last_name'] ?? ''),
+            'head_first_name' => (string) ($inputs['head_first_name'] ?? ''),
+            'head_middle_name' => (string) ($inputs['head_middle_name'] ?? ''),
+            'head_suffix' => (string) ($inputs['head_suffix'] ?? ''),
+            'birth_date' => nutrition_household_survey_form_date_mdy((string) ($inputs['birth_date'] ?? '')),
+            'gender' => $single('gender'),
+            'occupation' => (string) ($inputs['occupation'] ?? ''),
+            'is_4ps' => in_array("4P's Member", $classification, true),
+            'is_ip' => in_array("IP's Member", $classification, true),
+            'is_na_member' => in_array('N/A', $classification, true),
+            'is_pwd' => in_array('PWD', $classification, true),
+            'is_solo_parent' => in_array('Solo Parent', $classification, true),
+            'house_ownership' => $single('house_ownership'),
+            'house_ownership_other' => (string) ($inputs['house_ownership_other'] ?? ''),
+            'dwelling_type' => $single('dwelling_type'),
+            'toilet_type' => $single('toilet_type'),
+            'garbage_disposal' => $single('garbage_disposal'),
+            'garbage_uncollected_type' => $single('garbage_uncollected_type'),
+            'water_source' => $single('water_source'),
+            'food_production' => implode(', ', $checked['food_production'] ?? []),
+            'uses_iodized_salt' => $has('hh_checks', 'HH using Iodized Salt'),
+            'uses_sangkap_pinoy' => $has('hh_checks', 'HH using Products with Sangkap Pinoy Seal'),
+            'has_carenderia' => $has('hh_checks', 'HH with Carenderia/Eatery'),
+            'has_sari_sari_store' => $has('hh_checks', 'HH with Sari-Sari Store'),
+            'practices_family_planning' => $single('practices_family_planning') === 'Yes',
+            'family_planning_methods' => implode(', ', $fpMethods),
+            'complementary_meals' => $single('complementary_meals'),
+            'complementary_meals_other' => (string) ($inputs['complementary_meals_other'] ?? ''),
+            'complementary_snacks' => $single('complementary_snacks'),
+            'complementary_snacks_other' => (string) ($inputs['complementary_snacks_other'] ?? ''),
+            'child_physical_activity' => $single('child_physical_activity'),
+            'child_physical_activity_other' => (string) ($inputs['child_physical_activity_other'] ?? ''),
+            'remarks' => '',
+            'family_members' => $members,
+        ];
+
+        if ($payload['head_last_name'] === '' && $payload['head_first_name'] === '') {
+            return ['ok' => false, 'error' => 'The uploaded form has no household head name. Fill in section II and upload again.'];
+        }
+
+        return ['ok' => true, 'payload' => $payload, 'warnings' => $warnings];
+    }
+}
+
+if (!function_exists('barangay_xlsx_column_index_from_letters')) {
+    function barangay_xlsx_column_index_from_letters(string $letters): int
+    {
+        $index = 0;
+        foreach (str_split(strtoupper($letters)) as $ch) {
+            $index = $index * 26 + (ord($ch) - 64);
+        }
+
+        return $index - 1;
     }
 }
 
@@ -4717,7 +5425,7 @@ if (!function_exists('nutrition_stream_household_survey_xlsx_form')) {
 
         if ($layout === 'form') {
             $formMemberRows = $memberRows > 0 && $memberRows <= 12 ? $memberRows : 6;
-            $formRows = nutrition_household_survey_build_form_layout_rows(
+            $formSheet = nutrition_household_survey_build_form_sheet(
                 $barangayName,
                 $district,
                 $address,
@@ -4729,6 +5437,7 @@ if (!function_exists('nutrition_stream_household_survey_xlsx_form')) {
                 $nutritionOfficer,
                 $formMemberRows
             );
+            $formRows = $formSheet['rows'];
 
             if (!class_exists('ZipArchive')) {
                 nutrition_stream_household_survey_csv_form($barangayName, $formRows, [], [], true);
@@ -4743,7 +5452,7 @@ if (!function_exists('nutrition_stream_household_survey_xlsx_form')) {
             @unlink($tempFile);
 
             barangay_xlsx_create_file([
-                ['name' => 'Survey Form', 'rows' => $formRows],
+                ['name' => 'Survey Form', 'rows' => $formRows, 'options' => $formSheet['options']],
             ], $xlsxPath);
 
             $filename = barangay_xlsx_safe_filename('Household_Nutrition_Survey_Form_' . $barangayName);
@@ -4852,7 +5561,7 @@ if (!function_exists('nutrition_stream_household_survey_csv_form')) {
         }
 
         foreach ($instructionRows as $row) {
-            fputcsv($out, $row);
+            fputcsv($out, array_map('barangay_xlsx_cell_value', $row));
         }
 
         if ($householdSheetRows !== []) {

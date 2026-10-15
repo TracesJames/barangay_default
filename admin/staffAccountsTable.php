@@ -108,6 +108,11 @@ try {
             STAFF_ROLE_ADMIN, STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN => 'All Barangays',
             default => barangay_h((string) ($row['barangay_name'] ?? '—')),
         };
+        if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR) {
+            $puroks = staff_assigned_purok_labels($con, (string) $row['id'], (string) ($row['barangay_id'] ?? ''));
+            $purokText = $puroks === [] ? 'All puroks' : implode(', ', $puroks);
+            $barangayLabel .= '<br><small class="text-muted">' . barangay_h($purokText) . '</small>';
+        }
 
         $actions = '';
         if ($canEdit) {

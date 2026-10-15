@@ -23,6 +23,7 @@ if (barangay_session_id() === null && ($isSuperAdmin || $isCityAdmin)) {
 }
 
 $activePage = 'profiles';
+$canOpenRegisteredHouseholds = nutrition_user_can_view_registered_households($con, $user_id);
 $statusFilter = trim((string) ($_GET['status'] ?? ''));
 $statusOptions = nutrition_status_options();
 ?>
@@ -47,9 +48,11 @@ $statusOptions = nutrition_status_options();
       <li class="nav-item"><a class="nav-link text-white" data-widget="pushmenu" href="#"><i class="fas fa-bars"></i></a></li>
       <li class="nav-item d-none d-sm-inline-block"><h5 class="nav-link text-white mb-0">Nutrition Profiles</h5></li>
     </ul>
+    <?php if ($canOpenRegisteredHouseholds) : ?>
     <ul class="navbar-nav ml-auto">
-      <li class="nav-item"><a class="nav-link text-white" href="nutritionAssess.php"><i class="fas fa-plus mr-1"></i> Registration</a></li>
+      <li class="nav-item"><a class="nav-link text-white" href="nutritionAssess.php?assess=1"><i class="fas fa-plus mr-1"></i> New Assessment</a></li>
     </ul>
+    <?php endif; ?>
   </nav>
 
   <?php require_once '../includes/partials/nutrition_sidebar.php'; ?>
@@ -61,7 +64,9 @@ $statusOptions = nutrition_status_options();
         $nutritionPageIcon = 'fa-clipboard-list';
         $nutritionPageHeading = 'Nutrition Profiles';
         $nutritionPageDescription = 'Browse the latest nutrition assessments for residents in ' . $barangay . '. Filter by status to focus on at-risk cases.';
-        $nutritionPageActions = '<a href="nutritionAssess.php" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Registration</a>';
+        $nutritionPageActions = $canOpenRegisteredHouseholds
+            ? '<a href="nutritionAssess.php?assess=1" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> New Assessment</a>'
+            : '';
         require __DIR__ . '/../includes/partials/nutrition_page_header.php';
         ?>
         <div class="card nutrition-panel">

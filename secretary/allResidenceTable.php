@@ -4,6 +4,7 @@ include_once '../connection.php';
 include_once '../includes/auth_secretary.php';
 require_once '../includes/barangay_context.php';
 require_once '../includes/datatables_helper.php';
+require_once '../includes/residence_transfer.php';
 
 try{
   
@@ -103,7 +104,10 @@ $query->execute();
 $result = $query->get_result();
 $data = [];
 $canEditOrDeletePerson = barangay_user_can_edit_or_delete_person($con, (string) ($_SESSION['user_id'] ?? ''));
-while($row = $result->fetch_assoc()){
+$canTransferResident = residence_transfer_can_request($con, (string) ($_SESSION['user_id'] ?? ''));
+$rows = $result->fetch_all(MYSQLI_ASSOC);
+$transferLinks = residence_transfer_links_for($con, array_column($rows, 'residence_id'));
+foreach ($rows as $row) {
   
 
   if($row['image'] != '' || $row['image'] != null || !empty($row['image'])){
@@ -151,13 +155,17 @@ if($row['single_parent'] == 'YES'){
   $subdata = [];
   $subdata[] = $image;
   $subdata[] =  $row['residence_id'];
-  $subdata[] =  ucfirst($row['first_name']).' '. $middle_name .' '. ucfirst($row['last_name']); 
+  $subdata[] =  ucfirst($row['first_name']).' '. $middle_name .' '. ucfirst($row['last_name'])
+    . residence_transfer_link_badge($transferLinks[$row['residence_id']] ?? null);
   $subdata[] =  $row['age'];
   $subdata[] =  $row['pwd_info']; 
   $subdata[] =  $single_parent; 
   $subdata[] = $voters;
   $subdata[] = $status;
   $actions = '<i style="cursor: pointer;  color: yellow;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-user-edit text-lg px-3 viewResidence" id="'.$row['residence_id'].'"></i>';
+  if ($canTransferResident) {
+    $actions .= '<i style="cursor: pointer;  color: #6610f2;" class="fa fa-exchange-alt text-lg px-2 transferResidence" title="Transfer to another barangay" data-residence="'.barangay_h($row['residence_id']).'"></i>';
+  }
   if ($canEditOrDeletePerson) {
     $actions .= '<i style="cursor: pointer;  color: red;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-times text-lg px-2 deleteResidence" id="'.$row['residence_id'].'"></i>';
   }

@@ -4,6 +4,7 @@
 
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
+require_once '../includes/residence_transfer.php';
 
 barangay_require_post();
 
@@ -16,11 +17,14 @@ try{
     $residence_status = 'ACTIVE';
     $date_archive = date("m/d/Y h:i A");
 
+    residence_transfer_block_unarchive_or_exit($con, $residence_id);
+
     $sql_archive_residence_information = "UPDATE `residence_status` SET `archive` = ?, `date_unarchive` = ?,  `status` = ? WHERE `residence_id` = ?";
     $stmt_archive_residence_information = $con->prepare($sql_archive_residence_information) or die($con->error);
     $stmt_archive_residence_information->bind_param('ssss',$archive_status,$date_archive,$residence_status,$residence_id);
     $stmt_archive_residence_information->execute();
     $stmt_archive_residence_information->close();
+    residence_archive_clear_reason($con, $residence_id);
 
 
     $sql_check_resident = "SELECT first_name, last_name FROM residence_information WHERE residence_id = ?";

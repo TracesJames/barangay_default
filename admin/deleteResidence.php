@@ -2,6 +2,7 @@
 
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
+require_once '../includes/residence_transfer.php';
 
 barangay_require_post();
 barangay_require_mutate_barangay_records($con);
@@ -53,9 +54,12 @@ try {
         $stmt_archive->execute();
         $stmt_archive->close();
     }
+    $archive_reason = strtoupper(trim((string) ($_POST['archive_reason'] ?? 'OTHER')));
+    residence_archive_set_reason($con, $residence_id, $archive_reason);
 
     $date_activity = date('j-n-Y g:i A');
-    $admin = strtoupper('ADMIN') . ': DELETED RESIDENT - ' . $residence_id . ' | - ' . $first_name . ' ' . $last_name;
+    $admin = strtoupper('ADMIN') . ': DELETED RESIDENT - ' . $residence_id . ' | - ' . $first_name . ' ' . $last_name
+        . ' | REASON: ' . (residence_archive_reason_label($archive_reason) ?: 'Other');
     $status_activity_log = 'delete';
     $sql_activity_log = 'INSERT INTO activity_log (`message`,`date`,`status`) VALUES (?,?,?)';
     $stmt_activity_log = $con->prepare($sql_activity_log);

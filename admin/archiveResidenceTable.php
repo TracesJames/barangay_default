@@ -5,6 +5,8 @@ include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 require_once '../includes/barangay_context.php';
 require_once '../includes/datatables_helper.php';
+require_once '../includes/residence_transfer.php';
+residence_transfer_ensure_schema($con);
 
 
 
@@ -49,7 +51,8 @@ residence_status.voters,
 residence_status.archive,
 residence_status.single_parent,
 residence_status.pwd_info,
-residence_status.date_added  
+residence_status.date_added,
+residence_status.archive_reason
 FROM residence_information INNER JOIN residence_status ON residence_information.residence_id = residence_status.residence_id" . $where;
 
 
@@ -74,7 +77,12 @@ if(isset($_REQUEST['oder'])){
 
 $query = $con->query($sql) or die ($con->error);
 $data = [];
-while($row = $query->fetch_assoc()){
+$rows = $query->fetch_all(MYSQLI_ASSOC);
+$transferLinks = residence_transfer_links_for($con, array_column($rows, 'residence_id'));
+foreach ($rows as $row) {
+  $transferLink = $transferLinks[$row['residence_id']] ?? null;
+  $transferredOut = $transferLink !== null && $transferLink['direction'] === 'to';
+  $archiveReasonLabel = residence_archive_reason_label((string) ($row['archive_reason'] ?? ''));
   if($row['image'] != '' || $row['image'] != null || !empty($row['image'])){
     $image = '<span style="cursor: pointer;" class="pop"><img src="'.$row['image_path'].'" alt="residence_image" class="img-circle" width="40"></span>';
   }else{
@@ -120,14 +128,16 @@ while($row = $query->fetch_assoc()){
 $subdata = [];
 $subdata[] = $image;
 $subdata[] =  $row['residence_id'];
-$subdata[] =  ucfirst($row['first_name']).' '. $middle_name .' '. ucfirst($row['last_name']); 
+$subdata[] =  ucfirst($row['first_name']).' '. $middle_name .' '. ucfirst($row['last_name'])
+  . ($archiveReasonLabel !== '' && !$transferredOut ? '<br><span class="badge badge-secondary">' . barangay_h($archiveReasonLabel) . '</span>' : '')
+  . residence_transfer_link_badge($transferLink);
 $subdata[] =  $row['age'];
 $subdata[] =  $row['pwd_info']; 
 $subdata[] =  $single_parent; 
 $subdata[] = $voters;
 $subdata[] = $status;
   $subdata[] = '<i style="cursor: pointer;  color: yellow;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-user-edit text-lg px-3 viewResidence" id="'.$row['residence_id'].'"></i>
-  <i style="cursor: pointer;  color: red;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-times text-lg px-2 unArchiveResidence" id="'.$row['residence_id'].'"></i>';
+  ' . ($transferredOut ? '' : '<i style="cursor: pointer;  color: red;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-times text-lg px-2 unArchiveResidence" id="'.$row['residence_id'].'"></i>');
   $data[] = $subdata;
 }
 

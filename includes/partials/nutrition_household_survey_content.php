@@ -29,6 +29,13 @@ foreach ($surveys as $surveyRow) {
         $nutritionPageActions = '
             <a href="nutritionHouseholdSurveyFormExcel.php?layout=form" class="btn btn-outline-light btn-sm" id="downloadHouseholdSurveyExcel">
               <i class="fas fa-file-excel mr-1"></i> Excel Form
+            </a>' . (empty($editingSurvey) ? '
+            <button type="button" class="btn btn-outline-light btn-sm" id="uploadHouseholdSurveyExcelBtn" title="Upload a filled Excel Form to pre-fill this survey">
+              <i class="fas fa-file-upload mr-1"></i> Upload Excel
+            </button>
+            <input type="file" id="uploadHouseholdSurveyExcelInput" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="d-none">' : '') . '
+            <a href="nutritionHouseholdSurveyForm.php?pdf=1" target="_blank" class="btn btn-outline-light btn-sm" id="downloadHouseholdSurveyPdf">
+              <i class="fas fa-file-pdf mr-1"></i> PDF Form
             </a>
             <a href="nutritionHouseholdSurveyForm.php" target="_blank" class="btn btn-outline-light btn-sm" id="downloadHouseholdSurveyForm">
               <i class="fas fa-print mr-1"></i> Print Form
@@ -129,6 +136,7 @@ foreach ($surveys as $surveyRow) {
                       </div>
                     </div>
                     <small class="text-muted d-block mt-1">
+                      Auto-generated from the purok when you save (also for uploaded Excel forms).
                       Format: <code>PSGC-Purok-5DigitSeries</code> (e.g. <code><?= barangay_h($psgcCode) ?>-P1-00001</code>)
                     </small>
                   </div>
@@ -528,6 +536,9 @@ foreach ($surveys as $surveyRow) {
                     <td><?= barangay_h((string) ($survey['purok_label'] ?? '')) ?></td>
                     <td>
                       <?= barangay_h($headDisplay) ?>
+                      <?php if (strtoupper((string) ($survey['moved_out'] ?? 'NO')) === 'YES') : ?>
+                      <span class="badge badge-secondary" title="Household transferred out; kept for historical reports only">Moved out<?= !empty($survey['moved_out_date']) ? ' ' . barangay_h(date('M j, Y', strtotime((string) $survey['moved_out_date']))) : '' ?></span>
+                      <?php endif; ?>
                       <?php if ($memberBadges !== []) : ?>
                       <div class="nutrition-member-badges mt-1">
                         <?php foreach ($memberBadges as $badge) : ?>
@@ -575,7 +586,12 @@ foreach ($surveys as $surveyRow) {
                   $viewUrl = 'nutritionBarangaySurvey.php?highlight=' . urlencode((string) ($survey['survey_id'] ?? ''));
                   ?>
               <div class="nutrition-mobile-record" data-search="<?= barangay_h($searchText) ?>">
-                <div class="nutrition-mobile-record-title"><?= barangay_h($headDisplay) ?></div>
+                <div class="nutrition-mobile-record-title">
+                  <?= barangay_h($headDisplay) ?>
+                  <?php if (strtoupper((string) ($survey['moved_out'] ?? 'NO')) === 'YES') : ?>
+                  <span class="badge badge-secondary">Moved out</span>
+                  <?php endif; ?>
+                </div>
                 <div class="nutrition-mobile-record-meta">
                   <code><?= barangay_h((string) ($survey['house_hold_id'] ?? '')) ?></code>
                   · <?= barangay_h((string) ($survey['purok_label'] ?? '')) ?>

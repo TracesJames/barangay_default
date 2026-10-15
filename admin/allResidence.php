@@ -35,6 +35,13 @@ try{
       $residenceListFilter = '';
   }
 
+  require_once '../includes/residence_transfer.php';
+  $canTransferResidents = residence_transfer_can_view($con, (string) ($_SESSION['user_id'] ?? ''));
+  $pendingIncomingTransfers = $canTransferResidents
+      ? residence_transfer_pending_incoming_count($con, (string) (barangay_resolve_scope_id($con) ?? ''))
+      : 0;
+  $manualArchiveReasons = array_diff_key(residence_archive_reasons(), ['TRANSFERRED' => true]);
+
 ?>
 
 <!DOCTYPE html>
@@ -630,6 +637,12 @@ input:checked + .slider .off{
                 <a href="newResidence.php" class="btn btn-primary elevation-2">
                   <i class="fas fa-user-plus"></i> New Residence
                 </a>
+                <?php if ($canTransferResidents) : ?>
+                <button type="button" class="btn bg-indigo elevation-2" id="openResidenceTransfers">
+                  <i class="fas fa-exchange-alt"></i> Transfers
+                  <span class="badge badge-warning ml-1<?= $pendingIncomingTransfers > 0 ? '' : ' d-none' ?>" id="residenceTransfersBadge"><?= (int) $pendingIncomingTransfers ?></span>
+                </button>
+                <?php endif; ?>
               </div>
               <div class="row residence-filter-form">
                 <div class="col-sm-4">
@@ -841,6 +854,9 @@ input:checked + .slider .off{
 <script src="../assets/plugins/jquery-validation/jquery.validate.min.js"></script>
 <script src="../assets/plugins/jquery-validation/additional-methods.min.js"></script>
 <script src="../assets/js/residence-family.js"></script>
+<?php if ($canTransferResidents) : ?>
+<script src="../assets/js/residence-transfer.js"></script>
+<?php endif; ?>
 <script src="../assets/plugins/jquery-validation/jquery-validate.bootstrap-tooltip.min.js"></script>
 <script src="../assets/plugins/inputmask/min/jquery.inputmask.bundle.min.js"></script>
 <script src="../assets/plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js"></script>
@@ -894,14 +910,20 @@ input:checked + .slider .off{
         var residence_id = $(this).attr('id');
         Swal.fire({
             title: '<strong class="text-danger">Are you sure?</strong>',
-            html: "You want archive this Resident?",
+            html: "You want archive this Resident?<br><small>Moving to another barangay? Use the <i class=\"fas fa-exchange-alt\"></i> Transfer action instead.</small>",
             type: 'warning',
+            input: 'select',
+            inputOptions: <?= json_encode($manualArchiveReasons, JSON_UNESCAPED_UNICODE) ?>,
+            inputPlaceholder: '-- Select reason --',
+            inputValidator: function (value) {
+              return value ? null : 'Select the reason for archiving.';
+            },
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
             allowOutsideClick: false,
             confirmButtonText: 'Yes, archive it!',
-            width: '400px',
+            width: '420px',
           }).then((result) => {
             if (result.value) {
               $.ajax({
@@ -909,6 +931,7 @@ input:checked + .slider .off{
                 type: 'POST',
                 data: {
                   residence_id:residence_id,
+                  archive_reason:result.value,
                 },
                 cache: false,
                 success:function(data){

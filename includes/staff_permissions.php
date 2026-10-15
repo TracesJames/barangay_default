@@ -431,6 +431,172 @@ if (!function_exists('staff_set_barangay_assignments')) {
     }
 }
 
+if (!function_exists('staff_purok_assignment_ensure_table')) {
+    function staff_purok_assignment_ensure_table(mysqli $con): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        if (!function_exists('barangay_table_exists')) {
+            require_once __DIR__ . '/barangay_context.php';
+        }
+        if (barangay_table_exists($con, 'staff_purok_assignment')) {
+            return;
+        }
+        $con->query(
+            "CREATE TABLE `staff_purok_assignment` (
+                `user_id` VARCHAR(64) NOT NULL,
+                `barangay_id` VARCHAR(64) NOT NULL,
+                `purok_label` VARCHAR(64) NOT NULL,
+                PRIMARY KEY (`user_id`, `barangay_id`, `purok_label`),
+                KEY `idx_spa_barangay` (`barangay_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    }
+}
+
+if (!function_exists('staff_normalize_purok_label')) {
+    function staff_normalize_purok_label(string $raw): string
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        if (!function_exists('nutrition_purok_label_from_number')) {
+            require_once __DIR__ . '/nutrition_context.php';
+        }
+        $input = nutrition_purok_input_from_label($raw);
+        if ($input === '') {
+            $input = $raw;
+        }
+        $label = nutrition_purok_label_from_number($input);
+
+        return $label !== '' ? $label : strtoupper($raw);
+    }
+}
+
+if (!function_exists('staff_assigned_purok_labels')) {
+    /**
+     * Empty array = all puroks in the barangay (no restriction).
+     *
+     * @return array<int, string>
+     */
+    function staff_assigned_purok_labels(mysqli $con, string $userId, ?string $barangayId = null): array
+    {
+        if ($userId === '') {
+            return [];
+        }
+        staff_purok_assignment_ensure_table($con);
+        if (!barangay_table_exists($con, 'staff_purok_assignment')) {
+            return [];
+        }
+
+        if ($barangayId !== null && $barangayId !== '') {
+            $stmt = $con->prepare(
+                'SELECT purok_label FROM staff_purok_assignment WHERE user_id = ? AND barangay_id = ? ORDER BY purok_label ASC'
+            );
+            if (!$stmt) {
+                return [];
+            }
+            $stmt->bind_param('ss', $userId, $barangayId);
+        } else {
+            $stmt = $con->prepare(
+                'SELECT purok_label FROM staff_purok_assignment WHERE user_id = ? ORDER BY purok_label ASC'
+            );
+            if (!$stmt) {
+                return [];
+            }
+            $stmt->bind_param('s', $userId);
+        }
+        $stmt->execute();
+        $labels = [];
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $label = staff_normalize_purok_label((string) ($row['purok_label'] ?? ''));
+            if ($label !== '') {
+                $labels[$label] = $label;
+            }
+        }
+        $stmt->close();
+
+        return array_values($labels);
+    }
+}
+
+if (!function_exists('staff_set_purok_assignments')) {
+    /**
+     * @param array<int, string> $purokLabels Empty clears all (means all puroks).
+     */
+    function staff_set_purok_assignments(mysqli $con, string $userId, string $barangayId, array $purokLabels): void
+    {
+        if ($userId === '') {
+            return;
+        }
+        staff_purok_assignment_ensure_table($con);
+        if (!barangay_table_exists($con, 'staff_purok_assignment')) {
+            return;
+        }
+
+        $del = @$con->prepare('DELETE FROM staff_purok_assignment WHERE user_id = ?');
+        if ($del) {
+            $del->bind_param('s', $userId);
+            $del->execute();
+            $del->close();
+        }
+
+        if ($barangayId === '' || $purokLabels === []) {
+            return;
+        }
+
+        $clean = [];
+        foreach ($purokLabels as $label) {
+            $normalized = staff_normalize_purok_label((string) $label);
+            if ($normalized !== '') {
+                $clean[$normalized] = $normalized;
+            }
+        }
+        if ($clean === []) {
+            return;
+        }
+
+        $ins = @$con->prepare(
+            'INSERT INTO staff_purok_assignment (user_id, barangay_id, purok_label) VALUES (?, ?, ?)'
+        );
+        if (!$ins) {
+            return;
+        }
+        foreach ($clean as $label) {
+            $ins->bind_param('sss', $userId, $barangayId, $label);
+            $ins->execute();
+        }
+        $ins->close();
+    }
+}
+
+if (!function_exists('staff_user_can_access_purok')) {
+    /**
+     * True when BNS has no purok restriction, or the label is in their assignment.
+     */
+    function staff_user_can_access_purok(mysqli $con, string $userId, string $purokLabel): bool
+    {
+        if ($userId === '') {
+            return false;
+        }
+        if (!barangay_user_is_barangay_nutrition_scholar($con, $userId)) {
+            return true;
+        }
+        $assigned = staff_assigned_purok_labels($con, $userId);
+        if ($assigned === []) {
+            return true;
+        }
+        $normalized = staff_normalize_purok_label($purokLabel);
+
+        return $normalized !== '' && in_array($normalized, $assigned, true);
+    }
+}
+
 if (!function_exists('barangay_user_can_pick_barangay')) {
     function barangay_user_can_pick_barangay(mysqli $con, ?string $userId = null): bool
     {
@@ -702,7 +868,7 @@ if (!function_exists('barangay_bns_allowed_scripts')) {
             'nutritionAccountProfile.php',
             'nutritionHouseholdSurvey.php',
             'nutritionHouseholdSurveyForm.php',
-            'nutritionHouseholdSurveyFormExcel.php',
+            'nutritionHouseholdSurveyFormExcel.php', 'nutritionHouseholdSurveyImport.php',
             'nutritionBarangaySurvey.php',
             'nutritionBarangaySurveyPrint.php',
             'nutritionPregnantFamiliesReport.php',
@@ -714,7 +880,6 @@ if (!function_exists('barangay_bns_allowed_scripts')) {
             'nutritionReport.php',
             'nutritionPrintReport.php',
             'nutritionProfiles.php',
-            'nutritionAssess.php',
             'nutritionHubGuidePrint.php',
             'nutritionProcessFormPrint.php',
             'myProfile.php',
@@ -776,7 +941,6 @@ if (!function_exists('barangay_bns_admin_allowed_scripts')) {
             'nutritionMellpiCityProfile.php',
             'nutritionMellpiBarangayProfile.php',
             'nutritionSettings.php',
-            'nutritionAssess.php',
         ])));
     }
 }
@@ -924,7 +1088,7 @@ if (!function_exists('barangay_barangay_hub_sa_denied_scripts')) {
             'nutritionAccountProfile.php',
             'nutritionHouseholdSurvey.php',
             'nutritionHouseholdSurveyForm.php',
-            'nutritionHouseholdSurveyFormExcel.php',
+            'nutritionHouseholdSurveyFormExcel.php', 'nutritionHouseholdSurveyImport.php',
             'nutritionBarangaySurvey.php',
             'nutritionBarangaySurveyPrint.php',
             'nutritionPregnantFamiliesReport.php',
@@ -974,7 +1138,7 @@ if (!function_exists('barangay_nutrition_portal_admin_allowed_scripts')) {
             [
                 'nutritionHouseholdSurvey.php',
                 'nutritionHouseholdSurveyForm.php',
-                'nutritionHouseholdSurveyFormExcel.php',
+                'nutritionHouseholdSurveyFormExcel.php', 'nutritionHouseholdSurveyImport.php',
                 'nutritionAssess.php',
                 'nutritionSettings.php',
                 'saveNutritionMellpiCityProfile.php',
@@ -984,6 +1148,7 @@ if (!function_exists('barangay_nutrition_portal_admin_allowed_scripts')) {
                 'staffAccountsTable.php',
                 'viewStaffAccount.php',
                 'resetStaffAccountPassword.php',
+                'staffBarangayPuroks.php',
                 'nutritionAccountProfile.php',
                 'saveProfile.php',
                 'nutritionProcessFormPrint.php',

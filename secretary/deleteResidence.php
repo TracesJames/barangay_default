@@ -4,6 +4,7 @@
 
 include_once '../connection.php';
 include_once '../includes/auth_secretary.php';
+require_once '../includes/residence_transfer.php';
 
 barangay_require_post();
 
@@ -61,6 +62,8 @@ try{
     $stmt_archive_residence_information->bind_param('ssss',$archive_status,$date_archive,$residence_status,$residence_id);
     $stmt_archive_residence_information->execute();
     $stmt_archive_residence_information->close();
+    $archive_reason = strtoupper(trim((string) ($_POST['archive_reason'] ?? 'OTHER')));
+    residence_archive_set_reason($con, $residence_id, $archive_reason);
 
 
 
@@ -69,7 +72,8 @@ try{
 
     
   $date_activity = $now = date("j-n-Y g:i A");  
-  $admin = strtoupper('OFFICAL').': ' .$first_name_user.' '.$last_name_user. ' - ' .$user_id.' | '. 'DELETED RESIDENT - '.' ' .$residence_id.' | '  .' - '.$first_name .' '. $last_name;
+  $admin = strtoupper('OFFICAL').': ' .$first_name_user.' '.$last_name_user. ' - ' .$user_id.' | '. 'DELETED RESIDENT - '.' ' .$residence_id.' | '  .' - '.$first_name .' '. $last_name
+    . ' | REASON: ' . (residence_archive_reason_label($archive_reason) ?: 'Other');
   $status_activity_log = 'update';
   $sql_activity_log = "INSERT INTO activity_log (`message`,`date`,`status`)VALUES(?,?,?)";
   $stmt_activity_log = $con->prepare($sql_activity_log) or die ($con->error);

@@ -66,6 +66,9 @@ try {
     if ($username === '' || $first_name === '' || $last_name === '') {
         $respond('error', 'Username, first name, and last name are required.', 400);
     }
+    if ($contact_number !== '' && !preg_match('/^\d{11}$/', $contact_number)) {
+        $respond('errorContact', 'Contact number must be exactly 11 digits.', 400);
+    }
 
     $new_image_name = (string) ($row_user['image'] ?? '');
     $new_image_path = (string) ($row_user['image_path'] ?? '');

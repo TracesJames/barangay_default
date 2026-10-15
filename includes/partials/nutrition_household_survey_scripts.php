@@ -166,7 +166,7 @@ function nutritionBuildFamilyMemberCard(index) {
               '<label>Previous Height / Length (cm)</label>' +
               '<input type="number" min="0" step="0.1" class="form-control family-member-prev-height" name="family_members[' + index + '][prev_height_cm]" placeholder="cm">' +
             '</div>' +
-            '<div class="col-md-5 form-group">' +
+            '<div class="col-md-5 form-group nutrition-growth-result-col">' +
               '<label class="d-block">Nutrition Result (auto-computed from previous)</label>' +
               '<div class="nutrition-growth-results nutrition-growth-results--prev small">' +
                 '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-prev-wfa badge badge-secondary">—</span></div>' +
@@ -196,7 +196,7 @@ function nutritionBuildFamilyMemberCard(index) {
               '<label>Present Height / Length (cm) <span class="text-danger">*</span></label>' +
               '<input type="number" min="0" step="0.1" class="form-control family-member-growth-input family-member-present-height" name="family_members[' + index + '][height_cm]" placeholder="cm">' +
             '</div>' +
-            '<div class="col-md-5 form-group">' +
+            '<div class="col-md-5 form-group nutrition-growth-result-col">' +
               '<label class="d-block">Nutrition Result (auto-computed from present)</label>' +
               '<div class="nutrition-growth-results small">' +
                 '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-wfa badge badge-secondary">—</span></div>' +
@@ -834,6 +834,9 @@ function nutritionRefreshHouseholdId() {
   var purok = ($('#purok_number').val() || '').trim();
   if (!purok) return;
   $.getJSON('nutritionNextHouseholdId.php', { purok: purok }, function (res) {
+    if (($('#purok_number').val() || '').trim() !== purok) {
+      return;
+    }
     if (res && res.household_id) {
       $('#house_hold_id').val(res.household_id);
     }
@@ -845,12 +848,15 @@ $('#purok_number').on('input change', function () {
   var purok = ($(this).val() || '').trim();
   var excelHref = 'nutritionHouseholdSurveyFormExcel.php?layout=form';
   var printHref = 'nutritionHouseholdSurveyForm.php';
+  var pdfHref = 'nutritionHouseholdSurveyForm.php?pdf=1';
   if (purok !== '') {
     excelHref += '&purok=' + encodeURIComponent(purok);
     printHref += '?purok=' + encodeURIComponent(purok);
+    pdfHref += '&purok=' + encodeURIComponent(purok);
   }
   $('#downloadHouseholdSurveyExcel').attr('href', excelHref);
   $('#downloadHouseholdSurveyForm').attr('href', printHref);
+  $('#downloadHouseholdSurveyPdf').attr('href', pdfHref);
 });
 $('#refreshHouseholdId').on('click', nutritionRefreshHouseholdId);
 
@@ -1178,16 +1184,93 @@ if (window.nutritionSurveyEditPayload) {
   nutritionApplySurveyEditPayload(window.nutritionSurveyEditPayload);
 }
 
+$('#uploadHouseholdSurveyExcelBtn').on('click', function () {
+  $('#uploadHouseholdSurveyExcelInput').val('').trigger('click');
+});
+
+$('#uploadHouseholdSurveyExcelInput').on('change', function () {
+  var file = this.files && this.files[0];
+  if (!file) {
+    return;
+  }
+  if (!/\.xlsx$/i.test(file.name)) {
+    Swal.fire({ title: 'Excel file required', text: 'Upload the filled Excel Form (.xlsx).', type: 'warning' });
+    return;
+  }
+  var $btn = $('#uploadHouseholdSurveyExcelBtn');
+  var originalHtml = $btn.html();
+  $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Reading…');
+
+  var formData = new FormData();
+  formData.append('survey_file', file);
+  var csrf = $('meta[name="csrf-token"]').attr('content');
+  if (csrf) {
+    formData.append('csrf_token', csrf);
+  }
+
+  $.ajax({
+    url: 'nutritionHouseholdSurveyImport.php',
+    method: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    dataType: 'json',
+    dataFilter: function (data) {
+      return nutritionStripBom(data);
+    }
+  }).done(function (res) {
+    if (!res || !res.ok || !res.payload) {
+      Swal.fire({ title: 'Could not read file', text: (res && res.error) || 'The Excel file could not be read.', type: 'error' });
+      return;
+    }
+    nutritionResetHouseholdSurveyForm();
+    nutritionApplySurveyEditPayload(res.payload);
+    $('#purok_number').trigger('change');
+    if (res.payload.house_hold_id) {
+      $('#house_hold_id').val(res.payload.house_hold_id);
+    }
+
+    var head = [res.payload.head_last_name, res.payload.head_first_name].filter(Boolean).join(', ');
+    var html = '<div class="text-left">' +
+      '<div><strong>Household head:</strong> ' + $('<div>').text(head || '—').html() + '</div>' +
+      '<div><strong>Family members:</strong> ' + (res.members || 0) + '</div>' +
+      '<div><strong>Household No.:</strong> <code>' + $('<div>').text(res.payload.house_hold_id || 'auto').html() + '</code> (auto-generated)</div>';
+    if (res.warnings && res.warnings.length) {
+      html += '<div class="mt-2 text-warning"><strong>Check:</strong><ul class="mb-0 pl-3">' +
+        res.warnings.map(function (w) { return '<li>' + $('<div>').text(w).html() + '</li>'; }).join('') +
+        '</ul></div>';
+    }
+    html += '<div class="mt-2 small text-muted">Review the form below, then click Save.</div></div>';
+    Swal.fire({ title: 'Excel form loaded', html: html, type: 'success' });
+    var $form = $('#householdSurveyForm');
+    if ($form.length) {
+      $('html, body').animate({ scrollTop: $form.offset().top - 88 }, 280);
+    }
+  }).fail(function (xhr) {
+    var msg = 'Could not upload the Excel file.';
+    try {
+      var parsed = JSON.parse(nutritionStripBom(xhr.responseText || '{}'));
+      if (parsed.error) msg = parsed.error;
+    } catch (e) {}
+    Swal.fire({ title: 'Upload failed', text: msg, type: 'error' });
+  }).always(function () {
+    $btn.prop('disabled', false).html(originalHtml);
+  });
+});
+
 (function () {
   var purok = ($('#purok_number').val() || '').trim();
   var excelHref = 'nutritionHouseholdSurveyFormExcel.php?layout=form';
   var printHref = 'nutritionHouseholdSurveyForm.php';
+  var pdfHref = 'nutritionHouseholdSurveyForm.php?pdf=1';
   if (purok !== '') {
     excelHref += '&purok=' + encodeURIComponent(purok);
     printHref += '?purok=' + encodeURIComponent(purok);
+    pdfHref += '&purok=' + encodeURIComponent(purok);
   }
   $('#downloadHouseholdSurveyExcel').attr('href', excelHref);
   $('#downloadHouseholdSurveyForm').attr('href', printHref);
+  $('#downloadHouseholdSurveyPdf').attr('href', pdfHref);
 })();
 
 $('#householdSurveyForm').on('submit', function (e) {

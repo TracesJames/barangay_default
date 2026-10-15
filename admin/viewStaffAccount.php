@@ -21,6 +21,11 @@ $barangayOptions = barangay_list_all($con);
 $assignedBarangayIds = $role === STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR
     ? staff_assigned_barangay_ids($con, (string) $row['id'])
     : [];
+$assignedPurokLabels = $role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR
+    ? staff_assigned_purok_labels($con, (string) $row['id'], (string) ($row['barangay_id'] ?? ''))
+    : [];
+$bnsPurokScopeAll = $assignedPurokLabels === [];
+$isBns = $role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR;
 $cityWideRoles = [
     STAFF_ROLE_SSA,
     STAFF_ROLE_SUPER_ADMIN,
@@ -88,8 +93,32 @@ foreach ($assignedBarangayIds as $assignedId) {
             <?php elseif ($needsBarangay) : ?>
             <label>Barangay</label>
             <input type="text" class="form-control" value="<?= barangay_h((string) ($row['barangay_name'] ?? '')) ?>" readonly>
+            <?php if ($isBns) : ?>
+            <label class="mt-2">Assigned purok(s)</label>
+            <input type="text" class="form-control mb-2" value="<?= barangay_h($bnsPurokScopeAll ? 'All puroks' : implode(', ', $assignedPurokLabels)) ?>" readonly>
+            <?php endif; ?>
             <?php endif; ?>
           </div>
+
+          <?php if ($isBns && !($canChangeRole && !$isSelf)) : ?>
+          <div class="form-group" id="edit_bns_purok_group_locked_role">
+            <label>Update assigned purok(s)</label>
+            <div class="mb-2">
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="edit_purok_scope_all_lr" name="purok_scope" value="all" class="custom-control-input edit-purok-scope" <?= $bnsPurokScopeAll ? 'checked' : '' ?>>
+                <label class="custom-control-label" for="edit_purok_scope_all_lr">All puroks</label>
+              </div>
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="edit_purok_scope_selected_lr" name="purok_scope" value="selected" class="custom-control-input edit-purok-scope" <?= !$bnsPurokScopeAll ? 'checked' : '' ?>>
+                <label class="custom-control-label" for="edit_purok_scope_selected_lr">Selected purok(s)</label>
+              </div>
+            </div>
+            <input type="hidden" id="edit_barangay_id_locked" value="<?= barangay_h((string) ($row['barangay_id'] ?? '')) ?>">
+            <div id="edit_purok_checklist_wrap_lr" class="border rounded p-2" style="max-height: 220px; overflow-y: auto; <?= $bnsPurokScopeAll ? 'display:none;' : '' ?>">
+              <div id="edit_purok_checklist_lr" class="text-muted small">Loading…</div>
+            </div>
+          </div>
+          <?php endif; ?>
 
           <?php if ($canChangeRole && !$isSelf) : ?>
           <div class="form-group" id="edit_barangay_group" style="<?= $needsBarangay ? '' : 'display:none;' ?>">
@@ -102,6 +131,22 @@ foreach ($assignedBarangayIds as $assignedId) {
               </option>
               <?php endforeach; ?>
             </select>
+          </div>
+          <div class="form-group" id="edit_bns_purok_group" style="<?= $isBns ? '' : 'display:none;' ?>">
+            <label>Assigned purok(s) <small class="text-muted">(BNS — all, one, or many)</small></label>
+            <div class="mb-2">
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="edit_purok_scope_all" name="purok_scope" value="all" class="custom-control-input" <?= $bnsPurokScopeAll ? 'checked' : '' ?>>
+                <label class="custom-control-label" for="edit_purok_scope_all">All puroks</label>
+              </div>
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="edit_purok_scope_selected" name="purok_scope" value="selected" class="custom-control-input" <?= !$bnsPurokScopeAll ? 'checked' : '' ?>>
+                <label class="custom-control-label" for="edit_purok_scope_selected">Selected purok(s)</label>
+              </div>
+            </div>
+            <div id="edit_purok_checklist_wrap" class="border rounded p-2" style="max-height: 220px; overflow-y: auto; <?= $bnsPurokScopeAll ? 'display:none;' : '' ?>">
+              <div id="edit_purok_checklist" class="text-muted small">Loading…</div>
+            </div>
           </div>
           <div class="form-group" id="edit_cnpc_barangay_group" style="<?= $isCnpc ? '' : 'display:none;' ?>">
             <label>Assigned barangays <small class="text-muted">(CNPC — select one or many)</small></label>
@@ -163,6 +208,38 @@ foreach ($assignedBarangayIds as $assignedId) {
 
 <script>
 $(function () {
+  var initialPuroks = <?= json_encode(array_values($assignedPurokLabels), JSON_UNESCAPED_UNICODE) ?>;
+  var bnsRole = '<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>';
+
+  function loadEditBnsPuroks(barangayId, $box, selectedLabels) {
+    selectedLabels = selectedLabels || [];
+    if (!barangayId) {
+      $box.html('<span class="text-muted small">Select a barangay first.</span>');
+      return;
+    }
+    $box.html('<span class="text-muted small">Loading puroks…</span>');
+    $.getJSON('staffBarangayPuroks.php', { barangay_id: barangayId }, function (res) {
+      var options = (res && res.options) ? res.options : [];
+      if (!options.length) {
+        $box.html('<span class="text-muted small">No puroks found.</span>');
+        return;
+      }
+      var html = '';
+      options.forEach(function (opt, idx) {
+        var val = String(opt.value || '');
+        var id = 'edit_purok_' + idx + '_' + Math.floor(Math.random() * 1000);
+        var checked = selectedLabels.indexOf(val) !== -1 ? ' checked' : '';
+        html += '<div class="custom-control custom-checkbox">'
+          + '<input type="checkbox" class="custom-control-input edit-purok-check" name="purok_labels[]" id="' + id + '" value="' + $('<div>').text(val).html() + '"' + checked + '>'
+          + '<label class="custom-control-label" for="' + id + '">' + $('<div>').text(opt.label || val).html() + '</label>'
+          + '</div>';
+      });
+      $box.html(html);
+    }).fail(function () {
+      $box.html('<span class="text-danger small">Could not load puroks.</span>');
+    });
+  }
+
   function syncEditRoleFields() {
     var $role = $('#edit_staff_role');
     if (!$role.length) {
@@ -178,18 +255,45 @@ $(function () {
     }
     var isCnpc = role === cnpc;
     var needsBrgy = needs.indexOf(role) !== -1;
+    var isBns = role === bnsRole;
     $('#edit_barangay_group').toggle(needsBrgy);
     $('#edit_cnpc_barangay_group').toggle(isCnpc);
+    $('#edit_bns_purok_group').toggle(isBns);
     $('#edit_barangay_readonly_group').hide();
     if (needsBrgy) {
       $('#edit_barangay_id').prop('required', true);
     } else {
       $('#edit_barangay_id').prop('required', false);
     }
+    if (isBns) {
+      syncEditPurokScope();
+    }
+  }
+
+  function syncEditPurokScope() {
+    var selected = $('#edit_purok_scope_selected').is(':checked') || $('#edit_purok_scope_selected_lr').is(':checked');
+    $('#edit_purok_checklist_wrap, #edit_purok_checklist_wrap_lr').toggle(selected);
+    if (!selected) {
+      return;
+    }
+    var brgy = $('#edit_barangay_id').val() || $('#edit_barangay_id_locked').val() || '';
+    if ($('#edit_purok_checklist').length) {
+      loadEditBnsPuroks(brgy, $('#edit_purok_checklist'), initialPuroks);
+    }
+    if ($('#edit_purok_checklist_lr').length) {
+      loadEditBnsPuroks(brgy, $('#edit_purok_checklist_lr'), initialPuroks);
+    }
   }
 
   $('#edit_staff_role').on('change', syncEditRoleFields);
   syncEditRoleFields();
+  $('#edit_barangay_id').on('change', function () {
+    if ($('#edit_purok_scope_selected').is(':checked')) {
+      loadEditBnsPuroks($(this).val(), $('#edit_purok_checklist'), []);
+    }
+  });
+  $(document).on('change', 'input[name="purok_scope"]', syncEditPurokScope);
+  syncEditPurokScope();
 
   $('#edit_staff_password').on('input', function () {
     $('#edit_staff_password_changed').val($(this).val() !== '' ? '1' : '0');
@@ -197,6 +301,11 @@ $(function () {
 
   $('#editStaffAccountForm').on('submit', function (e) {
     e.preventDefault();
+    if (($('#edit_purok_scope_selected').is(':checked') || $('#edit_purok_scope_selected_lr').is(':checked'))
+        && $('.edit-purok-check:checked').length === 0) {
+      Swal.fire('Required', 'Select at least one purok, or choose All puroks.', 'warning');
+      return;
+    }
     $.ajax({
       url: 'saveStaffAccount.php',
       type: 'POST',

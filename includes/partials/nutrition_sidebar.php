@@ -30,7 +30,7 @@ $showNutritionSettings = !$isNutritionScholar;
 $showNutritionHouseholdSurvey = isset($con, $_SESSION['user_id']) && function_exists('nutrition_user_can_add_household_surveys')
     ? nutrition_user_can_add_household_surveys($con, (string) $_SESSION['user_id'])
     : !$isCnpc;
-$showNutritionAssessment = !$isCnpc;
+$showNutritionAssessment = $isSsa || $isNutritionPortalAdmin;
 $hideBarangayAdminSwitch = !$isSsa;
 $portalBrandName = isset($con)
     ? barangay_portal_brand_name($con, (string) ($_SESSION['user_id'] ?? ''), true)
@@ -99,8 +99,8 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
         <?php if ($showNutritionAssessment) : ?>
         <li class="nav-item">
           <a href="nutritionAssess.php" class="nav-link <?= $nutritionActivePage === 'assess' ? 'active' : '' ?>">
-            <i class="nav-icon fas fa-weight"></i>
-            <p>Registration</p>
+            <i class="nav-icon fas fa-house-user"></i>
+            <p>Registered Households</p>
           </a>
         </li>
         <?php endif; ?>

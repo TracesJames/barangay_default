@@ -226,14 +226,14 @@ $staffAccountsHubQuery = $isNutritionStaffUi ? '&hub=nutrition' : '';
             <ul class="mb-0 pl-3">
               <?php if ($isNutritionPortalAdmin) : ?>
               <li><strong>Admin — Nutrition Hub (A)</strong> — city-wide Nutrition Hub admin (pick any barangay).</li>
-              <li><strong>BNS (per Barangay)</strong> — one Nutrition Scholar account for a single barangay. Choose the barangay when creating.</li>
+              <li><strong>BNS (per Barangay)</strong> — one Nutrition Scholar account for a single barangay, optionally limited to one or more puroks.</li>
               <?php else : ?>
               <li><strong>Super Super Admin (SSA)</strong> — sees all of Barangay Hub and Nutrition Hub; full system access; manage all accounts.</li>
               <li><strong>Super Admin — Barangay Hub (SA)</strong> — Barangay Hub only; manage Barangay Hub Admin, Barangay Admin, and Staff accounts.</li>
               <li><strong>Super Admin — Nutrition Hub (SA)</strong> — Nutrition Hub only; manage Nutrition Hub Admin and BNS accounts.</li>
               <li><strong>Admin — Barangay Hub (A)</strong> — Barangay Hub operations (officials, residents, blotter, reports). No Nutrition Hub, certificates issue, backup, or account deletion.</li>
               <li><strong>Admin — Nutrition Hub (A)</strong> — Nutrition Hub city-wide (pick any barangay, surveys, settings, MELLPI). No Barangay Hub portal.</li>
-              <li><strong>BNS (per Barangay)</strong> — one Nutrition Scholar account scoped to a single barangay.</li>
+              <li><strong>BNS (per Barangay)</strong> — one Nutrition Scholar account scoped to a single barangay (all puroks, or selected puroks only).</li>
               <li><strong>Barangay Admin / Staff</strong> — one barangay only on the Barangay Hub portal.</li>
               <?php endif; ?>
             </ul>
@@ -278,6 +278,23 @@ $staffAccountsHubQuery = $isNutritionStaffUi ? '&hub=nutrition' : '';
               <option value="<?= barangay_h($brgy['id']) ?>"><?= barangay_h($brgy['barangay']) ?></option>
               <?php endforeach; ?>
             </select>
+          </div>
+          <div class="form-group" id="create_bns_purok_group" style="display:none;">
+            <label>Assigned purok(s) <small class="text-muted">(BNS — all, one, or many)</small></label>
+            <div class="mb-2">
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="create_purok_scope_all" name="purok_scope" value="all" class="custom-control-input" checked>
+                <label class="custom-control-label" for="create_purok_scope_all">All puroks in barangay</label>
+              </div>
+              <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="create_purok_scope_selected" name="purok_scope" value="selected" class="custom-control-input">
+                <label class="custom-control-label" for="create_purok_scope_selected">Selected purok(s)</label>
+              </div>
+            </div>
+            <div id="create_purok_checklist_wrap" class="border rounded p-2" style="max-height: 220px; overflow-y: auto; display:none;">
+              <div id="create_purok_checklist" class="text-muted small">Select a barangay to load puroks…</div>
+            </div>
+            <small class="form-text text-muted">Use <strong>Selected</strong> when this BNS covers only one purok or a few puroks.</small>
           </div>
           <div class="form-group" id="create_cnpc_barangay_group" style="display:none;">
             <label>Assigned barangays <small class="text-muted">(CNPC — select one or many)</small></label>
@@ -372,6 +389,52 @@ $(function () {
     return /^-?\d*$/.test(value);
   });
 
+  function loadCreateBnsPuroks(barangayId, selectedLabels) {
+    selectedLabels = selectedLabels || [];
+    var $box = $('#create_purok_checklist');
+    if (!barangayId) {
+      $box.html('<span class="text-muted small">Select a barangay to load puroks…</span>');
+      return;
+    }
+    $box.html('<span class="text-muted small">Loading puroks…</span>');
+    $.getJSON('staffBarangayPuroks.php', { barangay_id: barangayId }, function (res) {
+      var options = (res && res.options) ? res.options : [];
+      if (!options.length) {
+        $box.html('<span class="text-muted small">No puroks found. You can still choose All puroks.</span>');
+        return;
+      }
+      var html = '';
+      options.forEach(function (opt, idx) {
+        var val = String(opt.value || '');
+        var id = 'create_purok_' + idx;
+        var checked = selectedLabels.indexOf(val) !== -1 ? ' checked' : '';
+        html += '<div class="custom-control custom-checkbox">'
+          + '<input type="checkbox" class="custom-control-input create-purok-check" name="purok_labels[]" id="' + id + '" value="' + $('<div>').text(val).html() + '"' + checked + '>'
+          + '<label class="custom-control-label" for="' + id + '">' + $('<div>').text(opt.label || val).html() + '</label>'
+          + '</div>';
+      });
+      $box.html(html);
+    }).fail(function () {
+      $box.html('<span class="text-danger small">Could not load puroks.</span>');
+    });
+  }
+
+  function syncCreateBnsPurokUi() {
+    var role = $('#create_staff_role').val();
+    var isBns = role === '<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>';
+    $('#create_bns_purok_group').toggle(isBns);
+    if (!isBns) {
+      $('#create_purok_scope_all').prop('checked', true);
+      $('#create_purok_checklist_wrap').hide();
+      return;
+    }
+    var selected = $('input[name="purok_scope"]:checked').val() === 'selected';
+    $('#create_purok_checklist_wrap').toggle(selected);
+    if (selected) {
+      loadCreateBnsPuroks($('#create_barangay_id').val());
+    }
+  }
+
   $('#create_staff_role').on('change', function () {
     var role = $(this).val();
     var needsBarangay = role === '<?= STAFF_ROLE_BARANGAY_STAFF ?>'
@@ -384,8 +447,16 @@ $(function () {
     if (!needsCnpc) {
       $('#cnpc_select_all, .cnpc-barangay-check').prop('checked', false);
     }
+    syncCreateBnsPurokUi();
   }).trigger('change');
 
+  $('#create_barangay_id').on('change', function () {
+    if ($('#create_purok_scope_selected').is(':checked')) {
+      loadCreateBnsPuroks($(this).val());
+    }
+  });
+
+  $('input[name="purok_scope"]').on('change', syncCreateBnsPurokUi);
   $('#cnpc_select_all').on('change', function () {
     $('.cnpc-barangay-check').prop('checked', $(this).is(':checked'));
   });
@@ -444,6 +515,12 @@ $(function () {
     if (role === '<?= STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR ?>'
         && $('.cnpc-barangay-check:checked').length === 0) {
       Swal.fire('Required', 'Select at least one barangay for CNPC.', 'warning');
+      return;
+    }
+    if (role === '<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>'
+        && $('input[name="purok_scope"]:checked').val() === 'selected'
+        && $('.create-purok-check:checked').length === 0) {
+      Swal.fire('Required', 'Select at least one purok, or choose All puroks.', 'warning');
       return;
     }
     $.ajax({

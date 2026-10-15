@@ -317,8 +317,8 @@ foreach ($roleCases as $role => $expect) {
             barangay_bns_admin_can_access_script('deleteNutritionHouseholdSurvey.php')
         );
         assert_true(
-            "{$who}: can open new assessment",
-            barangay_bns_admin_can_access_script('nutritionAssess.php')
+            "{$who}: cannot open registered households (SSA / Nutrition SA only)",
+            !barangay_bns_admin_can_access_script('nutritionAssess.php')
         );
         assert_true(
             "{$who}: nutrition portal only",

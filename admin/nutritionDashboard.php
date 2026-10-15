@@ -29,6 +29,7 @@ $coverage = ((int) $totals['children'] > 0)
     : 0;
 
 $recentRows = nutrition_recent_activity_rows($con, $barangayId, 8);
+$canOpenRegisteredHouseholds = nutrition_user_can_view_registered_households($con, $user_id);
 
 require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
 ?>
@@ -59,8 +60,8 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
         <div class="alert alert-dark border-success nutrition-empty-hint mb-4">
           <i class="fas fa-info-circle mr-2 text-success"></i>
           No household surveys or child assessments yet for <strong><?= barangay_h($barangay) ?></strong>.
-          Start with <a href="nutritionHouseholdSurvey.php" class="text-success font-weight-bold">Household Survey</a>
-          or <a href="nutritionAssess.php" class="text-success font-weight-bold">Registration</a>.
+          Start with <a href="nutritionHouseholdSurvey.php" class="text-success font-weight-bold">Household Survey</a><?php if ($canOpenRegisteredHouseholds) : ?>
+          or an <a href="nutritionAssess.php?assess=1" class="text-success font-weight-bold">Individual Assessment</a><?php endif; ?>.
         </div>
         <?php endif; ?>
 
@@ -71,11 +72,13 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
             <span class="nutrition-workflow-card-title">Household Survey</span>
             <span class="nutrition-workflow-card-desc">Record household head and family member nutrition data with auto growth assessment.</span>
           </a>
+          <?php if ($canOpenRegisteredHouseholds) : ?>
           <a href="nutritionAssess.php" class="nutrition-workflow-card">
-            <span class="nutrition-workflow-card-icon"><i class="fas fa-weight"></i></span>
-            <span class="nutrition-workflow-card-title">Registration</span>
-            <span class="nutrition-workflow-card-desc">Register a nutrition assessment for an existing barangay resident record.</span>
+            <span class="nutrition-workflow-card-icon"><i class="fas fa-house-user"></i></span>
+            <span class="nutrition-workflow-card-title">Registered Households</span>
+            <span class="nutrition-workflow-card-desc">Browse all households registered in this barangay, or record an individual child assessment.</span>
           </a>
+          <?php endif; ?>
           <a href="nutritionBarangaySurvey.php" class="nutrition-workflow-card">
             <span class="nutrition-workflow-card-icon"><i class="fas fa-poll"></i></span>
             <span class="nutrition-workflow-card-title">Consolidated Report</span>
@@ -181,9 +184,9 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                 <?php if ($recentRows === []) : ?>
                 <div class="p-4 text-center text-muted">
                   No assessments yet for this barangay.
-                  <a href="nutritionHouseholdSurvey.php" class="text-success">Add a household survey</a>
+                  <a href="nutritionHouseholdSurvey.php" class="text-success">Add a household survey</a><?php if ($canOpenRegisteredHouseholds) : ?>
                   or
-                  <a href="nutritionAssess.php" class="text-success">registration</a>.
+                  <a href="nutritionAssess.php?assess=1" class="text-success">record an individual assessment</a><?php endif; ?>.
                 </div>
                 <?php else : ?>
                 <div class="table-responsive">
