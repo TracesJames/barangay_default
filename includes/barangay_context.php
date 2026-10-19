@@ -1216,6 +1216,9 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
                 'nutritionProcessFormPrint.php', 'cityReportPack.php',
                 'staffAccounts.php', 'saveStaffAccount.php', 'deleteStaffAccount.php',
                 'staffAccountsTable.php', 'viewStaffAccount.php', 'resetStaffAccountPassword.php',
+                // BNS purok checklist on Staff Accounts (city-wide; barangay chosen in the form).
+                'staffBarangayPuroks.php',
+                'nutritionStatusChildren.php',
             ], true) && barangay_session_id() === null) {
                 header('Location: nutritionSuperDashboard.php');
                 exit;
@@ -1326,7 +1329,12 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
             if ($script === 'selectBarangay.php' || ($script === 'barangayHub.php' && $isNutritionHubPicker)) {
                 return;
             }
-            if (in_array($script, ['nutritionSuperDashboard.php', 'nutritionAccountProfile.php', 'saveProfile.php'], true)) {
+            if (in_array($script, [
+                'nutritionSuperDashboard.php',
+                'nutritionAccountProfile.php',
+                'saveProfile.php',
+                'nutritionStatusChildren.php',
+            ], true)) {
                 return;
             }
             $activeId = barangay_session_id();
@@ -1588,7 +1596,17 @@ if (!function_exists('barangay_blotter_barangay_id')) {
 if (!function_exists('barangay_deny_scope_access')) {
     function barangay_deny_scope_access(string $message = 'Access denied'): void
     {
+        $wantsJson = (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || isset($_POST['ajax'])
+            || isset($_GET['ajax'])
+            || str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
         http_response_code(403);
+        if ($wantsJson) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['error' => $message, 'options' => []]);
+            exit;
+        }
         exit($message);
     }
 }
@@ -1693,9 +1711,13 @@ if (!function_exists('barangay_assert_request_scope')) {
         $barangayId = trim((string) ($_REQUEST['barangay_id'] ?? ''));
         if ($barangayId !== '') {
             $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
-            // selectBarangay.php exists to switch the active barangay — do not
-            // treat a different posted barangay_id as an out-of-scope request.
-            if ($script !== 'selectBarangay.php') {
+            // Endpoints that intentionally accept any barangay the caller can manage
+            // (city-wide Staff Accounts BNS purok checklist, barangay switcher).
+            $barangayIdScopeExempt = [
+                'selectBarangay.php',
+                'staffBarangayPuroks.php',
+            ];
+            if (!in_array($script, $barangayIdScopeExempt, true)) {
                 barangay_assert_barangay_in_scope($con, $barangayId);
             }
         }

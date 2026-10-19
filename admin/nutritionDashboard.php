@@ -165,10 +165,14 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                   ];
                   foreach ($statusCards as $card) :
                   ?>
-                  <a href="nutritionProfiles.php?status=<?= urlencode($card['key']) ?>" class="nutrition-status-chip <?= barangay_h($card['class']) ?>">
+                  <button type="button"
+                          class="nutrition-status-chip <?= barangay_h($card['class']) ?>"
+                          data-status="<?= barangay_h($card['key']) ?>"
+                          data-label="<?= barangay_h($card['label']) ?>"
+                          title="View children with this status">
                     <span class="nutrition-status-count"><?= number_format((int) ($totals[$card['key']] ?? 0)) ?></span>
                     <span class="nutrition-status-name"><?= barangay_h($card['label']) ?></span>
-                  </a>
+                  </button>
                   <?php endforeach; ?>
                 </div>
               </div>
@@ -231,4 +235,8 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
           </div>
         </div>
 <?php
+$nutritionStatusChildrenCityWide = false;
+ob_start();
+require __DIR__ . '/../includes/partials/nutrition_status_children_modal.php';
+$nutritionPageScript = ($nutritionPageScript ?? '') . ob_get_clean();
 require __DIR__ . '/../includes/partials/nutrition_layout_end.php';

@@ -103,6 +103,8 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                       'school_normal' => 'School status — Normal',
                       'school_ow' => 'School status — Overweight',
                       'school_ob' => 'School status — Obese',
+                      'hh_school_wasted' => 'HH with severely wasted & wasted school children (Public)',
+                      'school_dewormed' => 'School children dewormed at start of school year',
                       'fic' => 'Fully immunized children (FIC)',
                       'sari_sari' => 'Sari-sari stores',
                       'bns_count' => 'Barangay Nutrition Scholars',

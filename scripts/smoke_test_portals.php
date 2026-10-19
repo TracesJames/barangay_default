@@ -317,8 +317,8 @@ foreach ($roleCases as $role => $expect) {
             barangay_bns_admin_can_access_script('deleteNutritionHouseholdSurvey.php')
         );
         assert_true(
-            "{$who}: cannot open registered households (SSA / Nutrition SA only)",
-            !barangay_bns_admin_can_access_script('nutritionAssess.php')
+            "{$who}: can open registered households",
+            barangay_bns_admin_can_access_script('nutritionAssess.php')
         );
         assert_true(
             "{$who}: nutrition portal only",
@@ -351,6 +351,11 @@ foreach ($roleCases as $role => $expect) {
         assert_true(
             "{$who}: can save (edit) household survey",
             barangay_cnpc_can_access_script('saveNutritionHouseholdSurvey.php')
+        );
+        assert_true(
+            "{$who}: can open registered households",
+            barangay_cnpc_can_access_script('nutritionAssess.php')
+                && nutrition_user_can_view_registered_households($con, $uid)
         );
         assert_true(
             "{$who}: cannot add surveys (capability)",

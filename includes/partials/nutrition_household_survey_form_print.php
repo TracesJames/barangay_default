@@ -194,9 +194,16 @@ $feedingOptions = [
       <div style="margin-top:4px;">Others, pls. specify: _________________</div>
     </div>
     <div class="field col-6">
-      <label>III-B. Type of Toilet</label>
+      <label>III-B. Type of Toilet facility (Data source from BSI)</label>
+      <div style="font-size:10px;margin-bottom:2px;"><em>1. Type of Sanitary Facility</em></div>
       <div class="checkbox-row">
-        <?php foreach (nutrition_prf_toilet_options() as $opt) : ?>
+        <?php foreach (nutrition_prf_toilet_sanitary_options() as $opt) : ?>
+        <span class="checkbox-item"><span class="box"></span> <?= barangay_h($opt) ?></span>
+        <?php endforeach; ?>
+      </div>
+      <div style="font-size:10px;margin:4px 0 2px;"><em>2. Type of Unsanitary Facility</em></div>
+      <div class="checkbox-row">
+        <?php foreach (nutrition_prf_toilet_unsanitary_options() as $opt) : ?>
         <span class="checkbox-item"><span class="box"></span> <?= barangay_h($opt) ?></span>
         <?php endforeach; ?>
       </div>

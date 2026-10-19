@@ -176,12 +176,21 @@ if ($isNaMember === 'YES') {
 
 $houseOwnership = nutrition_prf_pick_option((string) ($_POST['house_ownership'] ?? ''), nutrition_prf_house_ownership_options());
 $houseOwnershipOther = $houseOwnership === 'Others' ? trim((string) ($_POST['house_ownership_other'] ?? '')) : '';
-$toiletType = nutrition_prf_pick_option((string) ($_POST['toilet_type'] ?? ''), nutrition_prf_toilet_options());
-$garbageDisposal = nutrition_prf_pick_option((string) ($_POST['garbage_disposal'] ?? ''), nutrition_prf_garbage_options());
+$toiletType = nutrition_prf_pick_option(
+    nutrition_prf_normalize_toilet_type((string) ($_POST['toilet_type'] ?? '')),
+    nutrition_prf_toilet_options()
+);
+$garbageDisposal = nutrition_prf_pick_option(
+    nutrition_prf_normalize_garbage_disposal((string) ($_POST['garbage_disposal'] ?? '')),
+    nutrition_prf_garbage_options()
+);
 $garbageUncollected = $garbageDisposal === 'Uncollected'
     ? nutrition_prf_pick_option((string) ($_POST['garbage_uncollected_type'] ?? ''), nutrition_prf_garbage_uncollected_options())
     : '';
-$waterSource = nutrition_prf_pick_option((string) ($_POST['water_source'] ?? ''), nutrition_prf_water_source_options());
+$waterSource = nutrition_prf_pick_option(
+    nutrition_prf_normalize_water_source((string) ($_POST['water_source'] ?? '')),
+    nutrition_prf_water_source_options()
+);
 $dwellingType = nutrition_prf_pick_option((string) ($_POST['dwelling_type'] ?? ''), nutrition_prf_dwelling_options());
 $foodProduction = nutrition_prf_food_production_from_post();
 $usesIodizedSalt = nutrition_yes_no_from_post('uses_iodized_salt');

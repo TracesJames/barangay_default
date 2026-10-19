@@ -161,13 +161,33 @@ foreach ($formsToRender as $formIndex => $formPack) :
         <td colspan="6"><strong>5. Households, by type of toilet facility:</strong></td>
       </tr>
       <?php
-      $toiletLabels = [
-          'Water Sealed' => 'a. Water sealed toilet',
-          'Covered Pit' => 'b. Covered Pit',
-          'Open Pit' => 'c. Open Pit',
-          'No Toilet' => 'd. No Toilet',
+      ?>
+      <tr class="bnp-sub"><td colspan="6"><em>1. Type of Sanitary Facility</em></td></tr>
+      <?php
+      $toiletSanitaryLabels = [
+          'Pour/Flush type with septic tank' => 'a. Pour/Flush type with septic tank',
+          'Pour Flush Toilet connected to septic tank and sewerage system' => 'b. Pour Flush Toilet connected to septic tank and sewerage system',
+          'Ventilated Pit (VIP) Latrine' => 'c. Ventilated Pit (VIP) Latrine',
       ];
-      foreach ($toiletLabels as $key => $label) :
+      foreach ($toiletSanitaryLabels as $key => $label) :
+          $totals = $pregnantReport['toilet'][$key] ?? nutrition_pregnant_zero_columns();
+          ?>
+      <tr>
+        <td class="bnp-item"><?= barangay_h($label) ?></td>
+        <?php foreach ($colKeys as $ck) : ?>
+        <td class="bnp-num"><?= number_format((int) ($totals[$ck] ?? 0)) ?></td>
+        <?php endforeach; ?>
+      </tr>
+      <?php endforeach; ?>
+      <tr class="bnp-sub"><td colspan="6"><em>2. Type of Unsanitary Facility</em></td></tr>
+      <?php
+      $toiletUnsanitaryLabels = [
+          'Water-sealed toilet w/o septic tank' => 'a. Water-sealed toilet w/o septic tank',
+          'Overhung Latrine' => 'b. Overhung Latrine',
+          'Open Pit Latrine' => 'c. Open Pit Latrine',
+          'Without toilet' => 'd. Without toilet',
+      ];
+      foreach ($toiletUnsanitaryLabels as $key => $label) :
           $totals = $pregnantReport['toilet'][$key] ?? nutrition_pregnant_zero_columns();
           ?>
       <tr>
@@ -183,9 +203,9 @@ foreach ($formsToRender as $formIndex => $formPack) :
       </tr>
       <?php
       $waterLabels = [
-          'Pipe Water System' => 'a. Pipe Water System (Level III)',
-          'Communal Water Source' => 'b. Communal source piped water system',
-          'Mineral' => 'c. Mineral water / water dispensing stores',
+          'Pipe Water System (level III)' => 'a. Pipe Water System (Level III)',
+          'Communal source piped water system' => 'b. Communal source piped water system',
+          'Mineral water/water dispensing stores' => 'c. Mineral water / water dispensing stores',
           'Well' => 'd. Well',
           'Spring' => 'e. Spring',
       ];

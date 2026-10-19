@@ -397,7 +397,13 @@ $(function () {
       return;
     }
     $box.html('<span class="text-muted small">Loading puroks…</span>');
-    $.getJSON('staffBarangayPuroks.php', { barangay_id: barangayId }, function (res) {
+    $.ajax({
+      url: 'staffBarangayPuroks.php',
+      method: 'GET',
+      dataType: 'json',
+      data: { barangay_id: barangayId, ajax: 1 },
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    }).done(function (res) {
       var options = (res && res.options) ? res.options : [];
       if (!options.length) {
         $box.html('<span class="text-muted small">No puroks found. You can still choose All puroks.</span>');
@@ -414,8 +420,18 @@ $(function () {
           + '</div>';
       });
       $box.html(html);
-    }).fail(function () {
-      $box.html('<span class="text-danger small">Could not load puroks.</span>');
+    }).fail(function (xhr) {
+      var msg = 'Could not load puroks.';
+      try {
+        var parsed = JSON.parse(xhr.responseText || '{}');
+        if (parsed && parsed.error) msg = parsed.error;
+      } catch (e) {}
+      if (xhr.status === 401) {
+        msg = 'Session expired. Refresh the page and sign in again.';
+      } else if (xhr.status === 403) {
+        msg = msg === 'Could not load puroks.' ? 'Access denied for this barangay.' : msg;
+      }
+      $box.html('<span class="text-danger small">' + $('<div>').text(msg).html() + '</span>');
     });
   }
 

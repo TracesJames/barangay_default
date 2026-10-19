@@ -328,8 +328,24 @@ foreach ($surveys as $surveyRow) {
                       <h6 class="nutrition-prf-group-title"><i class="fas fa-toilet mr-1"></i> Sanitation</h6>
 
                       <div class="nutrition-prf-field">
-                        <?php nutrition_prf_field_label('III-B', 'Type of Toilet'); ?>
-                        <?php nutrition_prf_render_radio_group('toilet_type', nutrition_prf_toilet_options(), '', 'wrap'); ?>
+                        <?php nutrition_prf_field_label('III-B', 'Type of Toilet facility (Data source from BSI)'); ?>
+                        <div class="small text-muted font-weight-bold mb-1">1. Type of Sanitary Facility</div>
+                        <?php nutrition_prf_render_radio_group('toilet_type', nutrition_prf_toilet_sanitary_options(), '', 'wrap'); ?>
+                        <div class="small text-muted font-weight-bold mb-1 mt-3">2. Type of Unsanitary Facility</div>
+                        <?php
+                        $unsanitary = nutrition_prf_toilet_unsanitary_options();
+                        $sanitaryCount = count(nutrition_prf_toilet_sanitary_options());
+                        $layoutClass = nutrition_prf_options_layout_class('wrap');
+                        echo '<div class="' . barangay_h($layoutClass) . '">';
+                        foreach ($unsanitary as $i => $label) {
+                            $id = 'toilet_type_' . ($sanitaryCount + $i);
+                            echo '<div class="custom-control custom-radio">';
+                            echo '<input type="radio" class="custom-control-input" id="' . barangay_h($id) . '" name="toilet_type" value="' . barangay_h($label) . '">';
+                            echo '<label class="custom-control-label" for="' . barangay_h($id) . '">' . barangay_h($label) . '</label>';
+                            echo '</div>';
+                        }
+                        echo '</div>';
+                        ?>
                       </div>
 
                       <div class="nutrition-prf-field mb-0">

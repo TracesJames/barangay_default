@@ -115,9 +115,9 @@ foreach ($formsToRender as $formIndex => $pack) :
 
       <tr class="bnp-section"><td colspan="2"><strong>6. Households, by source of drinking water:</strong></td></tr>
       <?php foreach ([
-          'Pipe Water System' => 'a. Pipe Water System (Level III)',
-          'Communal Water Source' => 'b. Communal source piped water system',
-          'Mineral' => 'c. Mineral water/water dispensing stores',
+          'Pipe Water System (level III)' => 'a. Pipe Water System (Level III)',
+          'Communal source piped water system' => 'b. Communal source piped water system',
+          'Mineral water/water dispensing stores' => 'c. Mineral water/water dispensing stores',
           'Well' => 'd. Well',
           'Spring' => 'e. Spring',
       ] as $k => $lab) : ?>

@@ -68,6 +68,7 @@ if ($isCnpc) {
         'at_risk' => $atRisk,
     ];
     $statusTotals = [
+        'normal' => 0,
         'underweight' => 0,
         'wasted' => 0,
         'severely_wasted' => 0,
@@ -75,9 +76,15 @@ if ($isCnpc) {
         'overweight' => 0,
         'obese' => 0,
     ];
-    $severelyWasted = 0;
-    $stunted = 0;
-    $wasted = 0;
+    foreach ($cnpcBarangayIds ?? [] as $cnpcBid) {
+        $scoped = nutrition_survey_children_totals($con, (string) $cnpcBid);
+        foreach (array_keys($statusTotals) as $statusKey) {
+            $statusTotals[$statusKey] += (int) ($scoped[$statusKey] ?? 0);
+        }
+    }
+    $severelyWasted = (int) ($statusTotals['severely_wasted'] ?? 0);
+    $stunted = (int) ($statusTotals['stunted'] ?? 0);
+    $wasted = (int) ($statusTotals['wasted'] ?? 0);
 } else {
     $hubTotals = nutrition_hub_totals($con);
     $statusTotals = nutrition_hub_status_totals($con);
@@ -453,10 +460,14 @@ if ($nutritionRecommendations === []) {
                   ];
                   foreach ($statusCards as $card) :
                   ?>
-                  <div class="nutrition-status-chip <?= barangay_h($card['class']) ?>">
+                  <button type="button"
+                          class="nutrition-status-chip <?= barangay_h($card['class']) ?>"
+                          data-status="<?= barangay_h($card['key']) ?>"
+                          data-label="<?= barangay_h($card['label']) ?>"
+                          title="View children with this status">
                     <span class="nutrition-status-count"><?= number_format($statusTotals[$card['key']] ?? 0) ?></span>
                     <span class="nutrition-status-name"><?= barangay_h($card['label']) ?></span>
-                  </div>
+                  </button>
                   <?php endforeach; ?>
                 </div>
               </div>
@@ -625,5 +636,9 @@ $(function () {
   });
 });
 </script>
+<?php
+$nutritionStatusChildrenCityWide = true;
+require __DIR__ . '/../includes/partials/nutrition_status_children_modal.php';
+?>
 </body>
 </html>

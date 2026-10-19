@@ -55,11 +55,20 @@ if (!function_exists('nutrition_user_is_portal_admin')) {
 }
 
 if (!function_exists('nutrition_user_can_view_registered_households')) {
-    /** Registered Households page (nutritionAssess.php): SSA and Nutrition Hub SA only. */
+    /**
+     * Registered Households page (nutritionAssess.php):
+     * SSA, Nutrition Hub SA, Nutrition Admin (A), CNPC.
+     */
     function nutrition_user_can_view_registered_households(mysqli $con, string $userId): bool
     {
-        return $userId !== ''
-            && (barangay_user_is_ssa($con, $userId) || barangay_user_is_nutrition_portal_admin($con, $userId));
+        if ($userId === '') {
+            return false;
+        }
+
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_nutrition_portal_admin($con, $userId)
+            || barangay_user_is_bns_admin($con, $userId)
+            || barangay_user_is_cnpc($con, $userId);
     }
 }
 
@@ -1004,6 +1013,168 @@ if (!function_exists('nutrition_survey_children_totals')) {
         $totals['pending'] = max(0, $totals['children'] - $totals['assessed']);
 
         return $totals;
+    }
+}
+
+if (!function_exists('nutrition_list_children_by_dashboard_status')) {
+    /**
+     * Children matching a dashboard status chip (survey members + residence assessments).
+     * Same membership rules as nutrition_survey_children_totals / nutrition_scoped_totals.
+     *
+     * @return array<int, array{name:string,age_label:string,barangay:string,purok:string,source:string,household:string,date:string}>
+     */
+    function nutrition_list_children_by_dashboard_status(mysqli $con, string $status, ?string $barangayId = null): array
+    {
+        $status = trim($status);
+        $allowed = array_keys(nutrition_status_options());
+        if ($status === '' || !in_array($status, $allowed, true)) {
+            return [];
+        }
+
+        $rows = [];
+        $seen = [];
+
+        if (barangay_table_exists($con, 'nutrition_household_family_member')
+            && barangay_table_exists($con, 'nutrition_household_survey')) {
+            $sql = 'SELECT m.member_name, m.birth_date, m.age_months, m.date_measured,
+                           m.weight_for_age, m.height_for_age, m.weight_for_height, m.muac_status,
+                           m.weight_kg, m.height_cm, m.muac_cm,
+                           s.survey_date, s.purok_label, s.head_last_name, s.head_first_name, s.household_head,
+                           s.barangay_id, b.barangay AS barangay_name
+                FROM nutrition_household_family_member m
+                INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
+                LEFT JOIN barangay_information b ON b.id = s.barangay_id
+                WHERE ' . nutrition_survey_current_condition($con, 's');
+            if ($barangayId !== null && $barangayId !== '') {
+                $sql .= " AND m.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
+            }
+            $sql .= ' ORDER BY b.barangay ASC, m.member_name ASC';
+
+            $result = $con->query($sql);
+            if ($result) {
+                while ($member = $result->fetch_assoc()) {
+                    $ageMonths = isset($member['age_months']) && $member['age_months'] !== null && $member['age_months'] !== ''
+                        ? (int) $member['age_months']
+                        : null;
+                    if ($ageMonths === null) {
+                        $ageMonths = nutrition_age_in_months(
+                            trim((string) ($member['birth_date'] ?? '')) !== '' ? (string) $member['birth_date'] : null
+                        );
+                    }
+                    if (!nutrition_member_is_child_0_to_19($ageMonths, (string) ($member['birth_date'] ?? ''))) {
+                        continue;
+                    }
+                    if (!nutrition_survey_member_is_assessed($member)) {
+                        continue;
+                    }
+                    $statuses = nutrition_survey_member_dashboard_statuses($member);
+                    if (!in_array($status, $statuses, true)) {
+                        continue;
+                    }
+
+                    $name = trim((string) ($member['member_name'] ?? ''));
+                    if ($name === '') {
+                        continue;
+                    }
+                    $ageYears = nutrition_member_age_years($ageMonths, (string) ($member['birth_date'] ?? ''));
+                    $ageLabel = $ageYears !== null ? ($ageYears . ' y/o') : '';
+                    if ($ageMonths !== null && $ageMonths < 24) {
+                        $ageLabel = $ageMonths . ' mo';
+                    }
+                    $head = trim((string) ($member['household_head'] ?? ''));
+                    if ($head === '') {
+                        $head = trim(
+                            trim((string) ($member['head_last_name'] ?? '')) . ', '
+                            . trim((string) ($member['head_first_name'] ?? '')),
+                            ' ,'
+                        );
+                    }
+                    $date = trim((string) ($member['date_measured'] ?? ''));
+                    if ($date === '') {
+                        $date = trim((string) ($member['survey_date'] ?? ''));
+                    }
+                    $key = strtolower($name . '|' . (string) ($member['barangay_id'] ?? '') . '|' . $date . '|survey');
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+                    $rows[] = [
+                        'name' => $name,
+                        'age_label' => $ageLabel,
+                        'barangay' => trim((string) ($member['barangay_name'] ?? '')),
+                        'purok' => trim((string) ($member['purok_label'] ?? '')),
+                        'source' => 'Household Survey',
+                        'household' => $head,
+                        'date' => $date,
+                    ];
+                }
+            }
+        }
+
+        // Also include latest residence assessments (barangay dashboard totals add these).
+        if (nutrition_table_exists($con) && barangay_table_exists($con, 'residence_information')) {
+            $sql = "SELECT ri.first_name, ri.middle_name, ri.last_name, ri.age,
+                           na.assessment_date, na.nutritional_status, na.barangay_id,
+                           b.barangay AS barangay_name
+                FROM nutrition_assessment na
+                INNER JOIN residence_information ri ON na.residence_id = ri.residence_id
+                INNER JOIN (
+                    SELECT residence_id, MAX(assessment_date) AS latest_date
+                    FROM nutrition_assessment
+                    WHERE (? = '' OR barangay_id = ?)
+                    GROUP BY residence_id
+                ) latest ON latest.residence_id = na.residence_id AND latest.latest_date = na.assessment_date
+                LEFT JOIN barangay_information b ON b.id = na.barangay_id
+                WHERE na.nutritional_status = ?
+                  AND (? = '' OR na.barangay_id = ?)
+                ORDER BY b.barangay ASC, ri.last_name ASC, ri.first_name ASC";
+            $stmt = $con->prepare($sql);
+            if ($stmt) {
+                $scope = ($barangayId !== null && $barangayId !== '') ? $barangayId : '';
+                $stmt->bind_param('sssss', $scope, $scope, $status, $scope, $scope);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $name = trim(
+                        trim((string) ($row['last_name'] ?? '')) . ', '
+                        . trim((string) ($row['first_name'] ?? '')) . ' '
+                        . trim((string) ($row['middle_name'] ?? ''))
+                    );
+                    $name = trim(preg_replace('/\s+/', ' ', $name) ?? $name);
+                    if ($name === '' || $name === ',') {
+                        continue;
+                    }
+                    $date = trim((string) ($row['assessment_date'] ?? ''));
+                    $key = strtolower($name . '|' . (string) ($row['barangay_id'] ?? '') . '|' . $date . '|assessment');
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+                    $age = trim((string) ($row['age'] ?? ''));
+                    $rows[] = [
+                        'name' => $name,
+                        'age_label' => $age !== '' ? ('Age ' . $age) : '',
+                        'barangay' => trim((string) ($row['barangay_name'] ?? '')),
+                        'purok' => '',
+                        'source' => 'Individual Assessment',
+                        'household' => '',
+                        'date' => $date,
+                    ];
+                }
+                $stmt->close();
+            }
+        }
+
+        usort($rows, static function (array $a, array $b): int {
+            $cmp = strcasecmp((string) ($a['barangay'] ?? ''), (string) ($b['barangay'] ?? ''));
+            if ($cmp !== 0) {
+                return $cmp;
+            }
+
+            return strcasecmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+        });
+
+        return $rows;
     }
 }
 
@@ -2101,9 +2272,15 @@ if (!function_exists('nutrition_ensure_module_tables')) {
         nutrition_ensure_column($con, 'nutrition_household_survey', 'is_na_member', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `is_solo_parent`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'house_ownership', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `sanitation`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'house_ownership_other', "VARCHAR(255) NOT NULL DEFAULT '' AFTER `house_ownership`");
-        nutrition_ensure_column($con, 'nutrition_household_survey', 'toilet_type', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `house_ownership_other`");
+        nutrition_ensure_column($con, 'nutrition_household_survey', 'toilet_type', "VARCHAR(160) NOT NULL DEFAULT '' AFTER `house_ownership_other`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'garbage_disposal', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `toilet_type`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'garbage_uncollected_type', "VARCHAR(120) NOT NULL DEFAULT '' AFTER `garbage_disposal`");
+        // Widen toilet_type for full BSI sanitary/unsanitary labels (existing installs).
+        try {
+            $con->query("ALTER TABLE `nutrition_household_survey` MODIFY COLUMN `toilet_type` VARCHAR(160) NOT NULL DEFAULT ''");
+        } catch (Throwable $e) {
+            // ignore
+        }
         nutrition_ensure_column($con, 'nutrition_household_survey', 'dwelling_type', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `water_source`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'food_production', "VARCHAR(255) NOT NULL DEFAULT '' AFTER `dwelling_type`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'uses_iodized_salt', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `food_production`");
@@ -3307,11 +3484,63 @@ if (!function_exists('nutrition_prf_house_ownership_options')) {
     }
 }
 
+if (!function_exists('nutrition_prf_toilet_sanitary_options')) {
+    /** @return array<int, string> BSI Type of Sanitary Facility */
+    function nutrition_prf_toilet_sanitary_options(): array
+    {
+        return [
+            'Pour/Flush type with septic tank',
+            'Pour Flush Toilet connected to septic tank and sewerage system',
+            'Ventilated Pit (VIP) Latrine',
+        ];
+    }
+}
+
+if (!function_exists('nutrition_prf_toilet_unsanitary_options')) {
+    /** @return array<int, string> BSI Type of Unsanitary Facility */
+    function nutrition_prf_toilet_unsanitary_options(): array
+    {
+        return [
+            'Water-sealed toilet w/o septic tank',
+            'Overhung Latrine',
+            'Open Pit Latrine',
+            'Without toilet',
+        ];
+    }
+}
+
 if (!function_exists('nutrition_prf_toilet_options')) {
-    /** @return array<int, string> */
+    /** @return array<int, string> Full BSI toilet facility list for household survey */
     function nutrition_prf_toilet_options(): array
     {
-        return ['Water Sealed', 'Covered Pit', 'Open Pit', 'No Toilet'];
+        return array_merge(
+            nutrition_prf_toilet_sanitary_options(),
+            nutrition_prf_toilet_unsanitary_options()
+        );
+    }
+}
+
+if (!function_exists('nutrition_prf_normalize_toilet_type')) {
+    /**
+     * Map legacy PRF toilet labels to BSI sanitary/unsanitary labels.
+     */
+    function nutrition_prf_normalize_toilet_type(string $toiletType): string
+    {
+        $toiletType = trim($toiletType);
+        if ($toiletType === '') {
+            return '';
+        }
+        if (in_array($toiletType, nutrition_prf_toilet_options(), true)) {
+            return $toiletType;
+        }
+        $legacy = [
+            'Water Sealed' => 'Pour/Flush type with septic tank',
+            'Covered Pit' => 'Ventilated Pit (VIP) Latrine',
+            'Open Pit' => 'Open Pit Latrine',
+            'No Toilet' => 'Without toilet',
+        ];
+
+        return $legacy[$toiletType] ?? $toiletType;
     }
 }
 
@@ -3319,7 +3548,22 @@ if (!function_exists('nutrition_prf_garbage_options')) {
     /** @return array<int, string> */
     function nutrition_prf_garbage_options(): array
     {
-        return ['Collected', 'Uncollected'];
+        return ['Collected/Segregated', 'Uncollected'];
+    }
+}
+
+if (!function_exists('nutrition_prf_normalize_garbage_disposal')) {
+    function nutrition_prf_normalize_garbage_disposal(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '' || strcasecmp($value, 'Collected') === 0) {
+            return $value === '' ? '' : 'Collected/Segregated';
+        }
+        if (in_array($value, nutrition_prf_garbage_options(), true)) {
+            return $value;
+        }
+
+        return $value;
     }
 }
 
@@ -3343,12 +3587,36 @@ if (!function_exists('nutrition_prf_water_source_options')) {
     function nutrition_prf_water_source_options(): array
     {
         return [
-            'Pipe Water System',
-            'Communal Water Source',
+            'Pipe Water System (level III)',
+            'Communal source piped water system',
+            'Mineral water/water dispensing stores',
             'Well',
             'Spring',
-            'Mineral',
         ];
+    }
+}
+
+if (!function_exists('nutrition_prf_normalize_water_source')) {
+    /**
+     * Map legacy short water labels to Form C1 drinking-water labels.
+     */
+    function nutrition_prf_normalize_water_source(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+        if (in_array($value, nutrition_prf_water_source_options(), true)) {
+            return $value;
+        }
+        $legacy = [
+            'Pipe Water System' => 'Pipe Water System (level III)',
+            'Communal Water Source' => 'Communal source piped water system',
+            'Mineral' => 'Mineral water/water dispensing stores',
+            'Mineral water' => 'Mineral water/water dispensing stores',
+        ];
+
+        return $legacy[$value] ?? $value;
     }
 }
 
@@ -4181,6 +4449,22 @@ if (!function_exists('nutrition_pregnant_zero_columns')) {
     }
 }
 
+if (!function_exists('nutrition_pregnant_option_buckets')) {
+    /**
+     * @param array<int, string> $options
+     * @return array<string, array<string, int>>
+     */
+    function nutrition_pregnant_option_buckets(array $options): array
+    {
+        $out = [];
+        foreach ($options as $opt) {
+            $out[$opt] = nutrition_pregnant_zero_columns();
+        }
+
+        return $out;
+    }
+}
+
 if (!function_exists('nutrition_pregnant_empty_buckets')) {
     /**
      * @return array<string, mixed>
@@ -4211,19 +4495,8 @@ if (!function_exists('nutrition_pregnant_empty_buckets')) {
                 'Dumping' => nutrition_pregnant_zero_columns(),
                 'Composting' => nutrition_pregnant_zero_columns(),
             ],
-            'toilet' => [
-                'Water Sealed' => nutrition_pregnant_zero_columns(),
-                'Covered Pit' => nutrition_pregnant_zero_columns(),
-                'Open Pit' => nutrition_pregnant_zero_columns(),
-                'No Toilet' => nutrition_pregnant_zero_columns(),
-            ],
-            'water' => [
-                'Pipe Water System' => nutrition_pregnant_zero_columns(),
-                'Communal Water Source' => nutrition_pregnant_zero_columns(),
-                'Mineral' => nutrition_pregnant_zero_columns(),
-                'Well' => nutrition_pregnant_zero_columns(),
-                'Spring' => nutrition_pregnant_zero_columns(),
-            ],
+            'toilet' => nutrition_pregnant_option_buckets(nutrition_prf_toilet_options()),
+            'water' => nutrition_pregnant_option_buckets(nutrition_prf_water_source_options()),
             'food' => [
                 'Vegetable Garden' => nutrition_pregnant_zero_columns(),
                 'Livestock and/or Poultry' => nutrition_pregnant_zero_columns(),
@@ -4273,8 +4546,8 @@ if (!function_exists('nutrition_pregnant_apply_household')) {
             $bump($buckets['dwelling'], $dwellingType, $col);
         }
 
-        $garbageDisposal = trim((string) ($survey['garbage_disposal'] ?? ''));
-        if (strcasecmp($garbageDisposal, 'Collected') === 0) {
+        $garbageDisposal = nutrition_prf_normalize_garbage_disposal((string) ($survey['garbage_disposal'] ?? ''));
+        if ($garbageDisposal === 'Collected/Segregated' || strcasecmp($garbageDisposal, 'Collected') === 0) {
             $bump($buckets['garbage'], 'Collected', $col);
         } elseif (strcasecmp($garbageDisposal, 'Uncollected') === 0) {
             $uncollected = strtolower((string) ($survey['garbage_uncollected_type'] ?? ''));
@@ -4289,12 +4562,12 @@ if (!function_exists('nutrition_pregnant_apply_household')) {
             }
         }
 
-        $toiletType = trim((string) ($survey['toilet_type'] ?? ''));
+        $toiletType = nutrition_prf_normalize_toilet_type((string) ($survey['toilet_type'] ?? ''));
         if ($toiletType !== '' && isset($buckets['toilet'][$toiletType])) {
             $bump($buckets['toilet'], $toiletType, $col);
         }
 
-        $waterSource = trim((string) ($survey['water_source'] ?? ''));
+        $waterSource = nutrition_prf_normalize_water_source((string) ($survey['water_source'] ?? ''));
         if ($waterSource !== '' && isset($buckets['water'][$waterSource])) {
             $bump($buckets['water'], $waterSource, $col);
         }
@@ -4472,19 +4745,8 @@ if (!function_exists('nutrition_city_pregnant_families_report')) {
                 'Dumping' => nutrition_pregnant_zero_columns(),
                 'Composting' => nutrition_pregnant_zero_columns(),
             ],
-            'toilet' => [
-                'Water Sealed' => nutrition_pregnant_zero_columns(),
-                'Covered Pit' => nutrition_pregnant_zero_columns(),
-                'Open Pit' => nutrition_pregnant_zero_columns(),
-                'No Toilet' => nutrition_pregnant_zero_columns(),
-            ],
-            'water' => [
-                'Pipe Water System' => nutrition_pregnant_zero_columns(),
-                'Communal Water Source' => nutrition_pregnant_zero_columns(),
-                'Mineral' => nutrition_pregnant_zero_columns(),
-                'Well' => nutrition_pregnant_zero_columns(),
-                'Spring' => nutrition_pregnant_zero_columns(),
-            ],
+            'toilet' => nutrition_pregnant_option_buckets(nutrition_prf_toilet_options()),
+            'water' => nutrition_pregnant_option_buckets(nutrition_prf_water_source_options()),
             'food' => [
                 'Vegetable Garden' => nutrition_pregnant_zero_columns(),
                 'Livestock and/or Poultry' => nutrition_pregnant_zero_columns(),

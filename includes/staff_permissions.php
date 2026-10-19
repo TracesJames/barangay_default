@@ -118,8 +118,8 @@ if (!function_exists('staff_role_label')) {
             STAFF_ROLE_BARANGAY_ADMIN => 'Barangay Admin',
             STAFF_ROLE_BARANGAY_STAFF => 'Barangay Staff',
             STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR => 'BNS (per Barangay)',
-            STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN => 'Admin — Nutrition Hub (A)',
-            STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR => 'City Nutrition Program Coordinator (CNPC)',
+            STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN => 'Nutrition Admin (A)',
+            STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR => 'CNPC (City Nutrition Program Coordinator)',
             default => 'Staff',
         };
     }
@@ -898,6 +898,7 @@ if (!function_exists('barangay_bns_support_scripts')) {
         return [
             'saveProfile.php',
             'nutritionProfilesTable.php',
+            'nutritionStatusChildren.php',
             'nutritionResidentSearch.php',
             'nutritionHouseholdResidentSearch.php',
             'nutritionHouseholdResidentPrefill.php',
@@ -941,6 +942,7 @@ if (!function_exists('barangay_bns_admin_allowed_scripts')) {
             'nutritionMellpiCityProfile.php',
             'nutritionMellpiBarangayProfile.php',
             'nutritionSettings.php',
+            'nutritionAssess.php',
         ])));
     }
 }
@@ -954,6 +956,7 @@ if (!function_exists('barangay_bns_admin_support_scripts')) {
         return [
             'saveProfile.php',
             'nutritionProfilesTable.php',
+            'nutritionStatusChildren.php',
             'nutritionHouseholdResidentSearch.php',
             'nutritionHouseholdResidentPrefill.php',
             'nutritionResidentSearch.php',
@@ -1021,6 +1024,7 @@ if (!function_exists('barangay_bns_admin_city_wide_scripts')) {
             'nutritionProcessFormPrint.php',
             'cityReportPack.php',
             'nutritionMellpiCityProfile.php',
+            'nutritionStatusChildren.php',
             'saveProfile.php',
         ];
     }
@@ -1191,6 +1195,7 @@ if (!function_exists('barangay_cnpc_allowed_scripts')) {
             'barangayHub.php',
             'selectBarangay.php',
             'nutritionSuperDashboard.php',
+            'nutritionAssess.php',
         ])));
     }
 }
@@ -1205,6 +1210,7 @@ if (!function_exists('barangay_cnpc_support_scripts')) {
             'deleteNutritionHouseholdSurvey.php',
             'updateNutritionHouseholdSurveyNames.php',
             'saveNutritionHouseholdSurvey.php',
+            'nutritionStatusChildren.php',
         ])));
     }
 }

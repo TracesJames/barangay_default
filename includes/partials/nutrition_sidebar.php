@@ -30,7 +30,7 @@ $showNutritionSettings = !$isNutritionScholar;
 $showNutritionHouseholdSurvey = isset($con, $_SESSION['user_id']) && function_exists('nutrition_user_can_add_household_surveys')
     ? nutrition_user_can_add_household_surveys($con, (string) $_SESSION['user_id'])
     : !$isCnpc;
-$showNutritionAssessment = $isSsa || $isNutritionPortalAdmin;
+$showNutritionAssessment = $isSsa || $isNutritionPortalAdmin || $isBnsAdmin || $isCnpc;
 $hideBarangayAdminSwitch = !$isSsa;
 $portalBrandName = isset($con)
     ? barangay_portal_brand_name($con, (string) ($_SESSION['user_id'] ?? ''), true)

@@ -46,13 +46,15 @@
 
 .nutrition-portal a.nutrition-workflow-card,
 .nutrition-portal a.nutrition-stat,
-.nutrition-portal a.nutrition-status-chip {
+.nutrition-portal a.nutrition-status-chip,
+.nutrition-portal button.nutrition-status-chip {
   color: #ecfdf5;
 }
 
 .nutrition-portal a.nutrition-workflow-card:hover,
 .nutrition-portal a.nutrition-stat:hover,
-.nutrition-portal a.nutrition-status-chip:hover {
+.nutrition-portal a.nutrition-status-chip:hover,
+.nutrition-portal button.nutrition-status-chip:hover {
   color: var(--portal-nutrition-text);
 }
 
@@ -386,17 +388,25 @@ body.barangay-portal.nutrition-portal .main-footer {
   align-items: center;
   justify-content: center;
   min-height: 88px;
+  width: 100%;
   border-radius: 0.75rem;
   border: 1px solid rgba(0, 108, 53, 0.14);
   background: rgba(12, 24, 18, 0.65);
   color: #ecfdf5;
   text-decoration: none;
+  cursor: pointer;
+  padding: 0.5rem 0.35rem;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.nutrition-status-chip:hover {
+.nutrition-status-chip:hover,
+.nutrition-status-chip:focus {
   color: #fff;
   text-decoration: none;
   transform: translateY(-1px);
+  outline: none;
 }
 
 .nutrition-status-count {

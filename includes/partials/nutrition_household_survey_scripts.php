@@ -781,6 +781,10 @@ function nutritionSyncPrfToggles() {
     $('#garbageUncollectedOptions').hide();
     $('input[name="garbage_uncollected_type"]').prop('checked', false);
   }
+  // Legacy "Collected" maps to Collected/Segregated when editing older surveys
+  if (garbage === 'Collected') {
+    $('input[name="garbage_disposal"][value="Collected/Segregated"]').prop('checked', true);
+  }
 
   var fp = $('input[name="practices_family_planning"]:checked').val() || 'NO';
   if (fp === 'YES') {
@@ -1070,16 +1074,31 @@ function nutritionApplySurveyEditPayload(data) {
   }
   $('#house_ownership_other').val(data.house_ownership_other || '');
   if (data.toilet_type) {
-    $('input[name="toilet_type"][value="' + String(data.toilet_type).replace(/"/g, '\\"') + '"]').prop('checked', true);
+    var toiletMap = {
+      'Water Sealed': 'Pour/Flush type with septic tank',
+      'Covered Pit': 'Ventilated Pit (VIP) Latrine',
+      'Open Pit': 'Open Pit Latrine',
+      'No Toilet': 'Without toilet'
+    };
+    var toiletVal = toiletMap[data.toilet_type] || data.toilet_type;
+    $('input[name="toilet_type"][value="' + String(toiletVal).replace(/"/g, '\\"') + '"]').prop('checked', true);
   }
   if (data.garbage_disposal) {
-    $('input[name="garbage_disposal"][value="' + String(data.garbage_disposal).replace(/"/g, '\\"') + '"]').prop('checked', true);
+    var garbageVal = data.garbage_disposal === 'Collected' ? 'Collected/Segregated' : data.garbage_disposal;
+    $('input[name="garbage_disposal"][value="' + String(garbageVal).replace(/"/g, '\\"') + '"]').prop('checked', true);
   }
   if (data.garbage_uncollected_type) {
     $('input[name="garbage_uncollected_type"][value="' + String(data.garbage_uncollected_type).replace(/"/g, '\\"') + '"]').prop('checked', true);
   }
   if (data.water_source) {
-    $('input[name="water_source"][value="' + String(data.water_source).replace(/"/g, '\\"') + '"]').prop('checked', true);
+    var waterMap = {
+      'Pipe Water System': 'Pipe Water System (level III)',
+      'Communal Water Source': 'Communal source piped water system',
+      'Mineral': 'Mineral water/water dispensing stores',
+      'Mineral water': 'Mineral water/water dispensing stores'
+    };
+    var waterVal = waterMap[data.water_source] || data.water_source;
+    $('input[name="water_source"][value="' + String(waterVal).replace(/"/g, '\\"') + '"]').prop('checked', true);
   }
   if (data.dwelling_type) {
     $('input[name="dwelling_type"][value="' + String(data.dwelling_type).replace(/"/g, '\\"') + '"]').prop('checked', true);

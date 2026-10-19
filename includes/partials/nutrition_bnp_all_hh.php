@@ -138,6 +138,9 @@ $bnpHeaderCenterHtml = ob_get_clean();
       </tr>
       <?php endforeach; ?>
 
+      <tr><td>21a. Households with severely wasted and wasted school children (Public School)</td><td class="bnp-num" colspan="2"><?= $blank($formC1['hh_school_wasted'] ?? '') ?></td></tr>
+      <tr><td>21b. School children dewormed at the start of the school year</td><td class="bnp-num" colspan="2"><?= $blank($formC1['school_dewormed'] ?? '') ?></td></tr>
+
       <tr><td>22. 0-5 months old infants who are exclusively breastfeed</td><td class="bnp-num"><?= $num((int) ($ind['exclusive_bf'] ?? 0)) ?></td><td class="bnp-num"><?= $pct((int) ($ind['exclusive_bf'] ?? 0), $age05) ?></td></tr>
       <tr><td>23. 6-23 months old children who are given complementary foods</td><td class="bnp-num"><?= $num((int) ($ind['complementary_6_23'] ?? 0)) ?></td><td class="bnp-num"><?= $pct((int) ($ind['complementary_6_23'] ?? 0), max((int) ($ind['age_0_23'] ?? 0) - $age05, 0)) ?></td></tr>
       <tr><td>24. 6-23 months old children who continue breastfeeding</td><td class="bnp-num" colspan="2"></td></tr>
@@ -179,9 +182,9 @@ $bnpHeaderCenterHtml = ob_get_clean();
 
       <tr class="bnp-section"><td colspan="3"><strong>28. Households, by source of drinking water:</strong></td></tr>
       <?php foreach ([
-          'Pipe Water System' => 'a. Pipe Water System (level III)',
-          'Communal Water Source' => 'b. Communal source piped water system',
-          'Mineral' => 'c. Mineral water/water dispensing stores',
+          'Pipe Water System (level III)' => 'a. Pipe Water System (level III)',
+          'Communal source piped water system' => 'b. Communal source piped water system',
+          'Mineral water/water dispensing stores' => 'c. Mineral water/water dispensing stores',
           'Well' => 'd. Well',
           'Spring' => 'e. Spring',
       ] as $k => $lab) : ?>

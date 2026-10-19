@@ -240,9 +240,9 @@ if (!function_exists('nutrition_bnp_empty_prf_counts')) {
                 'Without toilet' => 0,
             ],
             'water' => [
-                'Pipe Water System' => 0,
-                'Communal Water Source' => 0,
-                'Mineral' => 0,
+                'Pipe Water System (level III)' => 0,
+                'Communal source piped water system' => 0,
+                'Mineral water/water dispensing stores' => 0,
                 'Well' => 0,
                 'Spring' => 0,
             ],
@@ -266,15 +266,24 @@ if (!function_exists('nutrition_bnp_map_toilet')) {
      */
     function nutrition_bnp_map_toilet(string $toiletType): ?array
     {
-        $toiletType = trim($toiletType);
-        $map = [
-            'Water Sealed' => ['group' => 'toilet_sanitary', 'key' => 'Pour/Flush type with septic tank'],
-            'Covered Pit' => ['group' => 'toilet_sanitary', 'key' => 'Ventilated Pit (VIP) Latrine'],
-            'Open Pit' => ['group' => 'toilet_unsanitary', 'key' => 'Open Pit Latrine'],
-            'No Toilet' => ['group' => 'toilet_unsanitary', 'key' => 'Without toilet'],
-        ];
+        $toiletType = function_exists('nutrition_prf_normalize_toilet_type')
+            ? nutrition_prf_normalize_toilet_type($toiletType)
+            : trim($toiletType);
+        if ($toiletType === '') {
+            return null;
+        }
+        foreach (nutrition_prf_toilet_sanitary_options() as $key) {
+            if ($toiletType === $key) {
+                return ['group' => 'toilet_sanitary', 'key' => $key];
+            }
+        }
+        foreach (nutrition_prf_toilet_unsanitary_options() as $key) {
+            if ($toiletType === $key) {
+                return ['group' => 'toilet_unsanitary', 'key' => $key];
+            }
+        }
 
-        return $map[$toiletType] ?? null;
+        return null;
     }
 }
 
@@ -297,8 +306,10 @@ if (!function_exists('nutrition_bnp_tally_prf')) {
             $counts['dwelling'][$dwelling]++;
         }
 
-        $garbage = trim((string) ($survey['garbage_disposal'] ?? ''));
-        if (strcasecmp($garbage, 'Collected') === 0) {
+        $garbage = function_exists('nutrition_prf_normalize_garbage_disposal')
+            ? nutrition_prf_normalize_garbage_disposal((string) ($survey['garbage_disposal'] ?? ''))
+            : trim((string) ($survey['garbage_disposal'] ?? ''));
+        if ($garbage === 'Collected/Segregated' || strcasecmp($garbage, 'Collected') === 0) {
             $counts['garbage']['Collected']++;
         } elseif (strcasecmp($garbage, 'Uncollected') === 0) {
             $u = strtolower((string) ($survey['garbage_uncollected_type'] ?? ''));
@@ -333,7 +344,9 @@ if (!function_exists('nutrition_bnp_tally_prf')) {
             $counts[$toiletMap['group']][$toiletMap['key']]++;
         }
 
-        $water = trim((string) ($survey['water_source'] ?? ''));
+        $water = function_exists('nutrition_prf_normalize_water_source')
+            ? nutrition_prf_normalize_water_source((string) ($survey['water_source'] ?? ''))
+            : trim((string) ($survey['water_source'] ?? ''));
         if ($water !== '' && isset($counts['water'][$water])) {
             $counts['water'][$water]++;
         }
@@ -566,6 +579,8 @@ if (!function_exists('nutrition_bnp_form_c1_defaults')) {
             'school_normal' => '',
             'school_ow' => '',
             'school_ob' => '',
+            'hh_school_wasted' => '',
+            'school_dewormed' => '',
             'fic' => '',
             'sari_sari' => '',
             'bns_count' => '',

@@ -373,9 +373,9 @@ if (!function_exists('nutrition_mellpi_build_report')) {
             $totalPop = (int) ($hhInd['actual_population'] ?? 0);
         }
 
-        $safeWater = (int) ($hhPrf['water']['Pipe Water System'] ?? 0)
-            + (int) ($hhPrf['water']['Communal Water Source'] ?? 0)
-            + (int) ($hhPrf['water']['Mineral'] ?? 0);
+        $safeWater = (int) ($hhPrf['water']['Pipe Water System (level III)'] ?? $hhPrf['water']['Pipe Water System'] ?? 0)
+            + (int) ($hhPrf['water']['Communal source piped water system'] ?? $hhPrf['water']['Communal Water Source'] ?? 0)
+            + (int) ($hhPrf['water']['Mineral water/water dispensing stores'] ?? $hhPrf['water']['Mineral'] ?? 0);
         $sanitaryToilet = 0;
         foreach ($hhPrf['toilet_sanitary'] ?? [] as $n) {
             $sanitaryToilet += (int) $n;

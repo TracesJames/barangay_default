@@ -169,11 +169,11 @@ $insertHousehold = static function (
     $no = 'NO';
     $yes = 'YES';
     $secure = 'secure';
-    $water = 'Pipe Water System';
+    $water = 'Pipe Water System (level III)';
     $toilet = 'Pour/Flush type with septic tank';
     $owned = 'Owned';
     $dwelling = 'Semi-concrete';
-    $garbage = 'Collected';
+    $garbage = 'Collected/Segregated';
     $zeroInt = 0;
     $nullInt = null;
     $headPregMonths = isset($head['pregnancy_months']) && $head['pregnancy_months'] !== null
