@@ -103,13 +103,27 @@ if (!function_exists('barangay_die_connection_failed')) {
 }
 
 $previousMysqliReport = mysqli_report(MYSQLI_REPORT_OFF);
+
+$barangayConnect = static function (string $user, string $password): mysqli {
+    $link = mysqli_init();
+    if ($link === false) {
+        $failed = new mysqli();
+        return $failed;
+    }
+    // Fail fast when MySQL is down instead of hanging until max_execution_time.
+    $link->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+    @$link->real_connect(DB_HOST, $user, $password, DB_NAME);
+
+    return $link;
+};
+
 try {
-    $con = @new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+    $con = $barangayConnect(DB_USER, DB_PASSWORD);
     $connectError = $con->connect_error ?: '';
     if ($connectError !== '') {
         // Temporary fallback for local XAMPP if dedicated user is not ready yet.
         if (DB_USER !== 'root') {
-            $fallback = @new mysqli(DB_HOST, 'root', '', DB_NAME);
+            $fallback = $barangayConnect('root', '');
             if (!$fallback->connect_error) {
                 $con = $fallback;
                 $connectError = '';

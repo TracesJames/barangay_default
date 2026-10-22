@@ -165,7 +165,7 @@ $staffAccountsHubQuery = $isNutritionStaffUi ? '&hub=nutrition' : '';
                   <option value="">All Roles</option>
                   <?php if ($isSsa) : ?>
                   <optgroup label="System · Both Hubs">
-                    <option value="<?= STAFF_ROLE_SSA ?>" <?= $activeRoleFilter === STAFF_ROLE_SSA ? 'selected' : '' ?>>Super Super Admin (SSA)</option>
+                    <option value="<?= STAFF_ROLE_SSA ?>" <?= $activeRoleFilter === STAFF_ROLE_SSA ? 'selected' : '' ?>>Developer Accounts</option>
                   </optgroup>
                   <?php endif; ?>
                   <?php if ($isSsa || $isBarangayHubSa) : ?>
@@ -228,7 +228,7 @@ $staffAccountsHubQuery = $isNutritionStaffUi ? '&hub=nutrition' : '';
               <li><strong>Admin — Nutrition Hub (A)</strong> — city-wide Nutrition Hub admin (pick any barangay).</li>
               <li><strong>BNS (per Barangay)</strong> — one Nutrition Scholar account for a single barangay, optionally limited to one or more puroks.</li>
               <?php else : ?>
-              <li><strong>Super Super Admin (SSA)</strong> — sees all of Barangay Hub and Nutrition Hub; full system access; manage all accounts.</li>
+              <li><strong>Developer Accounts</strong> — sees all of Barangay Hub and Nutrition Hub; full system access; manage all accounts.</li>
               <li><strong>Super Admin — Barangay Hub (SA)</strong> — Barangay Hub only; manage Barangay Hub Admin, Barangay Admin, and Staff accounts.</li>
               <li><strong>Super Admin — Nutrition Hub (SA)</strong> — Nutrition Hub only; manage Nutrition Hub Admin and BNS accounts.</li>
               <li><strong>Admin — Barangay Hub (A)</strong> — Barangay Hub operations (officials, residents, blotter, reports). No Nutrition Hub, certificates issue, backup, or account deletion.</li>

@@ -9,7 +9,7 @@ barangay_require_mutate_barangay_records($con);
 
 if (!barangay_user_can_edit_or_delete_person($con, (string) ($_SESSION['user_id'] ?? ''))) {
     http_response_code(403);
-    exit('Only Super Super Admin and Super Admin can delete a person.');
+    exit('Only Developer Accounts and Super Admin can delete a person.');
 }
 
 try {

@@ -1226,7 +1226,7 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
             return;
         }
 
-        // Super Super Admin (SSA): both hubs, full access.
+        // Developer Accounts (SSA): both hubs, full access.
         if ($staffRole === STAFF_ROLE_SSA) {
             return;
         }

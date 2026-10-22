@@ -73,7 +73,7 @@ foreach ($assignedBarangayIds as $assignedId) {
               </option>
               <?php endforeach; ?>
             </select>
-            <small class="form-text text-muted">Super Super Admin can change this account to any role.</small>
+            <small class="form-text text-muted">Developer Accounts can change this account to any role.</small>
             <?php else : ?>
             <input type="text" class="form-control" value="<?= barangay_h(staff_account_role_label($role)) ?>" readonly>
             <input type="hidden" name="staff_role" value="<?= barangay_h($role) ?>">

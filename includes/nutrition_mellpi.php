@@ -294,6 +294,138 @@ if (!function_exists('nutrition_mellpi_save_profile')) {
     }
 }
 
+if (!function_exists('nutrition_mellpi_map_pregnant_status')) {
+    function nutrition_mellpi_map_pregnant_status(string $raw): string
+    {
+        return match (strtolower(trim($raw))) {
+            'normal' => 'Normal',
+            'overweight' => 'Overweight',
+            'obese' => 'Obese',
+            'teenage', 'underweight', 'old age', 'nutritionally at-risk', 'nutritionally at risk' => 'Nutritionally at-risk',
+            default => '',
+        };
+    }
+}
+
+if (!function_exists('nutrition_mellpi_encoded_member_counts')) {
+    /**
+     * School-age weight-for-height and pregnant status from encoded household surveys.
+     *
+     * @return array{
+     *   school: array<string, int>,
+     *   pregnant: array<string, int>,
+     *   lactating: int,
+     *   exclusive_bf: int
+     * }
+     */
+    function nutrition_mellpi_encoded_member_counts(mysqli $con, string $barangayId): array
+    {
+        $school = [
+            'Normal' => 0,
+            'Wasted' => 0,
+            'Severely Wasted' => 0,
+            'Overweight' => 0,
+            'Obese' => 0,
+        ];
+        $pregnant = [
+            'Normal' => 0,
+            'Nutritionally at-risk' => 0,
+            'Overweight' => 0,
+            'Obese' => 0,
+        ];
+        $lactating = 0;
+        $exclusiveBf = 0;
+        $schoolMap = [
+            'normal' => 'Normal',
+            'wasted' => 'Wasted',
+            'severely_wasted' => 'Severely Wasted',
+            'overweight' => 'Overweight',
+            'obese' => 'Obese',
+        ];
+
+        if (!barangay_table_exists($con, 'nutrition_household_family_member')
+            || !barangay_table_exists($con, 'nutrition_household_survey')
+        ) {
+            return [
+                'school' => $school,
+                'pregnant' => $pregnant,
+                'lactating' => 0,
+                'exclusive_bf' => 0,
+            ];
+        }
+
+        $where = nutrition_survey_current_condition($con, 's');
+        $barangayId = trim($barangayId);
+        if ($barangayId !== '') {
+            $where .= " AND s.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
+        }
+
+        $sql = 'SELECT m.age_months, m.birth_date, m.weight_for_height, m.is_pregnant, m.pregnant_nutrition_status,
+                       m.is_lactating, m.lactating_exclusive_breastfeeding
+                FROM nutrition_household_family_member m
+                INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
+                WHERE ' . $where;
+        $result = $con->query($sql);
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $ageMonths = isset($row['age_months']) && $row['age_months'] !== '' && $row['age_months'] !== null
+                    ? (int) $row['age_months']
+                    : nutrition_age_in_months(
+                        trim((string) ($row['birth_date'] ?? '')) !== '' ? (string) $row['birth_date'] : null
+                    );
+                if (nutrition_bnp_member_in_age_band($ageMonths, 'school')) {
+                    $growth = nutrition_survey_growth_label_to_status((string) ($row['weight_for_height'] ?? ''));
+                    if ($growth !== null && isset($schoolMap[$growth])) {
+                        $school[$schoolMap[$growth]]++;
+                    }
+                }
+                if (strtoupper((string) ($row['is_pregnant'] ?? 'NO')) === 'YES') {
+                    $status = nutrition_mellpi_map_pregnant_status((string) ($row['pregnant_nutrition_status'] ?? ''));
+                    if ($status !== '' && isset($pregnant[$status])) {
+                        $pregnant[$status]++;
+                    }
+                }
+                if (strtoupper((string) ($row['is_lactating'] ?? 'NO')) === 'YES') {
+                    $lactating++;
+                    if (strtoupper((string) ($row['lactating_exclusive_breastfeeding'] ?? 'NO')) === 'YES') {
+                        $exclusiveBf++;
+                    }
+                }
+            }
+        }
+
+        $headSql = 'SELECT head_is_pregnant, head_pregnant_nutrition_status, head_is_lactating, head_lactating_exclusive_breastfeeding
+                    FROM nutrition_household_survey s
+                    WHERE ' . $where . "
+                      AND (UPPER(COALESCE(head_is_pregnant, 'NO')) = 'YES'
+                        OR UPPER(COALESCE(head_is_lactating, 'NO')) = 'YES')";
+        $heads = $con->query($headSql);
+        if ($heads) {
+            while ($row = $heads->fetch_assoc()) {
+                if (strtoupper((string) ($row['head_is_pregnant'] ?? 'NO')) === 'YES') {
+                    $status = nutrition_mellpi_map_pregnant_status((string) ($row['head_pregnant_nutrition_status'] ?? ''));
+                    if ($status !== '' && isset($pregnant[$status])) {
+                        $pregnant[$status]++;
+                    }
+                }
+                if (strtoupper((string) ($row['head_is_lactating'] ?? 'NO')) === 'YES') {
+                    $lactating++;
+                    if (strtoupper((string) ($row['head_lactating_exclusive_breastfeeding'] ?? 'NO')) === 'YES') {
+                        $exclusiveBf++;
+                    }
+                }
+            }
+        }
+
+        return [
+            'school' => $school,
+            'pregnant' => $pregnant,
+            'lactating' => $lactating,
+            'exclusive_bf' => $exclusiveBf,
+        ];
+    }
+}
+
 if (!function_exists('nutrition_mellpi_matrix_total')) {
     /**
      * @param array<string, array<string, int>> $matrix
@@ -463,6 +595,35 @@ if (!function_exists('nutrition_mellpi_build_report')) {
             $popSnap['lactating_actual'] = (string) ((int) ($hhInd['lactating_women'] ?? 0));
         }
 
+        $encoded = nutrition_mellpi_encoded_member_counts($con, $isBarangay ? $barangayId : '');
+        $school = $saved['school'] ?? [];
+        if (!is_array($school)) {
+            $school = [];
+        }
+        foreach ($encoded['school'] as $label => $liveValue) {
+            $fillYear($school, $label, $year, $liveValue);
+        }
+
+        $pregnantStatus = $saved['pregnant_status'] ?? [];
+        if (!is_array($pregnantStatus)) {
+            $pregnantStatus = [];
+        }
+        foreach ($encoded['pregnant'] as $label => $liveValue) {
+            $fillYear($pregnantStatus, $label, $year, $liveValue);
+        }
+
+        $pregnantTotal = array_sum($encoded['pregnant']);
+        if (trim((string) ($community['pct_at_risk_pregnant'] ?? '')) === '' && $pregnantTotal > 0) {
+            $community['pct_at_risk_pregnant'] = (string) (int) round(
+                (($encoded['pregnant']['Nutritionally at-risk'] ?? 0) / $pregnantTotal) * 100
+            );
+        }
+        if (trim((string) ($community['pct_exclusive_bf_5th_month'] ?? '')) === '' && $encoded['lactating'] > 0) {
+            $community['pct_exclusive_bf_5th_month'] = (string) (int) round(
+                ($encoded['exclusive_bf'] / $encoded['lactating']) * 100
+            );
+        }
+
         $bns = $saved['bns'] ?? [];
         if (trim((string) ($bns['total'] ?? '')) === '') {
             $bns['total'] = (string) $bnsTotal;
@@ -499,8 +660,8 @@ if (!function_exists('nutrition_mellpi_build_report')) {
             'population_snapshot' => $popSnap,
             'years' => $years,
             'preschool' => $preschool,
-            'school' => $saved['school'] ?? [],
-            'pregnant_status' => $saved['pregnant_status'] ?? [],
+            'school' => $school,
+            'pregnant_status' => $pregnantStatus,
             'bns' => $bns,
             'hazards' => $saved['hazards'] ?? [],
             'land_use' => $saved['land_use'] ?? [],

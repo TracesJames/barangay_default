@@ -10,7 +10,7 @@ barangay_require_post();
 
 if (!barangay_user_can_edit_or_delete_person($con, (string) ($_SESSION['user_id'] ?? ''))) {
     http_response_code(403);
-    exit('Only Super Super Admin and Super Admin can delete a person.');
+    exit('Only Developer Accounts and Super Admin can delete a person.');
 }
 
 if(isset($_SESSION['user_id']) && isset($_SESSION['user_type']) && $_SESSION['user_type'] == 'secretary'){

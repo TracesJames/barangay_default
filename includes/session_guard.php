@@ -6,7 +6,7 @@
  * - Concurrent login from another browser/device is blocked while the session is active
  * - Auth checks reject requests whose session token no longer matches
  *
- * Exception: Super Super Admin (SSA) may use multiple browsers/tabs at once.
+ * Exception: Developer Accounts (SSA) may use multiple browsers/tabs at once.
  * For SSA we keep a per-browser session token in $_SESSION only and do not
  * enforce a single DB token (so a new login does not kick other sessions).
  */
@@ -24,7 +24,7 @@ if (!function_exists('barangay_session_guard_idle_seconds')) {
 if (!function_exists('barangay_session_guard_allows_multi_login')) {
     /**
      * True when this account may hold multiple concurrent browser sessions.
-     * Currently: Super Super Admin (SSA) only.
+     * Currently: Developer Accounts (SSA) only.
      */
     function barangay_session_guard_allows_multi_login(mysqli $con, string $userId): bool
     {
@@ -72,12 +72,16 @@ if (!function_exists('barangay_session_guard_issue')) {
      * Create a session token for this user.
      * Non-SSA: sole active token in DB (invalidates any previous device).
      * SSA: local session token only so other browsers stay signed in.
+     *
+     * @param bool $bindPhpSession When false (mobile API), only update the DB lock.
      */
-    function barangay_session_guard_issue(mysqli $con, string $userId): string
+    function barangay_session_guard_issue(mysqli $con, string $userId, bool $bindPhpSession = true): string
     {
         barangay_session_guard_ensure_columns($con);
         $token = bin2hex(random_bytes(32));
-        $_SESSION['active_session_token'] = $token;
+        if ($bindPhpSession) {
+            $_SESSION['active_session_token'] = $token;
+        }
 
         if (barangay_session_guard_allows_multi_login($con, $userId)) {
             // Do not overwrite DB token — other SSA sessions must keep working.
@@ -114,7 +118,9 @@ if (!function_exists('barangay_session_guard_clear')) {
                 $stmt->close();
             }
         }
-        unset($_SESSION['active_session_token']);
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            unset($_SESSION['active_session_token']);
+        }
     }
 }
 

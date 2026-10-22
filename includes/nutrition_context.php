@@ -3230,7 +3230,7 @@ if (!function_exists('nutrition_ensure_can_edit_household_surveys')) {
         if (!nutrition_user_can_edit_household_surveys($con, $userId)) {
             http_response_code(403);
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['error' => 'Only Nutrition Super Admin or Super Super Admin can edit registered household surveys.']);
+            echo json_encode(['error' => 'Only Nutrition Super Admin or Developer Accounts can edit registered household surveys.']);
             exit;
         }
     }
@@ -3388,6 +3388,8 @@ if (!function_exists('nutrition_relationship_options')) {
     {
         return [
             'Spouse',
+            'Common-law Husband',
+            'Common-law Wife',
             'Son',
             'Daughter',
             'Father',
@@ -3399,6 +3401,163 @@ if (!function_exists('nutrition_relationship_options')) {
             'Nephew',
             'Niece',
             'Other Relative',
+        ];
+    }
+}
+
+if (!function_exists('nutrition_build_household_survey_edit_payload')) {
+    /**
+     * Full survey payload for web edit + mobile GET detail (ISO dates for API clients).
+     *
+     * @param array<string, mixed> $survey
+     * @param array<int, array<string, mixed>> $members
+     * @return array<string, mixed>
+     */
+    function nutrition_build_household_survey_edit_payload(array $survey, array $members, bool $mdyDates = false): array
+    {
+        $fmt = static function ($ymd) use ($mdyDates): string {
+            $ymd = trim((string) $ymd);
+            if ($ymd === '' || $ymd === '0000-00-00') {
+                return '';
+            }
+            if (!$mdyDates) {
+                $normalized = nutrition_normalize_date_to_ymd($ymd);
+
+                return $normalized ?? $ymd;
+            }
+            if (function_exists('nutrition_format_date_mdy')) {
+                return (string) nutrition_format_date_mdy($ymd);
+            }
+            $ts = strtotime($ymd);
+
+            return $ts ? date('m/d/Y', $ts) : '';
+        };
+
+        $yes = static fn($v): bool => strtoupper((string) ($v ?? 'NO')) === 'YES';
+
+        $memberPayload = [];
+        foreach ($members as $member) {
+            $relParts = nutrition_split_member_relationship((string) ($member['relationship'] ?? ''));
+            $memberPayload[] = [
+                'member_id' => (string) ($member['member_id'] ?? ''),
+                'member_name' => (string) ($member['member_name'] ?? ''),
+                'relationship' => $relParts['relationship'],
+                'relationship_other' => $relParts['relationship_other'],
+                'gender' => (string) ($member['gender'] ?? ''),
+                'birth_date' => $fmt($member['birth_date'] ?? ''),
+                'weight_kg' => $member['weight_kg'] ?? '',
+                'height_cm' => $member['height_cm'] ?? '',
+                'date_measured' => $fmt($member['date_measured'] ?? ''),
+                'prev_weight_kg' => $member['prev_weight_kg'] ?? '',
+                'prev_height_cm' => $member['prev_height_cm'] ?? '',
+                'prev_date_measured' => $fmt($member['prev_date_measured'] ?? ''),
+                'age_months' => $member['age_months'] ?? '',
+                'weight_for_age' => (string) ($member['weight_for_age'] ?? ''),
+                'height_for_age' => (string) ($member['height_for_age'] ?? ''),
+                'weight_for_height' => (string) ($member['weight_for_height'] ?? ''),
+                'is_pregnant' => $yes($member['is_pregnant'] ?? 'NO'),
+                'is_lactating' => $yes($member['is_lactating'] ?? 'NO'),
+                'pregnancy_months' => $member['pregnancy_months'] ?? '',
+                'pregnant_nutrition_status' => (string) ($member['pregnant_nutrition_status'] ?? ''),
+                'planned_exclusive_breastfeeding' => $yes($member['planned_exclusive_breastfeeding'] ?? 'NO'),
+                'planned_mixed_feeding' => $yes($member['planned_mixed_feeding'] ?? 'NO'),
+                'planned_bottle_feeding' => $yes($member['planned_bottle_feeding'] ?? 'NO'),
+                'planned_other_feeding' => $yes($member['planned_other_feeding'] ?? 'NO'),
+                'planned_other_specify' => (string) ($member['planned_other_specify'] ?? ''),
+                'lactating_exclusive_breastfeeding' => $yes($member['lactating_exclusive_breastfeeding'] ?? 'NO'),
+                'lactating_mixed_feeding' => $yes($member['lactating_mixed_feeding'] ?? 'NO'),
+                'lactating_bottle_feeding' => $yes($member['lactating_bottle_feeding'] ?? 'NO'),
+                'lactating_other_feeding' => $yes($member['lactating_other_feeding'] ?? 'NO'),
+                'lactating_other_specify' => (string) ($member['lactating_other_specify'] ?? ''),
+            ];
+        }
+
+        $purokLabel = (string) ($survey['purok_label'] ?? '');
+        $purokInput = function_exists('nutrition_purok_input_from_label')
+            ? (string) (nutrition_purok_input_from_label($purokLabel) ?: $purokLabel)
+            : $purokLabel;
+
+        $fpMethods = (string) ($survey['family_planning_methods'] ?? '');
+        $fpList = [];
+        $fpOther = '';
+        if ($fpMethods !== '') {
+            foreach (explode(',', $fpMethods) as $part) {
+                $part = trim($part);
+                if ($part === '') {
+                    continue;
+                }
+                if (strcasecmp($part, 'Others') === 0 || str_starts_with($part, 'Others:')) {
+                    $fpList[] = 'Others';
+                    if (str_starts_with($part, 'Others:')) {
+                        $fpOther = trim(substr($part, strlen('Others:')));
+                    }
+                    continue;
+                }
+                $fpList[] = $part;
+            }
+        }
+
+        return [
+            'existing_survey_id' => (string) ($survey['survey_id'] ?? ''),
+            'survey_id' => (string) ($survey['survey_id'] ?? ''),
+            'residence_id' => (string) ($survey['residence_id'] ?? ''),
+            'house_hold_id' => (string) ($survey['house_hold_id'] ?? ''),
+            'purok_label' => $purokLabel,
+            'purok_number' => $purokInput,
+            'purok_input' => $purokInput,
+            'survey_date' => $fmt($survey['survey_date'] ?? ''),
+            'bns_name' => (string) ($survey['bns_name'] ?? ''),
+            'head_last_name' => (string) ($survey['head_last_name'] ?? ''),
+            'head_first_name' => (string) ($survey['head_first_name'] ?? ''),
+            'head_middle_name' => (string) ($survey['head_middle_name'] ?? ''),
+            'head_suffix' => (string) ($survey['head_suffix'] ?? ''),
+            'birth_date' => $fmt($survey['birth_date'] ?? ''),
+            'gender' => (string) ($survey['gender'] ?? ''),
+            'occupation' => (string) ($survey['occupation'] ?? ''),
+            'is_4ps' => $yes($survey['is_4ps'] ?? 'NO'),
+            'is_pwd' => $yes($survey['is_pwd'] ?? 'NO'),
+            'is_ip' => $yes($survey['is_ip'] ?? 'NO'),
+            'is_solo_parent' => $yes($survey['is_solo_parent'] ?? 'NO'),
+            'is_na_member' => $yes($survey['is_na_member'] ?? 'NO'),
+            'head_is_pregnant' => $yes($survey['head_is_pregnant'] ?? 'NO'),
+            'head_is_lactating' => $yes($survey['head_is_lactating'] ?? 'NO'),
+            'head_pregnancy_months' => $survey['head_pregnancy_months'] ?? '',
+            'head_pregnant_nutrition_status' => (string) ($survey['head_pregnant_nutrition_status'] ?? ''),
+            'head_planned_exclusive_breastfeeding' => $yes($survey['head_planned_exclusive_breastfeeding'] ?? 'NO'),
+            'head_planned_mixed_feeding' => $yes($survey['head_planned_mixed_feeding'] ?? 'NO'),
+            'head_planned_bottle_feeding' => $yes($survey['head_planned_bottle_feeding'] ?? 'NO'),
+            'head_planned_other_feeding' => $yes($survey['head_planned_other_feeding'] ?? 'NO'),
+            'head_planned_other_specify' => (string) ($survey['head_planned_other_specify'] ?? ''),
+            'head_lactating_exclusive_breastfeeding' => $yes($survey['head_lactating_exclusive_breastfeeding'] ?? 'NO'),
+            'head_lactating_mixed_feeding' => $yes($survey['head_lactating_mixed_feeding'] ?? 'NO'),
+            'head_lactating_bottle_feeding' => $yes($survey['head_lactating_bottle_feeding'] ?? 'NO'),
+            'head_lactating_other_feeding' => $yes($survey['head_lactating_other_feeding'] ?? 'NO'),
+            'head_lactating_other_specify' => (string) ($survey['head_lactating_other_specify'] ?? ''),
+            'house_ownership' => (string) ($survey['house_ownership'] ?? ''),
+            'house_ownership_other' => (string) ($survey['house_ownership_other'] ?? ''),
+            'toilet_type' => (string) ($survey['toilet_type'] ?? ''),
+            'garbage_disposal' => (string) ($survey['garbage_disposal'] ?? ''),
+            'garbage_uncollected_type' => (string) ($survey['garbage_uncollected_type'] ?? ''),
+            'water_source' => (string) ($survey['water_source'] ?? ''),
+            'dwelling_type' => (string) ($survey['dwelling_type'] ?? ''),
+            'food_production' => (string) ($survey['food_production'] ?? ''),
+            'food_production_activities' => nutrition_prf_parse_food_production((string) ($survey['food_production'] ?? '')),
+            'uses_iodized_salt' => $yes($survey['uses_iodized_salt'] ?? 'NO'),
+            'uses_sangkap_pinoy' => $yes($survey['uses_sangkap_pinoy'] ?? 'NO'),
+            'has_carenderia' => $yes($survey['has_carenderia'] ?? 'NO'),
+            'has_sari_sari_store' => $yes($survey['has_sari_sari_store'] ?? 'NO'),
+            'practices_family_planning' => $yes($survey['practices_family_planning'] ?? 'NO'),
+            'family_planning_methods' => $fpMethods,
+            'family_planning_methods_list' => $fpList,
+            'family_planning_methods_other' => $fpOther,
+            'complementary_meals' => (string) ($survey['complementary_meals'] ?? ''),
+            'complementary_meals_other' => (string) ($survey['complementary_meals_other'] ?? ''),
+            'complementary_snacks' => (string) ($survey['complementary_snacks'] ?? ''),
+            'complementary_snacks_other' => (string) ($survey['complementary_snacks_other'] ?? ''),
+            'child_physical_activity' => (string) ($survey['child_physical_activity'] ?? ''),
+            'child_physical_activity_other' => (string) ($survey['child_physical_activity_other'] ?? ''),
+            'remarks' => (string) ($survey['remarks'] ?? ''),
+            'family_members' => $memberPayload,
         ];
     }
 }

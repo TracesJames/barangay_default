@@ -1,0 +1,8 @@
+Options -Indexes
+
+# Ensure Authorization header reaches PHP on Apache/CGI.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>

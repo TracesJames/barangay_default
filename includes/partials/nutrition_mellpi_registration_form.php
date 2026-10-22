@@ -87,7 +87,7 @@ $renderYearMatrix = $renderYearMatrix ?? static function (string $prefix, array 
       </div>
       <?php endforeach; ?>
     </div>
-    <p class="mellpi-reg-hint mb-0">Safe water and sanitary toilet counts auto-fill from household surveys when left blank.</p>
+    <p class="mellpi-reg-hint mb-0">Safe water, sanitary toilets, and breastfeeding figures fill from household surveys encoded for this <?= $mellpiScope === 'barangay' ? 'barangay' : 'city' ?> when the field is blank.</p>
   </div>
 </div>
 
@@ -128,7 +128,7 @@ $renderYearMatrix = $renderYearMatrix ?? static function (string $prefix, array 
     <?php $renderYearMatrix('preschool[wfh]', ['Normal', 'Wasted', 'Severely Wasted', 'Overweight', 'Obese'], $preschool['wfh'] ?? [], $years); ?>
     <h6 class="mt-3">Height-for-Age</h6>
     <?php $renderYearMatrix('preschool[hfa]', ['Normal', 'Stunted', 'Severely Stunted', 'Tall'], $preschool['hfa'] ?? [], $years); ?>
-    <p class="mellpi-reg-hint mb-0">Current year blanks are filled from e-OPT Plus <?= $mellpiScope === 'barangay' ? 'barangay' : 'city' ?> data when generating the report.</p>
+    <p class="mellpi-reg-hint mb-0">The current year fills from e-OPT Plus counts of household surveys encoded for this <?= $mellpiScope === 'barangay' ? 'barangay' : 'city' ?> when a cell is blank.</p>
   </div>
 </div>
 
@@ -136,6 +136,7 @@ $renderYearMatrix = $renderYearMatrix ?? static function (string $prefix, array 
   <div class="card-header"><h3 class="card-title mb-0">School Children Nutritional Status</h3></div>
   <div class="card-body">
     <?php $renderYearMatrix('school', ['Normal', 'Wasted', 'Severely Wasted', 'Overweight', 'Obese'], $school, $years); ?>
+    <p class="mellpi-reg-hint mb-0">The current year counts school-age children (5–18) from encoded surveys, using weight-for-height, when a cell is blank.</p>
   </div>
 </div>
 
@@ -143,6 +144,7 @@ $renderYearMatrix = $renderYearMatrix ?? static function (string $prefix, array 
   <div class="card-header"><h3 class="card-title mb-0">Pregnant Women Nutritional Status</h3></div>
   <div class="card-body">
     <?php $renderYearMatrix('pregnant_status', ['Normal', 'Nutritionally at-risk', 'Overweight', 'Obese'], $pregnantStatus, $years); ?>
+    <p class="mellpi-reg-hint mb-0">The current year counts pregnant women encoded on household surveys. Teenage, underweight, and old age are grouped as nutritionally at-risk.</p>
   </div>
 </div>
 

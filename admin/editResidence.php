@@ -7,7 +7,7 @@ require_once '../includes/residence_family.php';
 
 if (!barangay_user_can_edit_or_delete_person($con, (string) ($_SESSION['user_id'] ?? ''))) {
     http_response_code(403);
-    exit('Only Super Super Admin and Super Admin can edit person details.');
+    exit('Only Developer Accounts and Super Admin can edit person details.');
 }
 
 try{

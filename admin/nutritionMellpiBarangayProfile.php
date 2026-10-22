@@ -21,13 +21,13 @@ if (trim((string) ($profile['city_name'] ?? '')) === '') {
     $profile['city_name'] = (string) $barangay;
 }
 $preview = nutrition_mellpi_build_report($con, (string) $barangay_id);
-$years = $profile['years'] ?? [(int) date('Y') - 2, (int) date('Y') - 1, (int) date('Y')];
-$community = $profile['community'] ?? [];
-$popSnap = $profile['population_snapshot'] ?? [];
-$preschool = $profile['preschool'] ?? [];
-$school = $profile['school'] ?? [];
-$pregnantStatus = $profile['pregnant_status'] ?? [];
-$bns = $profile['bns'] ?? [];
+$years = $preview['years'] ?? ($profile['years'] ?? [(int) date('Y') - 2, (int) date('Y') - 1, (int) date('Y')]);
+$community = $preview['community'] ?? [];
+$popSnap = $preview['population_snapshot'] ?? [];
+$preschool = $preview['preschool'] ?? [];
+$school = $preview['school'] ?? [];
+$pregnantStatus = $preview['pregnant_status'] ?? [];
+$bns = $preview['bns'] ?? [];
 $hazards = $profile['hazards'] ?? [];
 $landUse = $profile['land_use'] ?? [];
 
@@ -79,7 +79,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
         <?php
         $nutritionPageIcon = 'fa-clipboard-list';
         $nutritionPageHeading = 'MELLPI PRO FORM CM Registration';
-        $nutritionPageDescription = 'Barangay Profile Sheet for ' . $barangay . '. Live totals auto-fill when blanks are left empty.';
+        $nutritionPageDescription = 'Barangay Profile Sheet for ' . $barangay . '. Counts come from household surveys encoded for this barangay. A blank field fills in automatically; a saved value is kept.';
         $nutritionPageActions = '
             <span class="mellpi-live-pill">Live pop: ' . number_format((int) ($preview['summary']['total_population'] ?? 0)) . '</span>
             <span class="mellpi-live-pill">HH: ' . number_format((int) ($preview['summary']['no_of_households'] ?? 0)) . '</span>

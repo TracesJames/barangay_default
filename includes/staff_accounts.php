@@ -453,7 +453,27 @@ if (!function_exists('staff_account_create')) {
         }
 
         if (staff_account_username_exists($con, $username)) {
-            return ['ok' => false, 'error' => 'Username already exists.'];
+            return ['ok' => false, 'error' => 'Username already exists. This account cannot be registered again.'];
+        }
+
+        // Block registering the same person name twice (first + last).
+        $nameStmt = $con->prepare(
+            'SELECT id FROM users
+             WHERE LOWER(TRIM(first_name)) = LOWER(?)
+               AND LOWER(TRIM(last_name)) = LOWER(?)
+             LIMIT 1'
+        );
+        if ($nameStmt) {
+            $nameStmt->bind_param('ss', $firstName, $lastName);
+            $nameStmt->execute();
+            $nameHit = $nameStmt->get_result()->fetch_assoc();
+            $nameStmt->close();
+            if ($nameHit) {
+                return [
+                    'ok' => false,
+                    'error' => 'An account with this name is already registered. It cannot be registered again.',
+                ];
+            }
         }
 
         $barangayId = trim((string) ($data['barangay_id'] ?? ''));
@@ -621,7 +641,7 @@ if (!function_exists('staff_account_update')) {
                 return ['ok' => false, 'error' => 'You are not allowed to change this account role.'];
             }
             if ($userId === $actorId) {
-                return ['ok' => false, 'error' => 'You cannot change your own role. Ask another Super Super Admin.'];
+                return ['ok' => false, 'error' => 'You cannot change your own role. Ask another Developer Accounts user.'];
             }
             $newRole = $requestedRole;
             $roleChanged = true;

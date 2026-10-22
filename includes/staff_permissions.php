@@ -4,7 +4,7 @@ require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/security.php';
 
 if (!defined('STAFF_ROLE_SSA')) {
-    /** Super Super Admin — both Barangay Hub and Nutrition Hub */
+    /** Developer Accounts (SSA) — both Barangay Hub and Nutrition Hub */
     define('STAFF_ROLE_SSA', 'ssa');
 }
 if (!defined('STAFF_ROLE_SUPER_ADMIN')) {
@@ -111,7 +111,7 @@ if (!function_exists('staff_role_label')) {
     function staff_role_label(string $role): string
     {
         return match ($role) {
-            STAFF_ROLE_SSA => 'Super Super Admin (SSA)',
+            STAFF_ROLE_SSA => 'Developer Accounts',
             STAFF_ROLE_SUPER_ADMIN => 'Super Admin — Barangay Hub (SA)',
             STAFF_ROLE_NUTRITION_SUPER_ADMIN => 'Super Admin — Nutrition Hub (SA)',
             STAFF_ROLE_ADMIN => 'Admin — Barangay Hub (A)',
@@ -174,7 +174,7 @@ if (!function_exists('staff_role_requires_barangay')) {
 }
 
 if (!function_exists('barangay_user_is_ssa')) {
-    /** Super Super Admin — both hubs */
+    /** Developer Accounts (SSA) — both hubs */
     function barangay_user_is_ssa(mysqli $con, string $userId): bool
     {
         return barangay_user_staff_role($con, $userId) === STAFF_ROLE_SSA;

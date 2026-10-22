@@ -55,7 +55,7 @@ Official access rules:
 
 | Role | Access level / scope | Key capabilities |
 |------|----------------------|------------------|
-| **Super Super Admin (SSA)** | Full system (global) | Unlimited control across **all portals**; full account / survey / settings management; all reports |
+| **Developer Accounts** | Full system (global) | Unlimited control across **all portals**; full account / survey / settings management; all reports |
 | **Super Admin (SA)** | Hub level — **Barangay Hub** *or* **Nutrition Portal** | Full admin inside assigned hub only; manage users/settings in that unit; reports for that domain |
 | **Admin (A)** | Nutrition Portal | **Add** new Household Surveys; **edit** and **delete** existing surveys; generate reports |
 | **CNPC** | Nutrition Portal (assigned barangays) | **Edit** and **delete** existing Household Surveys; **cannot add** new surveys; generate reports |
