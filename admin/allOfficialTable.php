@@ -24,6 +24,7 @@ try {
     $where = barangay_sql_where($whereClause);
 
     $sql = "SELECT official_status.position, official_status.voters, official_status.status, official_status.pwd_info, official_status.single_parent,
+            official_status.term_from, official_status.term_to,
             official_information.official_id, official_information.first_name, official_information.middle_name, official_information.last_name,
             official_information.image, official_information.image_path, position.color, position.position AS official_position
             FROM official_status
@@ -98,7 +99,21 @@ try {
         $canMutate = barangay_user_can_mutate_barangay_records($con, (string) ($_SESSION['user_id'] ?? ''));
         $actions = '<a href="viewOfficial.php?official_id=' . barangay_h((string) $row['official_id']) . '" style="cursor: pointer;  color: yellow;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-user-edit text-lg px-3 "></a>';
         if ($canMutate) {
-            $actions .= '<i style="cursor: pointer;  color: red;  text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;" class="fa fa-times text-lg px-2 deleteOfficial" id="' . $row['official_id'] . '"></i>';
+            $fullName = htmlspecialchars(
+                ucfirst((string) $row['first_name']) . ' ' . $middle_name . ' ' . ucfirst((string) $row['last_name']),
+                ENT_QUOTES,
+                'UTF-8'
+            );
+            $posLabel = htmlspecialchars((string) $row['official_position'], ENT_QUOTES, 'UTF-8');
+            $termFrom = htmlspecialchars((string) ($row['term_from'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $termTo = htmlspecialchars((string) ($row['term_to'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $actions .= '<i style="cursor: pointer; color: red; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;"'
+                . ' class="fa fa-times text-lg px-2 deleteOfficial" id="' . htmlspecialchars((string) $row['official_id'], ENT_QUOTES, 'UTF-8') . '"'
+                . ' data-name="' . $fullName . '"'
+                . ' data-position="' . $posLabel . '"'
+                . ' data-term-from="' . $termFrom . '"'
+                . ' data-term-to="' . $termTo . '"'
+                . ' title="End term"></i>';
         }
         $subdata[] = $actions;
         $data[] = $subdata;

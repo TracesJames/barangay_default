@@ -27,10 +27,15 @@ $hubAllBarangaysHref = ($isSsa || $isBnsAdmin || $isNutritionPortalAdmin)
     : 'barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker';
 // Nutrition Admin (A): add/edit/delete surveys. CNPC: edit/delete only (no add). BNS: add only.
 $showNutritionSettings = !$isNutritionScholar;
+$showManagePuroks = isset($con, $_SESSION['user_id']) && function_exists('barangay_user_can_manage_puroks')
+    ? barangay_user_can_manage_puroks($con, (string) $_SESSION['user_id'])
+    : ($isSsa || $isNutritionPortalAdmin || $isBnsAdmin);
 $showNutritionHouseholdSurvey = isset($con, $_SESSION['user_id']) && function_exists('nutrition_user_can_add_household_surveys')
     ? nutrition_user_can_add_household_surveys($con, (string) $_SESSION['user_id'])
     : !$isCnpc;
 $showNutritionAssessment = $isSsa || $isNutritionPortalAdmin || $isBnsAdmin || $isCnpc;
+$showSurveyRepair = $isSsa || $isNutritionPortalAdmin || $isBnsAdmin || $isCnpc;
+$showSchoolEntry = $isSsa || $isNutritionPortalAdmin || $isBnsAdmin || $isCnpc;
 $hideBarangayAdminSwitch = !$isSsa;
 $portalBrandName = isset($con)
     ? barangay_portal_brand_name($con, (string) ($_SESSION['user_id'] ?? ''), true)
@@ -104,6 +109,14 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
           </a>
         </li>
         <?php endif; ?>
+        <?php if ($showSurveyRepair) : ?>
+        <li class="nav-item">
+          <a href="nutritionSurveyRepair.php" class="nav-link <?= $nutritionActivePage === 'survey_repair' ? 'active' : '' ?>">
+            <i class="nav-icon fas fa-tools"></i>
+            <p>Survey Repair</p>
+          </a>
+        </li>
+        <?php endif; ?>
         <?php endif; ?>
 
         <li class="nav-header">Reports</li>
@@ -113,6 +126,14 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
             <p>BNP Reports 2026</p>
           </a>
         </li>
+        <?php if ($showSchoolEntry) : ?>
+        <li class="nav-item">
+          <a href="nutritionSchoolEntry.php" class="nav-link <?= $nutritionActivePage === 'school_entry' ? 'active' : '' ?>">
+            <i class="nav-icon fas fa-school"></i>
+            <p>Manual entry — Educational institutions</p>
+          </a>
+        </li>
+        <?php endif; ?>
         <li class="nav-item">
           <a href="nutritionBnpReport.php?type=eopt" class="nav-link <?= $nutritionActivePage === 'eopt_report' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-notes-medical"></i>
@@ -171,6 +192,14 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
             <p>Account Profile</p>
           </a>
         </li>
+        <?php if ($showManagePuroks) : ?>
+        <li class="nav-item">
+          <a href="managePuroks.php" class="nav-link <?= $nutritionActivePage === 'manage_puroks' ? 'active' : '' ?>">
+            <i class="nav-icon fas fa-map-marker-alt"></i>
+            <p>Manage Purok / Sitio</p>
+          </a>
+        </li>
+        <?php endif; ?>
         <?php if ($showNutritionSettings) : ?>
         <li class="nav-item">
           <a href="nutritionSettings.php" class="nav-link <?= $nutritionActivePage === 'settings' ? 'active' : '' ?>">

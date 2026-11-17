@@ -464,7 +464,7 @@ try{
                 </div>
             <div class="card-body ">
                 <div class="row mb-3">
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="small mb-1">Status</label>
                     <select id="audit_status_filter" class="form-control form-control-sm">
                       <option value="">All</option>
@@ -474,11 +474,11 @@ try{
                       <option value="login">login</option>
                     </select>
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="small mb-1">Barangay ID</label>
                     <input type="text" id="audit_barangay_filter" class="form-control form-control-sm" placeholder="Optional">
                   </div>
-                  <div class="col-md-3">
+                  <div class="col-md-2">
                     <label class="small mb-1">Entity</label>
                     <select id="audit_entity_filter" class="form-control form-control-sm">
                       <option value="">All</option>
@@ -487,10 +487,24 @@ try{
                       <option value="certificate">certificate</option>
                       <option value="blotter">blotter</option>
                       <option value="nutrition">nutrition</option>
+                      <option value="purok">purok</option>
                     </select>
                   </div>
-                  <div class="col-md-3 d-flex align-items-end">
-                    <button type="button" id="audit_apply_filters" class="btn btn-sm btn-primary"><i class="fas fa-filter"></i> Apply</button>
+                  <div class="col-md-2">
+                    <label class="small mb-1">User ID</label>
+                    <input type="text" id="audit_user_filter" class="form-control form-control-sm" placeholder="Optional">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="small mb-1">From</label>
+                    <input type="date" id="audit_date_from" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="small mb-1">To</label>
+                    <input type="date" id="audit_date_to" class="form-control form-control-sm">
+                  </div>
+                  <div class="col-md-12 mt-2 d-flex align-items-end">
+                    <button type="button" id="audit_apply_filters" class="btn btn-sm btn-primary mr-2"><i class="fas fa-filter"></i> Apply</button>
+                    <a href="#" id="audit_export_csv" class="btn btn-sm btn-outline-success"><i class="fas fa-file-csv"></i> Export CSV</a>
                   </div>
                 </div>
                 <table class="table table-bordered table-hover table-striped text-sm font-weight-bolder" id="systemLogsTable">
@@ -573,6 +587,9 @@ try{
             d.status_filter = $('#audit_status_filter').val();
             d.barangay_filter = $('#audit_barangay_filter').val();
             d.entity_filter = $('#audit_entity_filter').val();
+            d.user_filter = $('#audit_user_filter').val();
+            d.date_from = $('#audit_date_from').val();
+            d.date_to = $('#audit_date_to').val();
           }
         },
         pagingType: "full_numbers",
@@ -602,6 +619,20 @@ try{
 
     $('#audit_apply_filters').on('click', function () {
       $('#systemLogsTable').DataTable().ajax.reload();
+    });
+
+    $('#audit_export_csv').on('click', function (e) {
+      e.preventDefault();
+      var q = $.param({
+        status_filter: $('#audit_status_filter').val() || '',
+        barangay_filter: $('#audit_barangay_filter').val() || '',
+        entity_filter: $('#audit_entity_filter').val() || '',
+        user_filter: $('#audit_user_filter').val() || '',
+        date_from: $('#audit_date_from').val() || '',
+        date_to: $('#audit_date_to').val() || '',
+        search: $('#systemLogsTable_filter input').val() || ''
+      });
+      window.location.href = 'systemLogsExport.php?' + q;
     });
 
   })

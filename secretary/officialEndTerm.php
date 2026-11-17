@@ -2,6 +2,8 @@
 
 include_once '../connection.php';
 include_once '../includes/auth_secretary.php';
+require_once '../includes/staff_permissions.php';
+barangay_require_end_official_term($con);
 try{
 
 

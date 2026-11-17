@@ -341,8 +341,14 @@ if (!$showPicker) {
                   </div>
                   <div class="col-sm-6">
                     <div class="form-group">
-                      <label>PUROK</label>
-                      <input type="text" class="form-control" id="add_address" name="add_address" placeholder="Purok / Sitio">
+                      <?php
+                      $purokSelectBarangayId = (string) ($id ?? '');
+                      $purokSelectUserId = '';
+                      $purokSelectName = 'add_purok_id';
+                      $purokSelectId = 'add_purok_id';
+                      require __DIR__ . '/includes/partials/purok_sitio_select_field.php';
+                      ?>
+                      <input type="hidden" id="add_address" name="add_address" value="">
                     </div>
                   </div>
                   <div class="col-sm-12">
@@ -502,7 +508,13 @@ if (!$showPicker) {
           contentType: false,
           cache: false,
           success:function(data){
-            if(data == 'errorPassword'){
+            if(data == 'errorPurok'){
+              Swal.fire({
+                title: '<strong class="text-danger">ERROR</strong>',
+                icon: 'error',
+                html: '<b>Select a Purok / Sitio from the official list</b>',
+              });
+            }else if(data == 'errorPassword'){
               Swal.fire({
                 title: '<strong class="text-danger">ERROR</strong>',
                 icon: 'error',
@@ -555,6 +567,17 @@ if (!$showPicker) {
       }
     });
 
+    function syncRegisterPurokAddress() {
+      var $sel = $('#add_purok_id');
+      var label = $.trim($sel.find('option:selected').text() || '');
+      if ($sel.val() === '') {
+        label = '';
+      }
+      $('#add_address').val(label);
+    }
+    $(document).on('change', '#add_purok_id', syncRegisterPurokAddress);
+    syncRegisterPurokAddress();
+
     $('#registerResidentForm').validate({
       rules: {
         add_voters: { required: true },
@@ -564,11 +587,15 @@ if (!$showPicker) {
         add_first_name: { required: true },
         add_last_name: { required: true },
         add_birth_date: { required: true },
+        add_purok_id: { required: true },
         add_username: { required: true },
         add_password: { required: true },
         add_confirm_password: { required: true, equalTo: '#add_password' },
         add_email_address: { email: true },
         add_guardian: { minorGuardianGroup: true },
+      },
+      messages: {
+        add_purok_id: { required: 'Please select a Purok / Sitio' },
       },
       errorElement: 'span',
       errorPlacement: function (error, element) {

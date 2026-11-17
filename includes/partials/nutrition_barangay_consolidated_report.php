@@ -157,7 +157,7 @@ $canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHousehold
                 <thead>
                   <tr>
                     <th style="width:2.5rem;"></th>
-                    <th>Household ID</th>
+                    <th>Resident Number</th>
                     <th>Survey Date</th>
                     <th>Purok</th>
                     <th>Household Head</th>
@@ -196,7 +196,7 @@ $canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHousehold
                       </button>
                       <?php endif; ?>
                     </td>
-                    <td><code><?= barangay_h((string) ($survey['house_hold_id'] ?? '')) ?></code></td>
+                    <td><code><?= barangay_h(trim((string) ($survey['house_hold_id'] ?? '')) !== '' ? (string) $survey['house_hold_id'] : '—') ?></code></td>
                     <td><?= barangay_h(date('M j, Y', strtotime((string) $survey['survey_date']))) ?></td>
                     <td><?= barangay_h((string) ($survey['purok_label'] ?? '')) ?></td>
                     <td>
@@ -268,6 +268,7 @@ $canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHousehold
                           <table class="table table-sm table-dark mb-0">
                             <thead>
                               <tr>
+                                <th>Resident Number</th>
                                 <th>Name</th>
                                 <th>Relationship</th>
                                 <th>Gender</th>
@@ -293,8 +294,10 @@ $canManageHouseholdSurveys = $canEditHouseholdSurveyNames || $canDeleteHousehold
                                       $memberBadges[] = 'Lactating';
                                   }
                                   $memberId = (string) ($member['member_id'] ?? '');
+                                  $memberResidenceId = trim((string) ($member['residence_id'] ?? ''));
                                   ?>
                               <tr>
+                                <td><code><?= barangay_h($memberResidenceId !== '' ? $memberResidenceId : '—') ?></code></td>
                                 <td class="nutrition-member-name-cell"><?= barangay_h((string) ($member['member_name'] ?? '')) ?></td>
                                 <td><?= barangay_h((string) ($member['relationship'] ?? '')) ?></td>
                                 <td><?= barangay_h((string) ($member['gender'] ?? '')) ?></td>

@@ -389,8 +389,8 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
           <tr><td>Add new survey</td><td>Yes</td><td>Yes</td><td><strong>No</strong></td><td>Yes</td></tr>
           <tr><td>Edit survey / names</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
           <tr><td>Delete survey</td><td>Yes</td><td>Yes</td><td>Yes</td><td>No</td></tr>
-          <tr><td>Create / manage user accounts</td><td>Yes (SSA global · SA hub-scoped)</td><td><strong>No</strong></td><td><strong>No</strong></td><td><strong>No</strong></td></tr>
-          <tr><td>Settings (officer name)</td><td>Yes</td><td>View only</td><td>Per role</td><td>No</td></tr>
+          <tr><td>Create / manage user accounts</td><td>Yes (SSA global · SA hub-scoped)</td><td>Yes (same as Nutrition SA)</td><td><strong>No</strong></td><td><strong>No</strong></td></tr>
+          <tr><td>Settings (officer name)</td><td>Yes</td><td>Yes</td><td>Per role</td><td>No</td></tr>
         </tbody>
       </table>
 
@@ -400,7 +400,8 @@ $shot = static function (string $file, string $caption) use ($shotBase): void {
         <tbody>
           <tr><td><strong>SSA</strong></td><td>Yes — system-wide across all levels, hubs, and portals</td></tr>
           <tr><td><strong>Super Admin (SA)</strong></td><td>Yes — within assigned hub only (Barangay Hub or Nutrition Portal)</td></tr>
-          <tr><td><strong>Admin (A), CNPC, BNS</strong></td><td><strong>No</strong> — Household Survey data and reports only</td></tr>
+          <tr><td><strong>Nutrition Admin (A)</strong></td><td>Yes — same Nutrition Hub scope as Nutrition Super Admin</td></tr>
+          <tr><td><strong>Barangay Admin (A), CNPC, BNS</strong></td><td><strong>No</strong> — Household Survey data and reports only</td></tr>
         </tbody>
       </table>
       <p class="muted">Nutrition SA may create Nutrition Admin (A), CNPC, and BNS. Nutrition Super Admin accounts are SSA-only. Barangay Hub SA manages Barangay Hub roles only (not Nutrition).</p>

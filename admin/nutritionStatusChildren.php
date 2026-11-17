@@ -41,6 +41,16 @@ if ($barangayId === '' && !$cityWide && $canCityHub) {
 $children = [];
 if ($barangayId !== '') {
     $children = nutrition_list_children_by_dashboard_status($con, $status, $barangayId);
+    $bnsPuroks = nutrition_bns_scoped_purok_labels($con, $userId, $barangayId);
+    if ($bnsPuroks !== null) {
+        $allow = nutrition_filter_purok_label_set(['purok_in' => $bnsPuroks]) ?? [];
+        $children = array_values(array_filter(
+            $children,
+            static function (array $row) use ($allow): bool {
+                return nutrition_purok_label_in_set((string) ($row['purok'] ?? ''), $allow);
+            }
+        ));
+    }
 } elseif (barangay_user_is_cnpc($con, $userId) && function_exists('staff_assigned_barangay_ids')) {
     $assigned = staff_assigned_barangay_ids($con, $userId);
     if (!is_array($assigned) || $assigned === []) {

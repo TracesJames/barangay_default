@@ -563,8 +563,14 @@ try{
                           </div>
                           <div class="col-sm-6">
                             <div class="form-group">
-                              <label class="nr-required">Address</label>
-                              <input type="text" class="form-control" id="add_address" name="add_address" placeholder="Sitio / full address line">
+                              <?php
+                              $purokSelectBarangayId = (string) ($barangay_id ?? '');
+                              $purokSelectUserId = (string) ($user_id ?? '');
+                              $purokSelectName = 'add_purok_id';
+                              $purokSelectId = 'add_purok_id';
+                              require __DIR__ . '/../includes/partials/purok_sitio_select_field.php';
+                              ?>
+                              <input type="hidden" id="add_address" name="add_address" value="">
                             </div>
                           </div>
                           <div class="col-sm-6">
@@ -717,12 +723,26 @@ try{
       $("#add_pwd_info").valid();
     });
 
+    function syncLockedPurokAddress() {
+      var $sel = $('#add_purok_id');
+      var label = $.trim($sel.find('option:selected').text() || '');
+      if ($sel.val() === '') {
+        label = '';
+      }
+      $('#add_address').val(label);
+    }
+    $(document).on('change', '#add_purok_id', syncLockedPurokAddress);
+    syncLockedPurokAddress();
+
     function newResidenceErrorMessage(resultText) {
       if (resultText === 'errorValidation') {
         return 'Please fill in all required fields.';
       }
       if (resultText === 'errorImage') {
         return 'Invalid image file. Use JPG, PNG, or GIF.';
+      }
+      if (resultText === 'errorPurok') {
+        return 'Select a Purok / Sitio from the official barangay list.';
       }
       if (resultText === 'errorMinorGuardian') {
         return 'Residents 17 years old and below must have a Guardian name or Parent name.';
@@ -842,7 +862,7 @@ try{
             required: true,
             minlength: 11
           },
-          add_address:{
+          add_purok_id:{
             required: true,
           },
           add_single_parent:{
@@ -884,8 +904,8 @@ try{
           add_birth_date: {
             required: "Please provide a Birth Date",
           },
-          add_address: {
-            required: "Please provide an Address",
+          add_purok_id: {
+            required: "Please select a Purok / Sitio",
           },
           add_contact_number: {
             required: "Please provide a Contact Number",

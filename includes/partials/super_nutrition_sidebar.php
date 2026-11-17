@@ -23,6 +23,9 @@ $isStaffAccountsPage = in_array($superActivePage, ['staff_accounts', 'bns', 'bns
 $isSsaActor = isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_ssa')
     && barangay_user_is_ssa($con, (string) $_SESSION['user_id']);
 $activeNutritionBarangayId = function_exists('barangay_session_id') ? barangay_session_id() : null;
+$canFillSchoolEntry = $isSsaActor || $isNutritionPortalAdmin
+    || (isset($con, $_SESSION['user_id']) && function_exists('barangay_user_is_cnpc')
+        && barangay_user_is_cnpc($con, (string) $_SESSION['user_id']));
 $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ?? '', '../');
 ?>
 <aside class="main-sidebar sidebar-dark-success elevation-4 sidebar-no-expand nutrition-sidebar super-nutrition-sidebar">
@@ -66,6 +69,18 @@ $userAvatarUrl = barangay_user_avatar_url($user_image ?? '', $user_image_path ??
           <a href="nutritionDashboard.php" class="nav-link <?= $superActivePage === 'dashboard' ? 'active' : '' ?>">
             <i class="nav-icon fas fa-tachometer-alt"></i>
             <p>Barangay Dashboard</p>
+          </a>
+        </li>
+        <?php endif; ?>
+        <?php if ($canFillSchoolEntry) : ?>
+        <li class="nav-item">
+          <?php if ($activeNutritionBarangayId !== null) : ?>
+          <a href="nutritionSchoolEntry.php" class="nav-link <?= $superActivePage === 'school_entry' ? 'active' : '' ?>">
+          <?php else : ?>
+          <a href="barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker&amp;next=nutritionSchoolEntry.php" class="nav-link">
+          <?php endif; ?>
+            <i class="nav-icon fas fa-school"></i>
+            <p>Manual entry — Educational institutions</p>
           </a>
         </li>
         <?php endif; ?>

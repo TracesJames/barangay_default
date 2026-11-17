@@ -321,11 +321,27 @@ if (!function_exists('barangay_list_all')) {
     }
 }
 
+if (!function_exists('barangay_purok_ensure_active_column')) {
+    function barangay_purok_ensure_active_column(mysqli $con): void
+    {
+        static $done = false;
+        if ($done || !barangay_table_exists($con, 'purok')) {
+            return;
+        }
+        $done = true;
+        if (!barangay_column_exists($con, 'purok', 'is_active')) {
+            if (@$con->query('ALTER TABLE purok ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER leader')) {
+                barangay_mark_column_exists('purok', 'is_active');
+            }
+        }
+    }
+}
+
 if (!function_exists('barangay_list_puroks')) {
     /**
-     * @return array<int, array{purok_id:string,purok:string,leader:string,barangay_id:string}>
+     * @return array<int, array{purok_id:string,purok:string,leader:string,barangay_id:string,is_active?:int}>
      */
-    function barangay_list_puroks(mysqli $con, ?string $barangayId = null): array
+    function barangay_list_puroks(mysqli $con, ?string $barangayId = null, bool $includeInactive = false): array
     {
         if (!barangay_column_exists($con, 'purok', 'barangay_id')) {
             return [];
@@ -336,8 +352,17 @@ if (!function_exists('barangay_list_puroks')) {
             return [];
         }
 
+        barangay_purok_ensure_active_column($con);
+        $hasActive = barangay_column_exists($con, 'purok', 'is_active');
+        $cols = 'purok_id, purok, leader, barangay_id' . ($hasActive ? ', is_active' : '');
+        $sql = "SELECT {$cols} FROM purok WHERE barangay_id = ?";
+        if ($hasActive && !$includeInactive) {
+            $sql .= ' AND is_active = 1';
+        }
+        $sql .= ' ORDER BY purok ASC';
+
         $rows = [];
-        $stmt = $con->prepare('SELECT purok_id, purok, leader, barangay_id FROM purok WHERE barangay_id = ? ORDER BY purok ASC');
+        $stmt = $con->prepare($sql);
         if (!$stmt) {
             return [];
         }
@@ -345,10 +370,330 @@ if (!function_exists('barangay_list_puroks')) {
         $stmt->execute();
         $result = $stmt->get_result();
         while ($row = $result->fetch_assoc()) {
+            if (!$hasActive) {
+                $row['is_active'] = 1;
+            }
             $rows[] = $row;
         }
+        $stmt->close();
 
         return $rows;
+    }
+}
+
+if (!function_exists('barangay_purok_master_key')) {
+    /** Case-insensitive compare key for master Purok/Sitio labels. */
+    function barangay_purok_master_key(string $label): string
+    {
+        $label = trim((string) preg_replace('/\s+/u', ' ', $label));
+
+        return mb_strtolower($label);
+    }
+}
+
+if (!function_exists('barangay_find_purok_by_label')) {
+    /**
+     * Resolve a submitted label/id against the barangay master `purok` list.
+     *
+     * @return array{purok_id:string,purok:string,leader:string,barangay_id:string}|null
+     */
+    function barangay_find_purok_by_label(mysqli $con, string $barangayId, string $raw): ?array
+    {
+        $raw = trim($raw);
+        if ($barangayId === '' || $raw === '') {
+            return null;
+        }
+
+        $rows = barangay_list_puroks($con, $barangayId);
+        if ($rows === []) {
+            return null;
+        }
+
+        $rawKey = barangay_purok_master_key($raw);
+        foreach ($rows as $row) {
+            $id = trim((string) ($row['purok_id'] ?? ''));
+            $name = trim((string) ($row['purok'] ?? ''));
+            if ($id !== '' && ($raw === $id || $rawKey === barangay_purok_master_key($id))) {
+                return $row;
+            }
+            if ($name !== '' && $rawKey === barangay_purok_master_key($name)) {
+                return $row;
+            }
+        }
+
+        // Allow legacy "1" / "PUROK 1" to match master "PUROK 1" via nutrition normalizer.
+        if (function_exists('staff_normalize_purok_label')) {
+            $normalized = staff_normalize_purok_label($raw);
+            if ($normalized !== '') {
+                $normKey = barangay_purok_master_key($normalized);
+                foreach ($rows as $row) {
+                    $name = trim((string) ($row['purok'] ?? ''));
+                    if ($name === '') {
+                        continue;
+                    }
+                    if ($normKey === barangay_purok_master_key($name)
+                        || $normKey === barangay_purok_master_key(staff_normalize_purok_label($name))) {
+                        return $row;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('barangay_purok_options_for_user')) {
+    /**
+     * Locked Purok/Sitio options from master list, intersected with BNS assignments when set.
+     *
+     * @return array<int, array{purok_id:string,value:string,label:string}>
+     */
+    function barangay_purok_options_for_user(mysqli $con, string $userId, string $barangayId): array
+    {
+        $options = [];
+        $seen = [];
+        foreach (barangay_list_puroks($con, $barangayId) as $row) {
+            $id = trim((string) ($row['purok_id'] ?? ''));
+            $label = trim((string) ($row['purok'] ?? ''));
+            if ($label === '') {
+                continue;
+            }
+            $key = barangay_purok_master_key($label);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $options[] = [
+                'purok_id' => $id,
+                'value' => $label,
+                'label' => $label,
+            ];
+        }
+
+        if ($userId !== ''
+            && function_exists('barangay_user_is_barangay_nutrition_scholar')
+            && function_exists('staff_assigned_purok_labels')
+            && barangay_user_is_barangay_nutrition_scholar($con, $userId)
+        ) {
+            $assigned = staff_assigned_purok_labels($con, $userId, $barangayId);
+            if ($assigned !== []) {
+                $allowedKeys = [];
+                foreach ($assigned as $assignedLabel) {
+                    $allowedKeys[barangay_purok_master_key((string) $assignedLabel)] = true;
+                    if (function_exists('staff_normalize_purok_label')) {
+                        $allowedKeys[barangay_purok_master_key(staff_normalize_purok_label((string) $assignedLabel))] = true;
+                    }
+                }
+                $options = array_values(array_filter(
+                    $options,
+                    static function (array $opt) use ($allowedKeys): bool {
+                        $label = (string) ($opt['label'] ?? '');
+                        $key = barangay_purok_master_key($label);
+                        if (isset($allowedKeys[$key])) {
+                            return true;
+                        }
+                        if (function_exists('staff_normalize_purok_label')) {
+                            return isset($allowedKeys[barangay_purok_master_key(staff_normalize_purok_label($label))]);
+                        }
+
+                        return false;
+                    }
+                ));
+            }
+        }
+
+        usort($options, static function (array $a, array $b): int {
+            return strnatcasecmp((string) $a['label'], (string) $b['label']);
+        });
+
+        return $options;
+    }
+}
+
+if (!function_exists('barangay_purok_is_allowed_for_user')) {
+    function barangay_purok_is_allowed_for_user(
+        mysqli $con,
+        string $userId,
+        string $barangayId,
+        string $rawLabel
+    ): bool {
+        $resolved = barangay_find_purok_by_label($con, $barangayId, $rawLabel);
+        if ($resolved === null) {
+            // No master rows yet: allow nutrition-normalized free labels (legacy).
+            if (barangay_list_puroks($con, $barangayId) === []) {
+                if ($userId !== '' && function_exists('staff_user_can_access_purok')) {
+                    return staff_user_can_access_purok($con, $userId, $rawLabel);
+                }
+
+                return trim($rawLabel) !== '';
+            }
+
+            return false;
+        }
+
+        $label = trim((string) ($resolved['purok'] ?? ''));
+        if ($userId !== '' && function_exists('staff_user_can_access_purok')) {
+            return staff_user_can_access_purok($con, $userId, $label);
+        }
+
+        return $label !== '';
+    }
+}
+
+if (!function_exists('barangay_assert_purok_allowed')) {
+    /**
+     * @return array{ok:true,purok_id:string,purok_label:string}|array{ok:false,error:string,status:int}
+     */
+    function barangay_assert_purok_allowed(
+        mysqli $con,
+        string $userId,
+        string $barangayId,
+        string $rawLabel
+    ): array {
+        $rawLabel = trim($rawLabel);
+        if ($rawLabel === '') {
+            return ['ok' => false, 'status' => 400, 'error' => 'Purok / Sitio is required.'];
+        }
+
+        $master = barangay_list_puroks($con, $barangayId);
+        $resolved = barangay_find_purok_by_label($con, $barangayId, $rawLabel);
+
+        if ($resolved === null) {
+            if ($master === []) {
+                // Legacy fallback when barangay has not configured master puroks yet.
+                $label = $rawLabel;
+                if (function_exists('staff_normalize_purok_label')) {
+                    $normalized = staff_normalize_purok_label($rawLabel);
+                    if ($normalized !== '') {
+                        $label = $normalized;
+                    }
+                }
+                if ($userId !== '' && function_exists('staff_user_can_access_purok')
+                    && !staff_user_can_access_purok($con, $userId, $label)) {
+                    return [
+                        'ok' => false,
+                        'status' => 403,
+                        'error' => 'You are not assigned to this purok. Ask your Nutrition Admin to update your BNS purok assignment.',
+                    ];
+                }
+
+                return ['ok' => true, 'purok_id' => '', 'purok_label' => $label];
+            }
+
+            return [
+                'ok' => false,
+                'status' => 400,
+                'error' => 'Select a Purok / Sitio from the official barangay list.',
+            ];
+        }
+
+        $label = trim((string) ($resolved['purok'] ?? ''));
+        if ($userId !== '' && function_exists('staff_user_can_access_purok')
+            && !staff_user_can_access_purok($con, $userId, $label)) {
+            return [
+                'ok' => false,
+                'status' => 403,
+                'error' => 'You are not assigned to this purok. Ask your Nutrition Admin to update your BNS purok assignment.',
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'purok_id' => trim((string) ($resolved['purok_id'] ?? '')),
+            'purok_label' => $label,
+        ];
+    }
+}
+
+if (!function_exists('barangay_user_can_manage_puroks')) {
+    function barangay_user_can_manage_puroks(mysqli $con, ?string $userId = null): bool
+    {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if ($userId === '') {
+            return false;
+        }
+
+        return barangay_user_is_ssa($con, $userId)
+            || barangay_user_is_barangay_hub_super_admin($con, $userId)
+            || (function_exists('barangay_user_is_nutrition_portal_admin')
+                && barangay_user_is_nutrition_portal_admin($con, $userId));
+    }
+}
+
+if (!function_exists('barangay_generate_purok_id')) {
+    function barangay_generate_purok_id(mysqli $con, string $barangayId): string
+    {
+        $prefix = 'PRK' . preg_replace('/\D+/', '', $barangayId);
+        if ($prefix === 'PRK') {
+            $prefix = 'PRK';
+        }
+        for ($i = 0; $i < 30; $i++) {
+            $candidate = $prefix . strtoupper(bin2hex(random_bytes(3)));
+            $stmt = $con->prepare('SELECT purok_id FROM purok WHERE purok_id = ? LIMIT 1');
+            if (!$stmt) {
+                return $candidate;
+            }
+            $stmt->bind_param('s', $candidate);
+            $stmt->execute();
+            $exists = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+            if (!$exists) {
+                return $candidate;
+            }
+        }
+
+        return $prefix . strtoupper(bin2hex(random_bytes(4)));
+    }
+}
+
+if (!function_exists('barangay_purok_is_referenced')) {
+    function barangay_purok_is_referenced(mysqli $con, string $barangayId, string $purokId, string $purokLabel): bool
+    {
+        if ($purokId !== '' && barangay_column_exists($con, 'residence_status', 'purok_id')) {
+            $stmt = $con->prepare('SELECT 1 FROM residence_status WHERE purok_id = ? LIMIT 1');
+            if ($stmt) {
+                $stmt->bind_param('s', $purokId);
+                $stmt->execute();
+                $hit = $stmt->get_result()->num_rows > 0;
+                $stmt->close();
+                if ($hit) {
+                    return true;
+                }
+            }
+        }
+
+        if ($purokLabel !== '' && barangay_table_exists($con, 'nutrition_household_survey')) {
+            $stmt = $con->prepare(
+                'SELECT 1 FROM nutrition_household_survey WHERE barangay_id = ? AND purok_label = ? LIMIT 1'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ss', $barangayId, $purokLabel);
+                $stmt->execute();
+                $hit = $stmt->get_result()->num_rows > 0;
+                $stmt->close();
+                if ($hit) {
+                    return true;
+                }
+            }
+        }
+
+        if ($purokLabel !== '' && barangay_table_exists($con, 'staff_purok_assignment')) {
+            $stmt = $con->prepare(
+                'SELECT 1 FROM staff_purok_assignment WHERE barangay_id = ? AND purok_label = ? LIMIT 1'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ss', $barangayId, $purokLabel);
+                $stmt->execute();
+                $hit = $stmt->get_result()->num_rows > 0;
+                $stmt->close();
+                if ($hit) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
 
@@ -1304,6 +1649,12 @@ if (!function_exists('barangay_enforce_admin_page_access')) {
 
         if ($staffRole === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR) {
             if (!barangay_bns_can_access_script($script)) {
+                if (function_exists('barangay_request_expects_json') && barangay_request_expects_json()) {
+                    http_response_code(403);
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['error' => 'You do not have permission to open this page.', 'ok' => false]);
+                    exit;
+                }
                 header('Location: nutritionDashboard.php');
                 exit;
             }
@@ -2296,6 +2647,141 @@ if (!function_exists('barangay_positions_with_usage')) {
     }
 }
 
+if (!function_exists('barangay_official_end_term_checklist')) {
+    /**
+     * Pre-flight checklist before / during end-of-term work.
+     *
+     * @return array{
+     *   positions:array<int,array<string,mixed>>,
+     *   vacant:array<int,array<string,mixed>>,
+     *   overfilled:array<int,array<string,mixed>>,
+     *   missing_term:array<int,array<string,mixed>>,
+     *   active_count:int
+     * }
+     */
+    function barangay_official_end_term_checklist(mysqli $con, string $barangayId): array
+    {
+        $positions = barangay_positions_with_usage($con, $barangayId);
+        $vacant = [];
+        $overfilled = [];
+        foreach ($positions as $pos) {
+            if ((int) ($pos['available'] ?? 0) > 0) {
+                $vacant[] = $pos;
+            }
+            if ((int) ($pos['filled'] ?? 0) > (int) ($pos['position_limit'] ?? 0)) {
+                $overfilled[] = $pos;
+            }
+        }
+
+        $missingTerm = [];
+        $activeCount = 0;
+        $hasBrgy = barangay_column_exists($con, 'official_status', 'barangay_id');
+        $sql = 'SELECT oi.official_id, oi.first_name, oi.last_name, os.position, os.term_from, os.term_to, p.position AS position_name
+                FROM official_status os
+                INNER JOIN official_information oi ON oi.official_id = os.official_id
+                LEFT JOIN position p ON p.position_id = os.position';
+        if ($hasBrgy && $barangayId !== '') {
+            $sql .= ' WHERE os.barangay_id = ?';
+        }
+        $sql .= ' ORDER BY p.position, oi.last_name, oi.first_name';
+        $stmt = $con->prepare($sql);
+        if ($stmt) {
+            if ($hasBrgy && $barangayId !== '') {
+                $stmt->bind_param('s', $barangayId);
+            }
+            $stmt->execute();
+            $result = $stmt->get_result();
+            while ($row = $result->fetch_assoc()) {
+                $activeCount++;
+                $from = trim((string) ($row['term_from'] ?? ''));
+                $to = trim((string) ($row['term_to'] ?? ''));
+                $termOk = $from !== '' && $to !== '' && (
+                    official_validate_term_years($from, $to)
+                    || official_validate_term_range($from . '-' . $to)
+                );
+                if (!$termOk) {
+                    $missingTerm[] = [
+                        'official_id' => (string) ($row['official_id'] ?? ''),
+                        'name' => trim((string) ($row['first_name'] ?? '') . ' ' . (string) ($row['last_name'] ?? '')),
+                        'position' => (string) ($row['position_name'] ?? $row['position'] ?? ''),
+                        'term_from' => $from,
+                        'term_to' => $to,
+                    ];
+                }
+            }
+            $stmt->close();
+        }
+
+        return [
+            'positions' => $positions,
+            'vacant' => $vacant,
+            'overfilled' => $overfilled,
+            'missing_term' => $missingTerm,
+            'active_count' => $activeCount,
+        ];
+    }
+}
+
+if (!function_exists('barangay_purok_usage_counts')) {
+    /**
+     * @return array{residents:int,surveys:int,bns:int,total:int}
+     */
+    function barangay_purok_usage_counts(mysqli $con, string $barangayId, string $purokId, string $purokLabel): array
+    {
+        $counts = ['residents' => 0, 'surveys' => 0, 'bns' => 0, 'total' => 0];
+        if ($purokId !== '' && barangay_column_exists($con, 'residence_status', 'purok_id')) {
+            $stmt = $con->prepare('SELECT COUNT(*) AS c FROM residence_status WHERE purok_id = ?');
+            if ($stmt) {
+                $stmt->bind_param('s', $purokId);
+                $stmt->execute();
+                $counts['residents'] = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+                $stmt->close();
+            }
+        }
+        if ($purokLabel !== '' && barangay_table_exists($con, 'nutrition_household_survey')) {
+            $stmt = $con->prepare(
+                'SELECT COUNT(*) AS c FROM nutrition_household_survey WHERE barangay_id = ? AND purok_label = ?'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ss', $barangayId, $purokLabel);
+                $stmt->execute();
+                $counts['surveys'] = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+                $stmt->close();
+            }
+        }
+        if ($purokLabel !== '' && barangay_table_exists($con, 'staff_purok_assignment')) {
+            $stmt = $con->prepare(
+                'SELECT COUNT(*) AS c FROM staff_purok_assignment WHERE barangay_id = ? AND purok_label = ?'
+            );
+            if ($stmt) {
+                $stmt->bind_param('ss', $barangayId, $purokLabel);
+                $stmt->execute();
+                $counts['bns'] = (int) ($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+                $stmt->close();
+            }
+        }
+        $counts['total'] = $counts['residents'] + $counts['surveys'] + $counts['bns'];
+
+        return $counts;
+    }
+}
+
+if (!function_exists('barangay_official_end_status_ensure_barangay_id')) {
+    function barangay_official_end_status_ensure_barangay_id(mysqli $con): void
+    {
+        static $done = false;
+        if ($done || !barangay_table_exists($con, 'official_end_status')) {
+            return;
+        }
+        $done = true;
+        if (!barangay_column_exists($con, 'official_end_status', 'barangay_id')) {
+            if (@$con->query('ALTER TABLE official_end_status ADD COLUMN barangay_id VARCHAR(255) NULL AFTER official_id')) {
+                barangay_mark_column_exists('official_end_status', 'barangay_id');
+            }
+        }
+    }
+}
+
 if (!function_exists('barangay_count_linked_records')) {
     /**
      * Count operational records tied to a barangay (excludes barangay-scoped admin accounts).
@@ -2359,10 +2845,10 @@ if (!function_exists('barangay_count_linked_records')) {
 }
 
 if (!function_exists('barangay_table_exists')) {
-    function barangay_table_exists(mysqli $con, string $table): bool
+    function barangay_table_exists(mysqli $con, string $table, bool $refresh = false): bool
     {
         static $cache = [];
-        if (array_key_exists($table, $cache)) {
+        if (!$refresh && array_key_exists($table, $cache)) {
             return $cache[$table];
         }
         $stmt = $con->prepare('SELECT COUNT(*) AS total FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?');

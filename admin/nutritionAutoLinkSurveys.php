@@ -25,16 +25,6 @@ $barangayId = trim((string) ($_POST['barangay_id'] ?? ''));
 $limit = (int) ($_POST['limit'] ?? 100);
 $limit = max(1, min(500, $limit));
 
-if (barangay_user_is_bns_admin($con, $user_id)) {
-    $sessionBrgy = (string) ($barangay_id ?? '');
-    if ($sessionBrgy === '') {
-        http_response_code(400);
-        echo json_encode(['error' => 'No active barangay selected.']);
-        exit;
-    }
-    $barangayId = $sessionBrgy;
-}
-
 $stats = nutrition_auto_link_unlinked_surveys($con, $barangayId !== '' ? $barangayId : null, $limit, $user_id);
 
 echo json_encode([

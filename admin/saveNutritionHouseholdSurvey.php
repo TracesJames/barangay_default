@@ -25,7 +25,17 @@ $result = nutrition_commit_household_survey(
 
 if (empty($result['ok'])) {
     http_response_code((int) ($result['status'] ?? 400));
-    echo json_encode(['error' => (string) ($result['error'] ?? 'Could not save survey.')]);
+    $payload = ['error' => (string) ($result['error'] ?? 'Could not save survey.')];
+    if (!empty($result['code'])) {
+        $payload['code'] = (string) $result['code'];
+    }
+    if (isset($result['checklist']) && is_array($result['checklist'])) {
+        $payload['checklist'] = $result['checklist'];
+    }
+    if (array_key_exists('same_purok', $result)) {
+        $payload['same_purok'] = !empty($result['same_purok']);
+    }
+    echo json_encode($payload);
     exit;
 }
 

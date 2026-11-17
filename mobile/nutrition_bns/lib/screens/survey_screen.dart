@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../api/nutrition_api.dart';
@@ -554,6 +555,65 @@ class _SurveyScreenState extends State<SurveyScreen> {
       _foodProduction.clear();
       _fpMethods.clear();
     });
+  }
+
+  Future<void> _attachPhoto() async {
+    final surveyId = _editSurveyId;
+    if (surveyId == null || surveyId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Save the survey first, then attach a photo.')),
+      );
+      return;
+    }
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Camera'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: source, imageQuality: 75, maxWidth: 1600);
+    if (file == null) return;
+    setState(() => _busy = true);
+    try {
+      final bytes = await file.readAsBytes();
+      final name = file.name.isNotEmpty ? file.name : 'survey_$surveyId.jpg';
+      await widget.session.api.uploadSurveyPhoto(
+        surveyId: surveyId,
+        bytes: bytes,
+        filename: name,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo attached.')),
+      );
+    } on ApiException catch (e) {
+      if (await widget.session.expireIfUnauthorized(e)) return;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _save({required bool forceOffline}) async {
@@ -1557,6 +1617,17 @@ class _SurveyScreenState extends State<SurveyScreen> {
                   onPressed: _busy ? null : () => _save(forceOffline: true),
                   icon: const Icon(Icons.cloud_off_outlined),
                   label: const Text('Save offline'),
+                ),
+              ),
+            ],
+            if (_isEdit) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _busy ? null : _attachPhoto,
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: const Text('Attach photo'),
                 ),
               ),
             ],

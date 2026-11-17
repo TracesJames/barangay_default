@@ -29,6 +29,9 @@ Base URL (local): `http://localhost/barangay_default/api/v1/`
 | `GET` | `/survey-options.php` | Bearer | Full encode option lists (BSI, FP, meals, relationships, …) | **Done** |
 | `GET` | `/households.php?id=&full=1` | Bearer | Household + full `survey` edit payload | **Done** |
 | `GET` | `/reports.php` | Bearer | Summary + consolidated household list | **Done** |
+| `GET` | `/incomplete-households.php` | Bearer | Incomplete surveys (orphan header / unassessed children) | **Done** |
+| `GET` | `/app-config.php?version_code=` | Optional | Min/force app version for APK gate | **Done** |
+| `POST` | `/attachment.php` | Bearer | Multipart photo (`photo`) linked to survey/member | **Done** |
 
 ## Typical mobile flow
 

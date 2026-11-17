@@ -71,6 +71,9 @@ if (!function_exists('nutrition_api_ensure_must_change_password_column')) {
 if (!function_exists('nutrition_api_user_must_change_password')) {
     function nutrition_api_user_must_change_password(mysqli $con, string $userId): bool
     {
+        if (function_exists('barangay_user_must_change_password')) {
+            return barangay_user_must_change_password($con, $userId);
+        }
         nutrition_api_ensure_must_change_password_column($con);
         $stmt = $con->prepare('SELECT must_change_password FROM users WHERE id = ? LIMIT 1');
         if (!$stmt) {
@@ -469,10 +472,24 @@ if (!function_exists('nutrition_api_require_active_barangay')) {
 
 if (!function_exists('nutrition_api_purok_options')) {
     /**
+     * Locked master Purok/Sitio labels for the active user/barangay.
+     *
      * @return array<int, string>
      */
     function nutrition_api_purok_options(mysqli $con, string $userId, string $barangayId): array
     {
+        if (function_exists('barangay_purok_options_for_user')) {
+            $labels = [];
+            foreach (barangay_purok_options_for_user($con, $userId, $barangayId) as $opt) {
+                $label = trim((string) ($opt['label'] ?? $opt['value'] ?? ''));
+                if ($label !== '') {
+                    $labels[] = $label;
+                }
+            }
+
+            return $labels;
+        }
+
         $assigned = staff_assigned_purok_labels($con, $userId, $barangayId);
         if ($assigned !== []) {
             return array_values($assigned);

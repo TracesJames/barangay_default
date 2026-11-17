@@ -22,9 +22,11 @@ if (!empty($nutritionExtraCss) && is_array($nutritionExtraCss)) {
 }
 require_once __DIR__ . '/../head_csrf.php';
 ?>
-  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20260811a">
+  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20261116a">
+  <link rel="stylesheet" href="../assets/css/ux-polish.css?v=20261116a">
 </head>
 <body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-portal nutrition-portal">
+<a class="skip-to-content" href="#nutrition-main">Skip to content</a>
 <div class="wrapper">
   <nav class="main-header navbar navbar-expand navbar-dark nutrition-navbar">
     <ul class="navbar-nav">
@@ -48,5 +50,5 @@ require_once __DIR__ . '/../head_csrf.php';
   <?php require __DIR__ . '/nutrition_sidebar.php'; ?>
 
   <div class="content-wrapper">
-    <section class="content pt-3">
+    <section class="content pt-3" id="nutrition-main">
       <div class="container-fluid">

@@ -185,3 +185,166 @@ if (!function_exists('barangay_hash_password')) {
     return password_hash($plain, PASSWORD_DEFAULT);
   }
 }
+
+if (!function_exists('barangay_password_min_length')) {
+    function barangay_password_min_length(): int
+    {
+        return 8;
+    }
+}
+
+if (!function_exists('barangay_password_expiry_days')) {
+    /** Days after which nutrition staff must rotate passwords. 0 = disabled. */
+    function barangay_password_expiry_days(): int
+    {
+        return 90;
+    }
+}
+
+if (!function_exists('barangay_validate_password_policy')) {
+    /**
+     * Shared password policy (web + API).
+     * @return string|null Error message, or null when valid.
+     */
+    function barangay_validate_password_policy(string $plain, string $username = ''): ?string
+    {
+        $min = barangay_password_min_length();
+        if (strlen($plain) < $min) {
+            return "Password must be at least {$min} characters.";
+        }
+        if (!preg_match('/[A-Z]/', $plain) || !preg_match('/[a-z]/', $plain) || !preg_match('/[0-9]/', $plain)) {
+            return 'Password must include upper- and lowercase letters and at least one number.';
+        }
+        $username = trim($username);
+        if ($username !== '' && strcasecmp($plain, $username) === 0) {
+            return 'Password cannot be the same as the username.';
+        }
+        if (preg_match('/^(password|12345678|qwerty123|admin123|changeme)$/i', $plain)) {
+            return 'Password is too common. Choose a stronger password.';
+        }
+
+        return null;
+    }
+}
+
+if (!function_exists('barangay_ensure_password_meta_columns')) {
+    function barangay_ensure_password_meta_columns(mysqli $con): void
+    {
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+        if (!function_exists('barangay_column_exists')) {
+            require_once __DIR__ . '/barangay_context.php';
+        }
+        if (!barangay_table_exists($con, 'users')) {
+            return;
+        }
+        if (!barangay_column_exists($con, 'users', 'must_change_password')) {
+            @$con->query(
+                "ALTER TABLE `users` ADD COLUMN `must_change_password` TINYINT(1) NOT NULL DEFAULT 0"
+            );
+        }
+        if (!barangay_column_exists($con, 'users', 'password_changed_at')) {
+            @$con->query(
+                "ALTER TABLE `users` ADD COLUMN `password_changed_at` DATETIME NULL DEFAULT NULL"
+            );
+        }
+    }
+}
+
+if (!function_exists('barangay_user_is_nutrition_password_role')) {
+    function barangay_user_is_nutrition_password_role(mysqli $con, string $userId): bool
+    {
+        if ($userId === '' || !function_exists('barangay_user_staff_role')) {
+            return false;
+        }
+        if (!defined('STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR')) {
+            require_once __DIR__ . '/staff_permissions.php';
+        }
+        $role = barangay_user_staff_role($con, $userId);
+
+        return in_array($role, [
+            STAFF_ROLE_NUTRITION_SUPER_ADMIN,
+            STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
+            STAFF_ROLE_CITY_NUTRITION_PROGRAM_COORDINATOR,
+            STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR,
+        ], true);
+    }
+}
+
+if (!function_exists('barangay_user_must_change_password')) {
+    function barangay_user_must_change_password(mysqli $con, string $userId): bool
+    {
+        if ($userId === '') {
+            return false;
+        }
+        barangay_ensure_password_meta_columns($con);
+        $stmt = $con->prepare(
+            'SELECT must_change_password, password_changed_at FROM users WHERE id = ? LIMIT 1'
+        );
+        if (!$stmt) {
+            return false;
+        }
+        $stmt->bind_param('s', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc() ?: [];
+        $stmt->close();
+
+        if ((int) ($row['must_change_password'] ?? 0) === 1) {
+            return true;
+        }
+
+        $days = barangay_password_expiry_days();
+        if ($days <= 0 || !barangay_user_is_nutrition_password_role($con, $userId)) {
+            return false;
+        }
+        $changedAt = trim((string) ($row['password_changed_at'] ?? ''));
+        if ($changedAt === '') {
+            return false;
+        }
+        $ts = strtotime($changedAt);
+        if ($ts === false) {
+            return false;
+        }
+
+        return (time() - $ts) >= ($days * 86400);
+    }
+}
+
+if (!function_exists('barangay_mark_password_changed')) {
+    function barangay_mark_password_changed(mysqli $con, string $userId, bool $requireChangeNext = false): void
+    {
+        if ($userId === '') {
+            return;
+        }
+        barangay_ensure_password_meta_columns($con);
+        $flag = $requireChangeNext ? 1 : 0;
+        $stmt = $con->prepare(
+            'UPDATE users
+             SET must_change_password = ?, password_changed_at = NOW()
+             WHERE id = ?
+             LIMIT 1'
+        );
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param('is', $flag, $userId);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+if (!function_exists('barangay_password_change_redirect')) {
+    /** Relative path from admin/ (or login root) for forced password change. */
+    function barangay_password_change_redirect(mysqli $con, string $userId): string
+    {
+        if (function_exists('barangay_user_can_access_nutrition_portal')
+            && barangay_user_can_access_nutrition_portal($con, $userId)) {
+            return 'admin/nutritionAccountProfile.php?force_password=1';
+        }
+
+        return 'admin/myProfile.php?force_password=1';
+    }
+}

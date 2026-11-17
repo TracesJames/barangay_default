@@ -23,23 +23,7 @@ if ($newPassword !== $confirmPassword) {
     nutrition_api_error('New password and confirmation do not match.', 422, ['code' => 'mismatch']);
 }
 
-if (strlen($newPassword) < 8) {
-    nutrition_api_error('New password must be at least 8 characters.', 422, ['code' => 'too_short']);
-}
-
-if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
-    nutrition_api_error(
-        'New password must include upper- and lowercase letters and at least one number.',
-        422,
-        ['code' => 'weak']
-    );
-}
-
-if (hash_equals($currentPassword, $newPassword)) {
-    nutrition_api_error('New password must be different from the current password.', 422, ['code' => 'unchanged']);
-}
-
-$stmt = $con->prepare('SELECT `id`, `password` FROM `users` WHERE `id` = ? LIMIT 1');
+$stmt = $con->prepare('SELECT `id`, `username`, `password` FROM `users` WHERE `id` = ? LIMIT 1');
 if (!$stmt) {
     nutrition_api_error('Could not load account.', 500);
 }
@@ -52,14 +36,22 @@ if (!$row) {
     nutrition_api_error('User account not found.', 401);
 }
 
+$policyError = barangay_validate_password_policy($newPassword, (string) ($row['username'] ?? ''));
+if ($policyError !== null) {
+    nutrition_api_error($policyError, 422, ['code' => 'weak']);
+}
+
+if (hash_equals($currentPassword, $newPassword)) {
+    nutrition_api_error('New password must be different from the current password.', 422, ['code' => 'unchanged']);
+}
+
 $stored = (string) ($row['password'] ?? '');
 if (!barangay_verify_password($currentPassword, $stored)) {
     nutrition_api_error('Current password is incorrect.', 400, ['code' => 'bad_current']);
 }
 
-nutrition_api_ensure_must_change_password_column($con);
 $hash = barangay_hash_password($newPassword);
-$upd = $con->prepare('UPDATE `users` SET `password` = ?, `must_change_password` = 0 WHERE `id` = ? LIMIT 1');
+$upd = $con->prepare('UPDATE `users` SET `password` = ? WHERE `id` = ? LIMIT 1');
 if (!$upd) {
     nutrition_api_error('Could not update password.', 500);
 }
@@ -69,6 +61,7 @@ if (!$upd->execute()) {
     nutrition_api_error('Could not update password.', 500);
 }
 $upd->close();
+barangay_mark_password_changed($con, $userId, false);
 
 // Keep this device signed in; revoke other mobile tokens for the account.
 nutrition_api_ensure_tokens_table($con);

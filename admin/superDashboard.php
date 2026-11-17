@@ -36,8 +36,37 @@ $activePage = 'super_dashboard';
 
 $hubTotals = barangay_hub_totals($con);
 $barangayRows = barangay_super_dashboard_rows($con);
+$nutritionTotals = nutrition_hub_totals($con);
+$nutritionStatus = nutrition_hub_status_totals($con);
+$nutritionRows = nutrition_super_dashboard_rows($con);
+
+$nutritionById = [];
+foreach ($nutritionRows as $nRow) {
+    $nutritionById[(string) ($nRow['id'] ?? '')] = $nRow;
+}
+foreach ($barangayRows as &$bRow) {
+    $nid = (string) ($bRow['id'] ?? '');
+    $n = $nutritionById[$nid] ?? [];
+    $bRow['nutrition_children'] = (int) ($n['children'] ?? 0);
+    $bRow['nutrition_assessed'] = (int) ($n['assessed'] ?? 0);
+    $bRow['nutrition_at_risk'] = (int) ($n['at_risk'] ?? 0);
+    $bRow['nutrition_surveys'] = (int) ($n['surveys'] ?? 0);
+    $bRow['nutrition_pending'] = (int) ($n['pending'] ?? 0);
+}
+unset($bRow);
+
 $barangayCount = count($barangayRows);
 $totalOfficials = array_sum(array_column($barangayRows, 'officials'));
+$nutritionChildren = (int) ($nutritionTotals['children'] ?? 0);
+$nutritionAssessed = (int) ($nutritionTotals['assessed'] ?? 0);
+$nutritionPending = (int) ($nutritionTotals['pending'] ?? 0);
+$nutritionAtRisk = (int) ($nutritionTotals['at_risk'] ?? 0);
+$nutritionPregnant = (int) ($nutritionTotals['pregnant'] ?? 0);
+$nutritionTeenPregnant = (int) ($nutritionTotals['teenage_pregnant'] ?? 0);
+$nutritionSurveys = (int) array_sum(array_column($barangayRows, 'nutrition_surveys'));
+$nutritionCoveragePct = $nutritionChildren > 0
+    ? round(($nutritionAssessed / $nutritionChildren) * 100, 1)
+    : 0.0;
 $brandLogo = barangay_default_logo_url('../');
 ?>
 <!DOCTYPE html>
@@ -51,8 +80,8 @@ $brandLogo = barangay_default_logo_url('../');
   <link rel="stylesheet" href="../assets/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="../assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="../assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
-  <link rel="stylesheet" href="../assets/css/dashboard.css">
-  <link rel="stylesheet" href="../assets/css/super-dashboard.css?v=20260720b">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=20261116b">
+  <link rel="stylesheet" href="../assets/css/super-dashboard.css?v=20261116c">
 <?php require_once '../includes/head_csrf.php'; ?>
 </head>
 <body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-dashboard barangay-super-dashboard barangay-portal">
@@ -85,99 +114,187 @@ $brandLogo = barangay_default_logo_url('../');
   <?php require __DIR__ . '/../includes/partials/super_admin_sidebar.php'; ?>
 
   <div class="content-wrapper">
-    <section class="content-header"></section>
-    <section class="content">
+    <section class="content pt-3">
       <div class="container-fluid">
+        <?php
+          $cityPop = (int) ($hubTotals['population'] ?? 0);
+          $cityVoters = (int) ($hubTotals['voters'] ?? 0);
+          $cityVoterPct = $cityPop > 0 ? round(($cityVoters / $cityPop) * 100, 1) : 0.0;
+        ?>
         <div class="super-dashboard-welcome">
-          <h1>Super Admin Dashboard</h1>
-          <p>City-wide overview across all <?= number_format($barangayCount) ?> barangays in Valencia City, Bukidnon.</p>
-          <div class="dashboard-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
-          <div class="super-dashboard-actions">
-            <a href="barangayHub.php?picker=1" class="btn btn-sm"><i class="fas fa-th-large"></i> Manage Barangays</a>
-            <a href="nutritionSuperDashboard.php" class="btn btn-sm"><i class="fas fa-apple-alt"></i> Nutrition Dashboard</a>
-            <a href="staffAccounts.php" class="btn btn-sm"><i class="fas fa-user-shield"></i> Staff Accounts</a>
-            <a href="systemLog.php" class="btn btn-sm"><i class="fas fa-history"></i> System Logs</a>
+          <div class="dashboard-welcome-grid">
+            <div class="dashboard-welcome-brand">
+              <img src="<?= barangay_h($brandLogo) ?>" alt="City of Valencia" class="dashboard-welcome-logo">
+              <div>
+                <p class="dashboard-eyebrow">Barangay Hub · Super Admin</p>
+                <h1>City of Valencia</h1>
+                <p class="dashboard-welcome-meta">
+                  <?= number_format($barangayCount) ?> barangays · Bukidnon
+                  <span class="dashboard-welcome-sep">·</span>
+                  Signed in as <?= barangay_h(ucfirst((string) $first_name_user)) ?>
+                  <?php if ($staffRoleLabel !== '') : ?>
+                  <span class="dashboard-welcome-sep">·</span>
+                  <?= barangay_h($staffRoleLabel) ?>
+                  <?php endif; ?>
+                </p>
+                <div class="dashboard-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
+              </div>
+            </div>
+            <div class="super-dashboard-actions">
+              <a href="barangayHub.php?picker=1" class="btn btn-sm dashboard-action-primary"><i class="fas fa-th-large"></i> Manage barangays</a>
+              <a href="staffAccounts.php" class="btn btn-sm"><i class="fas fa-user-shield"></i> Staff</a>
+              <a href="systemLog.php" class="btn btn-sm"><i class="fas fa-history"></i> Logs</a>
+              <a href="nutritionSuperDashboard.php" class="btn btn-sm dashboard-action-nutrition"><i class="fas fa-seedling"></i> Nutrition</a>
+            </div>
           </div>
         </div>
 
-        <h2 class="super-section-heading"><i class="fas fa-bolt mr-2"></i>Quick Actions</h2>
+        <div class="dashboard-section-label">Barangay Hub</div>
+        <div class="dashboard-kpi-row">
+          <a href="barangayHub.php?picker=1" class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Barangays</span>
+            <span class="dashboard-kpi-value"><?= number_format($barangayCount) ?></span>
+            <span class="dashboard-kpi-hint">City coverage</span>
+          </a>
+          <div class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Population</span>
+            <span class="dashboard-kpi-value"><?= number_format($cityPop) ?></span>
+            <span class="dashboard-kpi-hint">Registered residents</span>
+          </div>
+          <div class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Officials</span>
+            <span class="dashboard-kpi-value"><?= number_format((int) $totalOfficials) ?></span>
+            <span class="dashboard-kpi-hint">Across all barangays</span>
+          </div>
+          <div class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Voters</span>
+            <span class="dashboard-kpi-value"><?= number_format($cityVoters) ?></span>
+            <span class="dashboard-kpi-hint"><?= barangay_h((string) $cityVoterPct) ?>% of population</span>
+          </div>
+        </div>
+
+        <div class="dashboard-section-label">Nutrition Hub</div>
+        <div class="dashboard-kpi-row">
+          <a href="nutritionSuperDashboard.php" class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">Children</span>
+            <span class="dashboard-kpi-value"><?= number_format($nutritionChildren) ?></span>
+            <span class="dashboard-kpi-hint">0–<?= (int) nutrition_child_max_age_years() ?> tracked</span>
+          </a>
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">Assessed</span>
+            <span class="dashboard-kpi-value"><?= number_format($nutritionAssessed) ?></span>
+            <span class="dashboard-kpi-hint"><?= barangay_h((string) $nutritionCoveragePct) ?>% coverage</span>
+          </div>
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">At risk</span>
+            <span class="dashboard-kpi-value"><?= number_format($nutritionAtRisk) ?></span>
+            <span class="dashboard-kpi-hint"><?= number_format($nutritionPending) ?> pending</span>
+          </div>
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">Surveys</span>
+            <span class="dashboard-kpi-value"><?= number_format($nutritionSurveys) ?></span>
+            <span class="dashboard-kpi-hint"><?= number_format($nutritionPregnant) ?> pregnant · <?= number_format($nutritionTeenPregnant) ?> teen</span>
+          </div>
+        </div>
+
+        <h2 class="super-section-heading">Quick actions</h2>
         <div class="super-workflow-grid">
           <a href="barangayHub.php?picker=1" class="super-workflow-card super-workflow-card--barangay">
             <span class="super-workflow-card-icon"><i class="fas fa-th-large"></i></span>
-            <span class="super-workflow-card-title">Barangay Dashboard</span>
-            <span class="super-workflow-card-desc">Open any barangay portal to manage officials, residents, certificates, and blotter.</span>
+            <span class="super-workflow-card-title">Open barangay</span>
+            <span class="super-workflow-card-desc">Pick a barangay to manage officials, residents, certificates, and blotter.</span>
           </a>
           <a href="nutritionSuperDashboard.php" class="super-workflow-card super-workflow-card--nutrition">
-            <span class="super-workflow-card-icon"><i class="fas fa-apple-alt"></i></span>
-            <span class="super-workflow-card-title">Nutrition Dashboard</span>
-            <span class="super-workflow-card-desc">Switch into Nutrition Profiling for surveys, assessments, and reports.</span>
+            <span class="super-workflow-card-icon"><i class="fas fa-seedling"></i></span>
+            <span class="super-workflow-card-title">Nutrition city hub</span>
+            <span class="super-workflow-card-desc">Surveys, BNP / e-OPT, and city nutrition comparison.</span>
           </a>
           <a href="staffAccounts.php" class="super-workflow-card super-workflow-card--accounts">
             <span class="super-workflow-card-icon"><i class="fas fa-user-shield"></i></span>
-            <span class="super-workflow-card-title">Staff &amp; BNS Accounts</span>
-            <span class="super-workflow-card-desc">Create Super Admin, Admin, Barangay Staff, BNS, and BNS Admin accounts.</span>
+            <span class="super-workflow-card-title">Staff accounts</span>
+            <span class="super-workflow-card-desc">Manage Super Admin, Admin, Staff, BNS, and CNPC accounts.</span>
           </a>
           <a href="barangayCertificates.php" class="super-workflow-card super-workflow-card--system">
             <span class="super-workflow-card-icon"><i class="fas fa-certificate"></i></span>
             <span class="super-workflow-card-title">Certificates</span>
-            <span class="super-workflow-card-desc">Review city-wide certificate requests across all barangays.</span>
+            <span class="super-workflow-card-desc">Review city-wide certificate requests across barangays.</span>
           </a>
         </div>
 
-        <h2 class="super-section-heading"><i class="fas fa-chart-bar mr-2"></i>City Overview</h2>
-        <div class="dashboard-stats">
-          <div class="dashboard-stat dashboard-stat--barangays">
-            <i class="fas fa-map-marked-alt dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($barangayCount) ?></div>
-            <div class="dashboard-stat-label">Barangays</div>
-          </div>
-          <div class="dashboard-stat dashboard-stat--population">
-            <i class="fas fa-users dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['population'] ?? 0)) ?></div>
-            <div class="dashboard-stat-label">Total Population</div>
-          </div>
-          <div class="dashboard-stat dashboard-stat--voters">
+        <div class="dashboard-section-label">Barangay Hub · demographics</div>
+        <div class="dashboard-stats super-dashboard-stats">
+          <div class="dashboard-stat">
             <i class="fas fa-user-check dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['voters'] ?? 0)) ?></div>
+            <div class="dashboard-stat-value"><?= number_format($cityVoters) ?></div>
             <div class="dashboard-stat-label">Registered Voters</div>
           </div>
-          <div class="dashboard-stat dashboard-stat--senior">
-            <i class="fas fa-blind dashboard-stat-icon"></i>
+          <div class="dashboard-stat">
+            <i class="fas fa-user-clock dashboard-stat-icon"></i>
             <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['senior'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Senior Citizens</div>
           </div>
-          <div class="dashboard-stat dashboard-stat--children">
+          <div class="dashboard-stat">
             <i class="fas fa-child dashboard-stat-icon"></i>
             <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['children'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Children (0–17)</div>
           </div>
-          <div class="dashboard-stat dashboard-stat--pwd">
+          <div class="dashboard-stat">
             <i class="fas fa-wheelchair dashboard-stat-icon"></i>
             <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['pwd'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">PWD</div>
           </div>
-          <div class="dashboard-stat dashboard-stat--single">
-            <i class="fas fa-user-tie dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format((int) $totalOfficials) ?></div>
-            <div class="dashboard-stat-label">Officials</div>
-          </div>
-          <div class="dashboard-stat dashboard-stat--ip">
+          <div class="dashboard-stat">
             <i class="fas fa-feather-alt dashboard-stat-icon"></i>
             <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['indigenous'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Indigenous People</div>
           </div>
-          <div class="dashboard-stat dashboard-stat--blotter">
+          <div class="dashboard-stat">
             <i class="fas fa-book dashboard-stat-icon"></i>
             <div class="dashboard-stat-value"><?= number_format((int) ($hubTotals['blotter'] ?? 0)) ?></div>
             <div class="dashboard-stat-label">Blotter Records</div>
           </div>
         </div>
 
+        <div class="dashboard-section-label">Nutrition Hub · status</div>
+        <div class="dashboard-stats super-dashboard-stats super-nutrition-stats">
+          <div class="dashboard-stat dashboard-stat--nutrition">
+            <i class="fas fa-check-circle dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($nutritionStatus['normal'] ?? 0)) ?></div>
+            <div class="dashboard-stat-label">Normal</div>
+          </div>
+          <div class="dashboard-stat dashboard-stat--nutrition">
+            <i class="fas fa-weight dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($nutritionStatus['underweight'] ?? 0)) ?></div>
+            <div class="dashboard-stat-label">Underweight</div>
+          </div>
+          <div class="dashboard-stat dashboard-stat--nutrition">
+            <i class="fas fa-exclamation-triangle dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($nutritionStatus['wasted'] ?? 0)) ?></div>
+            <div class="dashboard-stat-label">Wasted</div>
+          </div>
+          <div class="dashboard-stat dashboard-stat--nutrition">
+            <i class="fas fa-notes-medical dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($nutritionStatus['severely_wasted'] ?? 0)) ?></div>
+            <div class="dashboard-stat-label">Severely Wasted</div>
+          </div>
+          <div class="dashboard-stat dashboard-stat--nutrition">
+            <i class="fas fa-ruler-vertical dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($nutritionStatus['stunted'] ?? 0)) ?></div>
+            <div class="dashboard-stat-label">Stunted</div>
+          </div>
+          <div class="dashboard-stat dashboard-stat--nutrition">
+            <i class="fas fa-balance-scale dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) (($nutritionStatus['overweight'] ?? 0) + ($nutritionStatus['obese'] ?? 0))) ?></div>
+            <div class="dashboard-stat-label">Overweight / Obese</div>
+          </div>
+        </div>
+
         <div class="card dashboard-panel">
           <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-list mr-1"></i> All Barangays</h3>
+            <h3 class="card-title"><i class="fas fa-list mr-1"></i> All barangays · Hub + Nutrition</h3>
             <div class="card-tools">
-              <a href="barangayHub.php?picker=1" class="btn btn-sm btn-primary"><i class="fas fa-th-large mr-1"></i> Open Hub</a>
+              <a href="barangayHub.php?picker=1" class="btn btn-sm btn-outline-light"><i class="fas fa-th-large mr-1"></i> Hub</a>
+              <a href="nutritionSuperDashboard.php" class="btn btn-sm btn-outline-light ml-1"><i class="fas fa-seedling mr-1"></i> Nutrition</a>
             </div>
           </div>
           <div class="card-body">
@@ -188,9 +305,12 @@ $brandLogo = barangay_default_logo_url('../');
                   <th>Zone</th>
                   <th>Population</th>
                   <th>Officials</th>
-                  <th>Certificates</th>
                   <th>Blotter</th>
-                  <th>Admin Account</th>
+                  <th>Surveys</th>
+                  <th>Children</th>
+                  <th>Assessed</th>
+                  <th>At risk</th>
+                  <th>Admin</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -204,8 +324,11 @@ $brandLogo = barangay_default_logo_url('../');
                   <td><?= barangay_h($row['zone']) ?></td>
                   <td><?= number_format((int) $row['population']) ?></td>
                   <td><?= number_format((int) $row['officials']) ?></td>
-                  <td><?= number_format((int) ($row['certificates'] ?? 0)) ?></td>
                   <td><?= number_format((int) $row['blotter']) ?></td>
+                  <td><?= number_format((int) ($row['nutrition_surveys'] ?? 0)) ?></td>
+                  <td><?= number_format((int) ($row['nutrition_children'] ?? 0)) ?></td>
+                  <td><?= number_format((int) ($row['nutrition_assessed'] ?? 0)) ?></td>
+                  <td><?= number_format((int) ($row['nutrition_at_risk'] ?? 0)) ?></td>
                   <td><code><?= barangay_h($row['admin_username'] ?? '—') ?></code></td>
                   <td>
                     <form method="post" action="selectBarangay.php" class="d-inline js-open-barangay-form">

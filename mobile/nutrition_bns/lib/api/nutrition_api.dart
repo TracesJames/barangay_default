@@ -6,14 +6,17 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 
 class ApiException implements Exception {
-  ApiException(this.message, {this.status, this.code});
+  ApiException(this.message, {this.status, this.code, this.raw});
   final String message;
   final int? status;
   final String? code;
+  final Map<String, dynamic>? raw;
 
   bool get isRateLimited => status == 429 || code == 'rate_limited';
   bool get isUnauthorized => status == 401;
   bool get isNetwork => status == null && code == 'network';
+  bool get isConflict => status == 409;
+  bool get duplicateOverrideAllowed => code == 'duplicate_override_allowed';
 
   @override
   String toString() => message;
@@ -97,6 +100,7 @@ class NutritionApi {
         _friendlyError(body, res.statusCode),
         status: res.statusCode,
         code: body['code']?.toString(),
+        raw: body,
       );
     }
     return body;
@@ -273,6 +277,59 @@ class NutritionApi {
       ),
     );
     return _json(res);
+  }
+
+  Future<Map<String, dynamic>> appConfig({int versionCode = 0}) async {
+    final res = await _send(
+      () => _client.get(
+        _uri('/app-config.php', {
+          if (versionCode > 0) 'version_code': '$versionCode',
+        }),
+        headers: _headers,
+      ),
+    );
+    return _json(res);
+  }
+
+  Future<List<dynamic>> incompleteHouseholds({int limit = 100}) async {
+    final res = await _send(
+      () => _client.get(
+        _uri('/incomplete-households.php', {'limit': '$limit'}),
+        headers: _headers,
+      ),
+    );
+    final body = _json(res);
+    final data = body['incomplete'] ?? body['data'] ?? [];
+    return data is List ? data : [];
+  }
+
+  Future<Map<String, dynamic>> uploadSurveyPhoto({
+    required String surveyId,
+    required List<int> bytes,
+    required String filename,
+    String memberId = '',
+    String note = '',
+  }) async {
+    final base = apiBase.endsWith('/') ? apiBase.substring(0, apiBase.length - 1) : apiBase;
+    final uri = Uri.parse('$base/attachment.php');
+    final req = http.MultipartRequest('POST', uri);
+    if (_token != null && _token!.isNotEmpty) {
+      req.headers['Authorization'] = 'Bearer $_token';
+    }
+    req.headers['Accept'] = 'application/json';
+    req.fields['survey_id'] = surveyId;
+    if (memberId.isNotEmpty) req.fields['member_id'] = memberId;
+    if (note.isNotEmpty) req.fields['note'] = note;
+    req.files.add(http.MultipartFile.fromBytes('photo', bytes, filename: filename));
+    try {
+      final streamed = await req.send().timeout(const Duration(seconds: 60));
+      final res = await http.Response.fromStream(streamed);
+      return _json(res);
+    } on TimeoutException {
+      throw ApiException('Upload timed out. Try again on better Wi‑Fi.', code: 'network');
+    } on http.ClientException {
+      throw ApiException('No connection for photo upload.', code: 'network');
+    }
   }
 }
 

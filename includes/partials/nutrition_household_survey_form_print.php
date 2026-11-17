@@ -147,7 +147,7 @@ $feedingOptions = [
       <span class="line<?= $prefillPurok !== '' ? ' prefill' : '' ?>"><?= $prefillPurok !== '' ? barangay_h($prefillPurok) : '&nbsp;' ?></span>
     </div>
     <div class="field col-6"><label>Name of BNS</label><span class="line">&nbsp;</span></div>
-    <div class="field col-6"><label>Household No.</label><span class="line">&nbsp;</span></div>
+    <div class="field col-6"><label>Resident Number</label><span class="line">&nbsp;</span></div>
     <div class="field col-6"><label>No. of Household members</label><span class="line">&nbsp;</span></div>
     <div class="field col-6"><label>Survey Date</label><span class="line">&nbsp;</span></div>
   </div>

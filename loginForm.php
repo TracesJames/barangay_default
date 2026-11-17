@@ -71,6 +71,12 @@ if($count > 0){
       barangay_login_rate_limit_success($username);
       barangay_session_guard_issue($con, (string) $user_id);
 
+      if (function_exists('barangay_user_must_change_password')
+          && barangay_user_must_change_password($con, (string) $user_id)) {
+          $_SESSION['force_password_change'] = 1;
+          exit('must_change_password');
+      }
+
       date_default_timezone_set('Asia/Manila');
       $dates = new DateTime();
       $uniqid = uniqid(mt_rand().$dates->format("YmdHisv").rand());

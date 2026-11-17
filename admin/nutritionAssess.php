@@ -178,7 +178,7 @@ natcasesort($purokOptions);
               <table class="table table-striped table-hover table-sm w-100" id="householdTable">
                 <thead>
                   <tr>
-                    <th>Household No.</th>
+                    <th>Resident Number</th>
                     <th>Purok</th>
                     <th>Household Head</th>
                     <th class="text-center">Members</th>
@@ -206,7 +206,7 @@ natcasesort($purokOptions);
                       }
                       ?>
                   <tr class="<?= $movedOut ? 'household-moved-out' : '' ?>" data-moved-out="<?= $movedOut ? 'YES' : 'NO' ?>">
-                    <td><code><?= barangay_h((string) ($household['house_hold_id'] ?? '')) ?></code></td>
+                    <td><code><?= barangay_h(trim((string) ($household['house_hold_id'] ?? '')) !== '' ? (string) $household['house_hold_id'] : '—') ?></code></td>
                     <td><?= barangay_h((string) ($household['purok_label'] ?? '')) ?></td>
                     <td>
                       <?= barangay_h(nutrition_household_head_display($household)) ?>

@@ -4,11 +4,11 @@ include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 require_once '../includes/partials/nutrition_init.php';
 
-$filters = [
+$filters = nutrition_apply_bns_report_filters($con, (string) $user_id, (string) $barangay_id, [
     'purok' => trim((string) ($_GET['purok'] ?? '')),
     'date_from' => trim((string) ($_GET['date_from'] ?? '')),
     'date_to' => trim((string) ($_GET['date_to'] ?? '')),
-];
+]);
 $calendarYear = (int) ($_GET['year'] ?? date('Y'));
 if ($calendarYear < 2000 || $calendarYear > 2100) {
     $calendarYear = (int) date('Y');
@@ -20,7 +20,11 @@ $reportMode = nutrition_bnp_normalize_mode($_GET['mode'] ?? 'consolidated');
 $modeSelectable = false;
 $isCityWide = false;
 $nutritionSettings = $nutritionSettings ?? nutrition_load_settings($con, (string) $barangay_id, (string) $barangay);
-$bnsName = trim((string) ($pregnantReport['bns_name'] ?? ($nutritionSettings['nutrition_officer'] ?? '')));
+$signatory = nutrition_prepared_by_signatory($con, (string) $user_id, (string) ($nutritionSettings['nutrition_officer'] ?? ''));
+$bnsName = trim((string) ($signatory['name'] ?? ''));
+if ($bnsName === '') {
+    $bnsName = trim((string) ($pregnantReport['bns_name'] ?? ($nutritionSettings['nutrition_officer'] ?? '')));
+}
 if ($bnsName === '') {
     $bnsAccounts = nutrition_bns_accounts_by_barangay($con);
     $assignedBns = $bnsAccounts[(string) $barangay_id] ?? null;

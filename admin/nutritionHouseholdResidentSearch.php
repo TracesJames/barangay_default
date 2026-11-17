@@ -85,7 +85,7 @@ while ($row = $query->fetch_assoc()) {
     }
     $results[] = [
         'id' => $row['residence_id'],
-        'text' => strtoupper($label),
+        'text' => $row['residence_id'] . ' — ' . strtoupper($label),
     ];
 }
 

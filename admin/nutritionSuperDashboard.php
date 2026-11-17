@@ -5,6 +5,7 @@ include_once '../includes/auth_admin.php';
 require_once '../includes/barangay_context.php';
 require_once '../includes/staff_permissions.php';
 require_once '../includes/nutrition_context.php';
+require_once '../includes/nutrition_export_xlsx.php';
 require_once '../includes/csrf.php';
 
 nutrition_ensure_module_tables($con);
@@ -46,9 +47,17 @@ $activePage = 'nutrition_super_dashboard';
 $brandLogo = barangay_default_logo_url('../');
 
 $cnpcBarangayIds = $isCnpc ? staff_assigned_barangay_ids($con, $user_id) : null;
-$barangayRows = nutrition_super_dashboard_rows($con, $cnpcBarangayIds);
+$compareFilters = nutrition_export_filters_from_request($_GET);
+$barangayRows = nutrition_cnpc_comparison_rows($con, $cnpcBarangayIds, $compareFilters);
 $barangayCount = count($barangayRows);
 $totalSurveys = array_sum(array_column($barangayRows, 'surveys'));
+$compareQuery = http_build_query(array_filter([
+    'month' => $compareFilters['month'] ?? '',
+    'date_from' => $compareFilters['date_from'] ?? '',
+    'date_to' => $compareFilters['date_to'] ?? '',
+]));
+$compareExcelHref = 'nutritionCityComparisonExportExcel.php' . ($compareQuery !== '' ? '?' . $compareQuery : '');
+$comparePrintHref = 'nutritionSuperPrintReport.php' . ($compareQuery !== '' ? '?' . $compareQuery : '');
 
 $childrenTotal = (int) array_sum(array_column($barangayRows, 'children'));
 $assessedTotal = (int) array_sum(array_column($barangayRows, 'assessed'));
@@ -264,7 +273,8 @@ if ($nutritionRecommendations === []) {
   <link rel="stylesheet" href="../assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
   <link rel="stylesheet" href="../assets/css/super-dashboard.css?v=20260720b">
 <?php require_once '../includes/head_csrf.php'; ?>
-  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20260908a">
+  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20261116a">
+  <link rel="stylesheet" href="../assets/css/ux-polish.css?v=20261116a">
 </head>
 <body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-portal nutrition-portal nutrition-super-dashboard">
 <div class="wrapper">
@@ -536,10 +546,13 @@ if ($nutritionRecommendations === []) {
 
         <div class="card nutrition-panel">
           <div class="card-header">
-            <h3 class="card-title"><i class="fas fa-list mr-2"></i>All Barangays · Nutrition Summary</h3>
+            <h3 class="card-title"><i class="fas fa-balance-scale mr-2"></i>Barangay Comparison</h3>
             <div class="card-tools">
-              <a href="nutritionSuperPrintReport.php" target="_blank" class="btn btn-sm btn-outline-success mr-1">
-                <i class="fas fa-print mr-1"></i> Print Report
+              <a href="<?= barangay_h($compareExcelHref) ?>" class="btn btn-sm btn-outline-success mr-1">
+                <i class="fas fa-file-excel mr-1"></i> Export Excel
+              </a>
+              <a href="<?= barangay_h($comparePrintHref) ?>" target="_blank" class="btn btn-sm btn-outline-light mr-1">
+                <i class="fas fa-file-pdf mr-1"></i> PDF / Print
               </a>
               <a href="barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker" class="btn btn-sm btn-success">
                 <i class="fas fa-th-large mr-1"></i> Open Picker
@@ -547,6 +560,26 @@ if ($nutritionRecommendations === []) {
             </div>
           </div>
           <div class="card-body">
+            <form method="get" class="form-row align-items-end mb-3 ux-filter-bar">
+              <div class="form-group col-md-3 mb-2">
+                <label for="month">Month</label>
+                <input type="month" class="form-control" id="month" name="month" value="<?= barangay_h((string) ($compareFilters['month'] ?? '')) ?>">
+              </div>
+              <div class="form-group col-md-3 mb-2">
+                <label for="date_from">From</label>
+                <input type="date" class="form-control" id="date_from" name="date_from" value="<?= barangay_h((string) ($compareFilters['date_from'] ?? '')) ?>">
+              </div>
+              <div class="form-group col-md-3 mb-2">
+                <label for="date_to">To</label>
+                <input type="date" class="form-control" id="date_to" name="date_to" value="<?= barangay_h((string) ($compareFilters['date_to'] ?? '')) ?>">
+              </div>
+              <div class="form-group col-md-3 mb-2">
+                <div class="ux-filter-actions">
+                  <button type="submit" class="btn btn-success"><i class="fas fa-filter mr-1"></i> Compare</button>
+                  <a href="nutritionSuperDashboard.php" class="btn btn-outline-light">Clear</a>
+                </div>
+              </div>
+            </form>
             <div class="table-responsive nutrition-super-barangay-table-wrap">
             <table id="nutritionSuperBarangayTable" class="table table-bordered table-striped table-dark mb-0 w-100">
               <thead>
@@ -555,10 +588,14 @@ if ($nutritionRecommendations === []) {
                   <th>Zone</th>
                   <th>Children</th>
                   <th>Assessed</th>
-                  <th>Pending</th>
+                  <th>Coverage %</th>
                   <th>At-Risk</th>
+                  <th>e-OPT measured</th>
+                  <th>e-OPT at-risk</th>
+                  <th>UW/SUW</th>
+                  <th>St/SSt</th>
                   <th>Surveys</th>
-                  <th>BNS Account</th>
+                  <th>BNS</th>
                   <th class="text-nowrap">Action</th>
                 </tr>
               </thead>
@@ -572,17 +609,21 @@ if ($nutritionRecommendations === []) {
                   <td><?= barangay_h($row['zone']) ?></td>
                   <td><?= number_format((int) $row['children']) ?></td>
                   <td><?= number_format((int) $row['assessed']) ?></td>
-                  <td><?= number_format((int) $row['pending']) ?></td>
+                  <td><?= barangay_h((string) ($row['coverage_pct'] ?? 0)) ?>%</td>
                   <td><?= number_format((int) $row['at_risk']) ?></td>
+                  <td><?= number_format((int) ($row['eopt_measured'] ?? 0)) ?></td>
+                  <td><?= number_format((int) ($row['eopt_at_risk'] ?? 0)) ?></td>
+                  <td><?= number_format((int) ($row['eopt_uw_suw'] ?? 0)) ?></td>
+                  <td><?= number_format((int) ($row['eopt_st_sst'] ?? 0)) ?></td>
                   <td><?= number_format((int) $row['surveys']) ?></td>
                   <td><code><?= barangay_h($row['bns_username'] !== '' ? $row['bns_username'] : '—') ?></code></td>
                   <td class="text-nowrap">
                     <form method="post" action="selectBarangay.php" class="d-inline js-open-nutrition-form">
                       <?= csrf_field(); ?>
                       <input type="hidden" name="barangay_id" value="<?= barangay_h($row['id']) ?>">
-                      <input type="hidden" name="redirect" value="nutritionDashboard.php">
+                      <input type="hidden" name="redirect" value="nutritionBnpReport.php">
                       <button type="submit" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-external-link-alt mr-1"></i> Open
+                        <i class="fas fa-chart-line mr-1"></i> e-OPT
                       </button>
                     </form>
                   </td>

@@ -195,7 +195,7 @@ try{
   <link rel="stylesheet" href="../assets/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">
   <link rel="stylesheet" href="../assets/plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="../assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
-  <link rel="stylesheet" href="../assets/css/dashboard.css">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=20261116b">
 <?php require_once '../includes/head_csrf.php'; ?>
 </head>
 <body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-dashboard barangay-portal">
@@ -401,6 +401,20 @@ try{
                   <p>Staff Accounts</p>
                 </a>
               </li>
+              <?php if (function_exists('barangay_user_can_manage_puroks') && barangay_user_can_manage_puroks($con, (string) ($_SESSION['user_id'] ?? ''))) : ?>
+              <li class="nav-item">
+                <a href="managePuroks.php" class="nav-link">
+                  <i class="fas fa-circle nav-icon text-red"></i>
+                  <p>Manage Purok / Sitio</p>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="idSeriesTools.php" class="nav-link">
+                  <i class="fas fa-circle nav-icon text-red"></i>
+                  <p>ID Series Tools</p>
+                </a>
+              </li>
+              <?php endif; ?>
 
             </ul>
           </li>
@@ -469,103 +483,112 @@ try{
 
   <!-- Content Wrapper. Contains page content -->
   <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
-    <div class="content-header">
-      <div class="container-fluid">
-        <div class="row mb-2">
-          <div class="col-sm-6">
-            
-          </div><!-- /.col -->
-          <div class="col-sm-6">
-            <ol class="breadcrumb float-sm-right">
-              
-            </ol>
-          </div><!-- /.col -->
-        </div><!-- /.row -->
-      </div><!-- /.container-fluid -->
-    </div>
-    <!-- /.content-header -->
-
     <!-- Main content -->
-    <section class="content">
+    <section class="content pt-3">
       <div class="container-fluid">
+        <?php
+          $dashLogo = !empty($sidebarLogo) ? (string) $sidebarLogo : '../assets/dist/img/image.png';
+          $dashOfficialTotal = (int) ($row_total_official['total_official'] ?? 0);
+          $dashPop = (int) ($count_total_residence ?? 0);
+          $dashVoters = (int) ($count_voters_yes ?? 0);
+          $dashVoterPct = $dashPop > 0 ? round(($dashVoters / $dashPop) * 100, 1) : 0.0;
+          $zoneText = trim((string) ($zone ?? ''));
+          $districtText = trim((string) ($district ?? ''));
+          $placeLine = trim($zoneText . ($districtText !== '' ? ($zoneText !== '' ? ' · ' : '') . $districtText : ''));
+        ?>
 
         <div class="dashboard-welcome">
-          <div class="row align-items-center">
-            <div class="col-auto d-none d-md-block">
-              <?php
-                $dashLogo = barangay_logo_url($activeBarangay, '../');
-              ?>
-              <img src="<?= barangay_h($dashLogo) ?>" alt="" class="rounded-circle" style="width:72px;height:72px;object-fit:cover;border:3px solid rgba(255,255,255,.3);">
-            </div>
-            <div class="col-lg-8">
-              <h1>Welcome back, <?= htmlspecialchars(ucfirst($first_name_user), ENT_QUOTES, 'UTF-8') ?>!</h1>
-              <p><?= htmlspecialchars($barangay . ' · ' . $zone . ' · ' . $district, ENT_QUOTES, 'UTF-8') ?> — Barangay administration overview</p>
-              <div class="dashboard-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
-              <div class="dashboard-actions">
-                <?php if ($isSuperAdmin) { ?>
-                <a href="superDashboard.php" class="btn btn-sm"><i class="fas fa-city"></i> Super Admin</a>
-                <a href="barangayHub.php?picker=1" class="btn btn-sm"><i class="fas fa-th-large"></i> All Barangays</a>
-                <?php } ?>
-                <a href="newResidence.php" class="btn btn-sm"><i class="fas fa-user-plus"></i> New Resident</a>
-                <?php if (barangay_user_is_ssa($con, (string) $user_id)) { ?>
-                <a href="nutritionDashboard.php" class="btn btn-sm btn-success"><i class="fas fa-seedling"></i> Nutrition Profiling</a>
-                <?php } ?>
-                <a href="newOfficial.php" class="btn btn-sm"><i class="fas fa-user-tie"></i> New Official</a>
-                <a href="blotterRecord.php" class="btn btn-sm"><i class="fas fa-clipboard"></i> Blotter</a>
-                <?php if (!empty($canIssueCertificate)) { ?>
-                <a href="requestCertificate.php" class="btn btn-sm"><i class="fas fa-certificate"></i> Certificates</a>
-                <?php } ?>
+          <div class="dashboard-welcome-grid">
+            <div class="dashboard-welcome-brand">
+              <img src="<?= barangay_h($dashLogo) ?>" alt="<?= barangay_h((string) $barangay) ?>" class="dashboard-welcome-logo">
+              <div>
+                <p class="dashboard-eyebrow">Barangay Hub · City of Valencia</p>
+                <h1><?= barangay_h((string) $barangay) ?></h1>
+                <p class="dashboard-welcome-meta">
+                  <?= $placeLine !== '' ? barangay_h($placeLine) : 'Valencia City' ?>
+                  <span class="dashboard-welcome-sep">·</span>
+                  Signed in as <?= barangay_h(ucfirst((string) $first_name_user)) ?>
+                </p>
+                <div class="dashboard-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
               </div>
+            </div>
+            <div class="dashboard-actions">
+              <a href="newResidence.php" class="btn btn-sm dashboard-action-primary"><i class="fas fa-user-plus"></i> New Resident</a>
+              <a href="allResidence.php" class="btn btn-sm"><i class="fas fa-users"></i> Residents</a>
+              <a href="allOfficial.php" class="btn btn-sm"><i class="fas fa-user-tie"></i> Officials</a>
+              <?php if (!empty($canIssueCertificate)) { ?>
+              <a href="requestCertificate.php" class="btn btn-sm"><i class="fas fa-certificate"></i> Certificates</a>
+              <?php } ?>
+              <a href="blotterRecord.php" class="btn btn-sm"><i class="fas fa-clipboard"></i> Blotter</a>
+              <?php if ($isSuperAdmin) { ?>
+              <a href="barangayHub.php?picker=1" class="btn btn-sm"><i class="fas fa-th-large"></i> Switch barangay</a>
+              <?php } ?>
+              <?php if (barangay_user_is_ssa($con, (string) $user_id)) { ?>
+              <a href="nutritionDashboard.php" class="btn btn-sm dashboard-action-nutrition"><i class="fas fa-seedling"></i> Nutrition</a>
+              <?php } ?>
             </div>
           </div>
         </div>
 
-        <div class="dashboard-stats">
-          <a href="allResidence.php" class="dashboard-stat dashboard-stat--population dashboard-stat-link">
-            <i class="fas fa-users dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_total_residence ?? 0) ?></div>
-            <div class="dashboard-stat-label">Population</div>
+        <div class="dashboard-kpi-row">
+          <a href="allResidence.php" class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Population</span>
+            <span class="dashboard-kpi-value"><?= number_format($dashPop) ?></span>
+            <span class="dashboard-kpi-hint">Registered residents</span>
           </a>
-          <a href="allResidence.php?filter=voters" class="dashboard-stat dashboard-stat--voters dashboard-stat-link">
+          <a href="allOfficial.php" class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Officials</span>
+            <span class="dashboard-kpi-value"><?= number_format($dashOfficialTotal) ?></span>
+            <span class="dashboard-kpi-hint">Active term roster</span>
+          </a>
+          <a href="blotterRecord.php" class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Blotter</span>
+            <span class="dashboard-kpi-value"><?= number_format((int) ($total_blotter_record ?? 0)) ?></span>
+            <span class="dashboard-kpi-hint">Incident records</span>
+          </a>
+          <a href="allResidence.php?filter=voters" class="dashboard-kpi">
+            <span class="dashboard-kpi-label">Voters</span>
+            <span class="dashboard-kpi-value"><?= number_format($dashVoters) ?></span>
+            <span class="dashboard-kpi-hint"><?= barangay_h((string) $dashVoterPct) ?>% of population</span>
+          </a>
+        </div>
+
+        <div class="dashboard-section-label">Resident segments</div>
+        <div class="dashboard-stats">
+          <a href="allResidence.php?filter=voters" class="dashboard-stat dashboard-stat-link">
             <i class="fas fa-user-check dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_voters_yes ?? 0) ?></div>
+            <div class="dashboard-stat-value"><?= number_format($dashVoters) ?></div>
             <div class="dashboard-stat-label">Registered Voters</div>
           </a>
-          <a href="allResidence.php?filter=non_voters" class="dashboard-stat dashboard-stat--nonvoters dashboard-stat-link">
+          <a href="allResidence.php?filter=non_voters" class="dashboard-stat dashboard-stat-link">
             <i class="fas fa-user-times dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_voters_no ?? 0) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($count_voters_no ?? 0)) ?></div>
             <div class="dashboard-stat-label">Non-Voters</div>
           </a>
-          <a href="allResidence.php?filter=senior" class="dashboard-stat dashboard-stat--senior dashboard-stat-link">
-            <i class="fas fa-blind dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_senior ?? 0) ?></div>
+          <a href="allResidence.php?filter=senior" class="dashboard-stat dashboard-stat-link">
+            <i class="fas fa-user-clock dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($count_senior ?? 0)) ?></div>
             <div class="dashboard-stat-label">Senior Citizens</div>
           </a>
-          <a href="allResidence.php?filter=children" class="dashboard-stat dashboard-stat--children dashboard-stat-link">
+          <a href="allResidence.php?filter=children" class="dashboard-stat dashboard-stat-link">
             <i class="fas fa-child dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_children ?? 0) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($count_children ?? 0)) ?></div>
             <div class="dashboard-stat-label">Children (0–17)</div>
           </a>
-          <a href="allResidence.php?filter=pwd" class="dashboard-stat dashboard-stat--pwd dashboard-stat-link">
+          <a href="allResidence.php?filter=pwd" class="dashboard-stat dashboard-stat-link">
             <i class="fas fa-wheelchair dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_pwd_yes ?? 0) ?></div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($count_pwd_yes ?? 0)) ?></div>
             <div class="dashboard-stat-label">Persons with Disability</div>
           </a>
-          <a href="blotterRecord.php" class="dashboard-stat dashboard-stat--blotter dashboard-stat-link">
-            <i class="fas fa-book dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($total_blotter_record ?? 0) ?></div>
-            <div class="dashboard-stat-label">Blotter Records</div>
-          </a>
-          <a href="allResidence.php?filter=single_parent" class="dashboard-stat dashboard-stat--single dashboard-stat-link">
-            <i class="fas fa-baby dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_single_parent_yes ?? 0) ?></div>
+          <a href="allResidence.php?filter=single_parent" class="dashboard-stat dashboard-stat-link">
+            <i class="fas fa-home dashboard-stat-icon"></i>
+            <div class="dashboard-stat-value"><?= number_format((int) ($count_single_parent_yes ?? 0)) ?></div>
             <div class="dashboard-stat-label">Single Parents</div>
           </a>
-          <a href="allResidence.php?filter=indigenous" class="dashboard-stat dashboard-stat--ip dashboard-stat-link">
+          <a href="allResidence.php?filter=indigenous" class="dashboard-stat dashboard-stat-link">
             <i class="fas fa-feather-alt dashboard-stat-icon"></i>
-            <div class="dashboard-stat-value"><?= number_format($count_indigenous_yes ?? 0) ?></div>
-            <div class="dashboard-stat-label">Indigenous People (IP)</div>
+            <div class="dashboard-stat-value"><?= number_format((int) ($count_indigenous_yes ?? 0)) ?></div>
+            <div class="dashboard-stat-label">Indigenous People</div>
           </a>
         </div>
 

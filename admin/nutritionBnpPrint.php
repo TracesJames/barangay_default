@@ -11,11 +11,11 @@ if ($meta === null) {
     $meta = nutrition_bnp_resolve_type($typeKey);
 }
 
-$filters = [
+$filters = nutrition_apply_bns_report_filters($con, (string) $user_id, (string) $barangay_id, [
     'purok' => trim((string) ($_GET['purok'] ?? '')),
     'date_from' => trim((string) ($_GET['date_from'] ?? '')),
     'date_to' => trim((string) ($_GET['date_to'] ?? '')),
-];
+]);
 $calendarYear = (int) ($_GET['year'] ?? date('Y'));
 if ($calendarYear < 2000 || $calendarYear > 2100) {
     $calendarYear = (int) date('Y');
@@ -29,8 +29,12 @@ $barangayName = (string) $barangay;
 $isCityWide = false;
 $pregnantReport = $bnpReport;
 
-// Prefer assigned BNS staff account, then settings / report value.
-$bnsName = trim((string) ($bnpReport['bns_name'] ?? ''));
+// Prefer logged-in BNS, then report / settings / assigned account.
+$signatory = nutrition_prepared_by_signatory($con, (string) $user_id, (string) ($nutritionSettings['nutrition_officer'] ?? ''));
+$bnsName = trim((string) ($signatory['name'] ?? ''));
+if ($bnsName === '') {
+    $bnsName = trim((string) ($bnpReport['bns_name'] ?? ''));
+}
 if ($bnsName === '') {
     $bnsName = trim((string) ($nutritionSettings['nutrition_officer'] ?? ''));
 }

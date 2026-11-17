@@ -11,15 +11,9 @@ $body = nutrition_api_json_body();
 $override = trim((string) ($_GET['barangay_id'] ?? $body['barangay_id'] ?? ''));
 $ctx = nutrition_api_require_active_barangay($con, $auth, $override !== '' ? $override : null);
 
-$filters = [];
-if (barangay_user_is_barangay_nutrition_scholar($con, $auth['user_id'])) {
-    $assigned = staff_assigned_purok_labels($con, $auth['user_id'], $ctx['barangay_id']);
-    if ($assigned !== []) {
-        $filters['purok_in'] = $assigned;
-    }
-}
+$filters = nutrition_apply_bns_report_filters($con, $auth['user_id'], $ctx['barangay_id']);
 
-$totals = nutrition_scoped_totals($con, $ctx['barangay_id']);
+$totals = nutrition_scoped_totals($con, $ctx['barangay_id'], $filters);
 $rows = nutrition_list_household_surveys($con, $ctx['barangay_id'], 200, $filters);
 $consolidated = [];
 foreach ($rows as $row) {

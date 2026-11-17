@@ -273,6 +273,7 @@ foreach ($roleCases as $role => $expect) {
         STAFF_ROLE_SSA,
         STAFF_ROLE_SUPER_ADMIN,
         STAFF_ROLE_NUTRITION_SUPER_ADMIN,
+        STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN,
     ], true);
     assert_true(
         "{$who}: staff account management",
@@ -281,12 +282,17 @@ foreach ($roleCases as $role => $expect) {
 
     if ($role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
         assert_true(
-            "{$who}: cannot open staff accounts page",
-            !barangay_bns_admin_can_access_script('staffAccounts.php')
+            "{$who}: same nutrition hub role as Nutrition SA",
+            barangay_user_is_nutrition_portal_admin($con, $uid)
+                && nutrition_user_can_save_settings($con, $uid)
         );
         assert_true(
-            "{$who}: cannot save staff accounts",
-            !barangay_bns_admin_can_access_script('saveStaffAccount.php')
+            "{$who}: can open staff accounts page",
+            barangay_bns_admin_can_access_script('staffAccounts.php')
+        );
+        assert_true(
+            "{$who}: can save staff accounts",
+            barangay_bns_admin_can_access_script('saveStaffAccount.php')
         );
         assert_true(
             "{$who}: can open household survey page",
@@ -309,8 +315,8 @@ foreach ($roleCases as $role => $expect) {
             barangay_bns_admin_can_access_script('nutritionSettings.php')
         );
         assert_true(
-            "{$who}: cannot save settings",
-            !barangay_bns_admin_can_access_script('saveNutritionSettings.php')
+            "{$who}: can save settings",
+            barangay_bns_admin_can_access_script('saveNutritionSettings.php')
         );
         assert_true(
             "{$who}: can open delete endpoint",

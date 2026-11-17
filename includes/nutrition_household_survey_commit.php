@@ -43,25 +43,44 @@ $headFirstName = trim((string) ($_POST['head_first_name'] ?? ''));
 $headMiddleName = trim((string) ($_POST['head_middle_name'] ?? ''));
 $headSuffix = trim((string) ($_POST['head_suffix'] ?? ''));
 $surveyDate = nutrition_normalize_date_to_ymd(trim((string) ($_POST['survey_date'] ?? '')));
-$purokNumber = trim((string) ($_POST['purok_number'] ?? ''));
-$purokLabel = nutrition_purok_label_from_number($purokNumber);
+$purokRaw = trim((string) ($_POST['purok_label'] ?? $_POST['purok_number'] ?? ''));
+$purokGate = barangay_assert_purok_allowed($con, $userId, $barangayId, $purokRaw);
+if (!$purokGate['ok']) {
+    return [
+        'ok' => false,
+        'status' => (int) ($purokGate['status'] ?? 400),
+        'error' => (string) ($purokGate['error'] ?? 'Invalid Purok / Sitio.'),
+    ];
+}
+$purokLabel = (string) ($purokGate['purok_label'] ?? '');
+$purokNumber = nutrition_purok_input_from_label($purokLabel);
+if ($purokNumber === '') {
+    $purokNumber = $purokLabel;
+}
 $gender = trim((string) ($_POST['gender'] ?? ''));
 $occupation = trim((string) ($_POST['occupation'] ?? ''));
 $bnsName = trim((string) ($_POST['bns_name'] ?? ''));
-
-if ($purokLabel === '') {
-    return ['ok' => false, 'status' => 400, 'error' => 'Purok is required.'];
+if ($bnsName === '' && $userId !== '') {
+    $bnsStmt = $con->prepare('SELECT first_name, middle_name, last_name FROM users WHERE id = ? LIMIT 1');
+    if ($bnsStmt) {
+        $bnsStmt->bind_param('s', $userId);
+        $bnsStmt->execute();
+        $bnsRow = $bnsStmt->get_result()->fetch_assoc() ?: [];
+        $bnsStmt->close();
+        if (function_exists('nutrition_staff_display_name')) {
+            $bnsName = nutrition_staff_display_name($bnsRow);
+        } else {
+            $bnsName = trim(
+                trim((string) ($bnsRow['first_name'] ?? '')) . ' ' .
+                trim((string) ($bnsRow['middle_name'] ?? '')) . ' ' .
+                trim((string) ($bnsRow['last_name'] ?? ''))
+            );
+        }
+    }
 }
 
-if (!staff_user_can_access_purok($con, $userId, $purokLabel)) {
-    return ['ok' => false, 'status' => 403, 'error' => 'You are not assigned to this purok. Ask your Nutrition Admin to update your BNS purok assignment.'];
-}
 if ($headLastName === '' || $headFirstName === '' || $surveyDate === null || $surveyDate === '') {
     return ['ok' => false, 'status' => 400, 'error' => 'Household head last name, first name, and survey date are required (use MM/DD/YYYY).'];
-}
-
-if ($purokLabel === '') {
-    return ['ok' => false, 'status' => 400, 'error' => 'Please enter a valid purok (number or letters, e.g. 1, 1A, A).'];
 }
 
 if (!in_array($gender, ['Male', 'Female'], true)) {
@@ -72,25 +91,74 @@ $householdHead = nutrition_format_household_head_name($headLastName, $headFirstN
 $birthDateValue = nutrition_normalize_date_to_ymd(trim((string) ($_POST['birth_date'] ?? '')));
 
 $familyMembers = nutrition_parse_family_members_from_post($_POST, $surveyDate);
-$nameValidationError = nutrition_validate_household_survey_names(
+$allowDuplicateOverride = ((string) ($_POST['allow_duplicate_override'] ?? '')) === '1';
+$duplicateGate = nutrition_household_survey_duplicate_gate(
     $con,
+    $userId,
+    $barangayId,
+    $purokLabel,
     $headLastName,
     $headFirstName,
     $headMiddleName,
     $headSuffix,
     $familyMembers,
-    $isEdit ? $existingSurveyId : ''
+    $isEdit ? $existingSurveyId : '',
+    $allowDuplicateOverride
 );
-if ($nameValidationError !== null) {
-    return ['ok' => false, 'status' => 409, 'error' => $nameValidationError];
+if (empty($duplicateGate['ok'])) {
+    return [
+        'ok' => false,
+        'status' => (int) ($duplicateGate['status'] ?? 409),
+        'error' => (string) ($duplicateGate['error'] ?? 'Duplicate household detected.'),
+        'code' => (string) ($duplicateGate['code'] ?? 'duplicate'),
+        'same_purok' => !empty($duplicateGate['same_purok']),
+    ];
 }
 
 $surveyId = $isEdit ? $existingSurveyId : (string) hexdec(uniqid());
-$houseHoldId = $isEdit
-    ? (string) ($existingSurvey['house_hold_id'] ?? '')
-    : nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
-if ($houseHoldId === '') {
-    $houseHoldId = nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+// Resident Number = auto PSGC-Purok-##### (head + each family member).
+if ($isEdit) {
+    $houseHoldId = trim((string) ($existingSurvey['house_hold_id'] ?? ''));
+    if ($houseHoldId === '') {
+        $houseHoldId = nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+    }
+    $missingMemberNumbers = 0;
+    foreach ($familyMembers as $member) {
+        if (trim((string) ($member['residence_id'] ?? '')) === '') {
+            $missingMemberNumbers++;
+        }
+    }
+    if ($missingMemberNumbers > 0) {
+        $newMemberNumbers = nutrition_generate_resident_numbers(
+            $con,
+            $barangayId,
+            $purokLabel,
+            $missingMemberNumbers,
+            (string) ($barangay ?? '')
+        );
+        $assignIndex = 0;
+        foreach ($familyMembers as $index => $member) {
+            if (trim((string) ($member['residence_id'] ?? '')) === '') {
+                $familyMembers[$index]['residence_id'] = (string) ($newMemberNumbers[$assignIndex] ?? '');
+                $assignIndex++;
+            }
+        }
+    }
+} else {
+    $allocated = nutrition_generate_resident_numbers(
+        $con,
+        $barangayId,
+        $purokLabel,
+        1 + count($familyMembers),
+        (string) ($barangay ?? '')
+    );
+    $houseHoldId = (string) ($allocated[0] ?? '');
+    if ($houseHoldId === '') {
+        $houseHoldId = nutrition_generate_household_reference($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+    }
+    foreach ($familyMembers as $index => $member) {
+        $familyMembers[$index]['residence_id'] = (string) ($allocated[$index + 1] ?? '');
+    }
 }
 
 $headIsPregnant = ($gender === 'Female') ? nutrition_yes_no_from_post('head_is_pregnant') : 'NO';
@@ -155,6 +223,27 @@ foreach ($familyMembers as $familyMember) {
     }
 }
 $membersCount = $familyMembers !== [] ? count($familyMembers) + 1 : 1;
+
+$completeness = nutrition_validate_household_survey_completeness(
+    $familyMembers,
+    $hasPregnant,
+    $headIsPregnant
+);
+if (empty($completeness['ok'])) {
+    $msg = implode(' ', $completeness['errors'] ?? []);
+    if ($msg === '') {
+        $msg = 'Survey is incomplete. Add weight and height for children ages 0–5.';
+    }
+
+    return [
+        'ok' => false,
+        'status' => 400,
+        'error' => $msg,
+        'code' => 'incomplete',
+        'checklist' => $completeness['checklist'] ?? [],
+    ];
+}
+
 $foodSecurity = 'secure';
 $supplementaryFeeding = 'NO';
 $remarks = trim((string) ($_POST['remarks'] ?? ''));
@@ -206,11 +295,17 @@ $childPhysicalActivityOther = $childPhysicalActivity === 'Others' ? trim((string
 $sanitation = $toiletType;
 $surveyedBy = $userId;
 
-$linkedResidenceId = trim((string) ($_POST['residence_id'] ?? ''));
+// Optional Barangay Hub resident link (separate from auto Resident Number).
+$linkedResidenceId = trim((string) ($_POST['barangay_residence_id'] ?? $_POST['residence_id'] ?? ''));
 if ($linkedResidenceId !== '') {
-    $linkedResident = nutrition_load_resident($con, $linkedResidenceId, $barangayId);
-    if ($linkedResident === null) {
+    // Auto PSGC-Purok-##### IDs are Resident Numbers, not Hub resident keys.
+    if (preg_match('/^\d{10}-P[A-Z0-9]+-\d{5}$/i', $linkedResidenceId)) {
         $linkedResidenceId = '';
+    } else {
+        $linkedResident = nutrition_load_resident($con, $linkedResidenceId, $barangayId);
+        if ($linkedResident === null) {
+            $linkedResidenceId = '';
+        }
     }
 }
 
@@ -310,15 +405,45 @@ if ($isEdit) {
     }
     $stmt->close();
 
-    nutrition_delete_household_family_members($con, $surveyId, $barangayId);
-    nutrition_save_household_family_members($con, $surveyId, $barangayId, $familyMembers);
+    $con->begin_transaction();
+    try {
+        nutrition_delete_household_family_members($con, $surveyId, $barangayId);
+        $savedMembers = nutrition_save_household_family_members($con, $surveyId, $barangayId, $familyMembers);
+        if ($familyMembers !== [] && $savedMembers < count($familyMembers)) {
+            throw new RuntimeException(
+                'Could not save all family members (' . $savedMembers . '/' . count($familyMembers) . ').'
+            );
+        }
+        $con->commit();
+    } catch (Throwable $e) {
+        $con->rollback();
+
+        return [
+            'ok' => false,
+            'status' => 500,
+            'error' => $e->getMessage() !== '' ? $e->getMessage() : 'Could not save family members.',
+        ];
+    }
+
+    nutrition_log_household_survey_history(
+        $con,
+        $surveyId,
+        $barangayId,
+        $userId,
+        'update',
+        'Updated household survey · members=' . count($familyMembers)
+            . ' · children=' . $childrenCount
+            . (!empty($duplicateGate['override_used']) ? ' · duplicate override' : '')
+    );
 
     return [
         'ok' => true,
         'status' => 200,
         'survey_id' => $surveyId,
         'house_hold_id' => $houseHoldId,
+        'residence_id' => $linkedResidenceId,
         'message' => 'Household survey updated.',
+        'checklist' => $completeness['checklist'] ?? [],
     ];
 }
 
@@ -416,7 +541,23 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
-nutrition_save_household_family_members($con, $surveyId, $barangayId, $familyMembers);
+$savedMembers = nutrition_save_household_family_members($con, $surveyId, $barangayId, $familyMembers);
+if ($familyMembers !== [] && $savedMembers < count($familyMembers)) {
+    // Header was inserted; remove it so we do not leave surveys without members.
+    $cleanup = $con->prepare('DELETE FROM nutrition_household_survey WHERE survey_id = ? AND barangay_id = ?');
+    if ($cleanup) {
+        $cleanup->bind_param('ss', $surveyId, $barangayId);
+        $cleanup->execute();
+        $cleanup->close();
+    }
+    nutrition_delete_household_family_members($con, $surveyId, $barangayId);
+
+    return [
+        'ok' => false,
+        'status' => 500,
+        'error' => 'Could not save all family members (' . $savedMembers . '/' . count($familyMembers) . ').',
+    ];
+}
 
 $autoLinked = false;
 if ($linkedResidenceId === '') {
@@ -429,11 +570,23 @@ if ($linkedResidenceId === '') {
     nutrition_sync_survey_children_to_dependents($con, $surveyId, $linkedResidenceId, $barangayId);
 }
 
+nutrition_log_household_survey_history(
+    $con,
+    $surveyId,
+    $barangayId,
+    $userId,
+    'create',
+    'Created household survey · members=' . count($familyMembers)
+        . ' · children=' . $childrenCount
+        . (!empty($duplicateGate['override_used']) ? ' · duplicate override' : '')
+);
+
 $response = [
     'ok' => true,
     'survey_id' => $surveyId,
     'house_hold_id' => $houseHoldId,
     'message' => 'Household survey saved.',
+    'checklist' => $completeness['checklist'] ?? [],
 ];
 if ($linkedResidenceId !== '') {
     $response['residence_id'] = $linkedResidenceId;

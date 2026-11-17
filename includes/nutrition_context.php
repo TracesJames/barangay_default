@@ -150,7 +150,7 @@ if (!function_exists('nutrition_user_can_edit_household_surveys')) {
 }
 
 if (!function_exists('nutrition_user_can_save_settings')) {
-    /** SSA and Nutrition Super Admin may change nutrition settings. */
+    /** SSA, Nutrition Super Admin, and Nutrition Admin may change nutrition settings. */
     function nutrition_user_can_save_settings(mysqli $con, string $userId): bool
     {
         if ($userId === '') {
@@ -910,6 +910,87 @@ if (!function_exists('nutrition_survey_member_dashboard_statuses')) {
     }
 }
 
+if (!function_exists('nutrition_filter_purok_label_set')) {
+    /**
+     * Expand report filters into a lookup set of purok labels (master + normalized).
+     * null = no purok restriction; [] = restricted but empty (no matching data).
+     *
+     * @param array<string, mixed> $filters
+     * @return array<string, true>|null
+     */
+    function nutrition_filter_purok_label_set(array $filters): ?array
+    {
+        $labels = [];
+        $single = trim((string) ($filters['purok'] ?? ''));
+        if ($single !== '') {
+            $labels[] = $single;
+        }
+        $purokIn = $filters['purok_in'] ?? null;
+        if (is_array($purokIn)) {
+            foreach ($purokIn as $label) {
+                $label = trim((string) $label);
+                if ($label !== '') {
+                    $labels[] = $label;
+                }
+            }
+        }
+        if ($labels === []) {
+            return ($single !== '' || is_array($purokIn)) ? [] : null;
+        }
+
+        $set = [];
+        foreach ($labels as $label) {
+            $set[$label] = true;
+            if (function_exists('barangay_purok_master_key')) {
+                $set[barangay_purok_master_key($label)] = true;
+            } else {
+                $set[mb_strtolower($label)] = true;
+            }
+            if (function_exists('staff_normalize_purok_label')) {
+                $canon = staff_normalize_purok_label($label);
+                if ($canon !== '') {
+                    $set[$canon] = true;
+                    if (function_exists('barangay_purok_master_key')) {
+                        $set[barangay_purok_master_key($canon)] = true;
+                    } else {
+                        $set[mb_strtolower($canon)] = true;
+                    }
+                }
+            }
+        }
+
+        return $set;
+    }
+}
+
+if (!function_exists('nutrition_purok_label_in_set')) {
+    /**
+     * @param array<string, true> $set
+     */
+    function nutrition_purok_label_in_set(string $purokLabel, array $set): bool
+    {
+        $purokLabel = trim($purokLabel);
+        if ($purokLabel === '') {
+            return false;
+        }
+        if (isset($set[$purokLabel])) {
+            return true;
+        }
+        if (function_exists('barangay_purok_master_key') && isset($set[barangay_purok_master_key($purokLabel)])) {
+            return true;
+        }
+        if (function_exists('staff_normalize_purok_label')) {
+            $canon = staff_normalize_purok_label($purokLabel);
+            if ($canon !== '' && (isset($set[$canon])
+                || (function_exists('barangay_purok_master_key') && isset($set[barangay_purok_master_key($canon)])))) {
+                return true;
+            }
+        }
+
+        return isset($set[mb_strtolower($purokLabel)]);
+    }
+}
+
 if (!function_exists('nutrition_survey_children_totals')) {
     /**
      * Dashboard totals for children recorded in household surveys.
@@ -918,6 +999,7 @@ if (!function_exists('nutrition_survey_children_totals')) {
      * more than one non-normal bucket). `at_risk` counts unique children with any
      * non-normal indicator.
      *
+     * @param array<string, mixed> $filters Optional purok / purok_in scope.
      * @return array{
      *   children:int,
      *   assessed:int,
@@ -933,7 +1015,7 @@ if (!function_exists('nutrition_survey_children_totals')) {
      *   at_risk:int
      * }
      */
-    function nutrition_survey_children_totals(mysqli $con, ?string $barangayId = null): array
+    function nutrition_survey_children_totals(mysqli $con, ?string $barangayId = null, array $filters = []): array
     {
         $totals = [
             'children' => 0,
@@ -955,12 +1037,17 @@ if (!function_exists('nutrition_survey_children_totals')) {
             return $totals;
         }
 
-        $sql = 'SELECT m.*, s.survey_date
+        $sql = 'SELECT m.*, s.survey_date, s.purok_label
             FROM nutrition_household_family_member m
             INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
             WHERE ' . nutrition_survey_current_condition($con, 's');
         if ($barangayId !== null && $barangayId !== '') {
             $sql .= " AND m.barangay_id = '" . $con->real_escape_string($barangayId) . "'";
+        }
+
+        $purokAllow = nutrition_filter_purok_label_set($filters);
+        if ($purokAllow !== null && $purokAllow === []) {
+            return $totals;
         }
 
         $result = $con->query($sql);
@@ -970,6 +1057,11 @@ if (!function_exists('nutrition_survey_children_totals')) {
 
         $monthStart = date('Y-m-01');
         while ($member = $result->fetch_assoc()) {
+            if ($purokAllow !== null
+                && !nutrition_purok_label_in_set((string) ($member['purok_label'] ?? ''), $purokAllow)) {
+                continue;
+            }
+
             $ageMonths = isset($member['age_months']) && $member['age_months'] !== null && $member['age_months'] !== ''
                 ? (int) $member['age_months']
                 : null;
@@ -1273,6 +1365,339 @@ if (!function_exists('nutrition_teenage_pregnant_count')) {
     }
 }
 
+if (!function_exists('nutrition_survey_header_totals')) {
+    /**
+     * Aggregate children / pregnant counts from household survey header columns.
+     * Used when family-member rows are missing (legacy / failed member saves).
+     *
+     * @param array<string, mixed> $filters
+     * @return array{surveys:int,children:int,members:int,pregnant:int}
+     */
+    function nutrition_survey_header_totals(mysqli $con, string $barangayId, array $filters = []): array
+    {
+        $out = ['surveys' => 0, 'children' => 0, 'members' => 0, 'pregnant' => 0];
+        foreach (nutrition_list_household_surveys($con, $barangayId, 0, $filters) as $survey) {
+            if (function_exists('nutrition_survey_current_condition')) {
+                // list_household_surveys does not filter moved_out; skip moved households.
+                if (strtoupper((string) ($survey['moved_out'] ?? 'NO')) === 'YES') {
+                    continue;
+                }
+            }
+            $out['surveys']++;
+            $out['children'] += max(0, (int) ($survey['children_count'] ?? 0));
+            $out['members'] += max(0, (int) ($survey['members_count'] ?? 0));
+            if (strtoupper((string) ($survey['has_pregnant'] ?? 'NO')) === 'YES'
+                || strtoupper((string) ($survey['head_is_pregnant'] ?? 'NO')) === 'YES') {
+                $out['pregnant']++;
+            }
+        }
+
+        return $out;
+    }
+}
+
+if (!function_exists('nutrition_apply_survey_header_fallback')) {
+    /**
+     * Lift children / pregnant from survey headers when member-row totals under-count.
+     *
+     * @param array<string, int> $totals
+     * @param array<string, mixed> $filters
+     * @return array<string, int>
+     */
+    function nutrition_apply_survey_header_fallback(
+        mysqli $con,
+        string $barangayId,
+        array $totals,
+        array $filters = []
+    ): array {
+        $header = nutrition_survey_header_totals($con, $barangayId, $filters);
+        if ($header['children'] > (int) ($totals['children'] ?? 0)) {
+            $totals['children'] = $header['children'];
+        }
+        if ($header['pregnant'] > (int) ($totals['pregnant'] ?? 0)) {
+            $totals['pregnant'] = $header['pregnant'];
+        }
+        $totals['pending'] = max(0, (int) ($totals['children'] ?? 0) - (int) ($totals['assessed'] ?? 0));
+
+        return $totals;
+    }
+}
+
+if (!function_exists('nutrition_list_incomplete_household_surveys')) {
+    /**
+     * Surveys that inflate header counts without usable member/assessment rows.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    function nutrition_list_incomplete_household_surveys(
+        mysqli $con,
+        string $barangayId = '',
+        int $limit = 500
+    ): array {
+        if (!barangay_table_exists($con, 'nutrition_household_survey')) {
+            return [];
+        }
+        $limit = max(1, min(2000, $limit));
+        $sql = "SELECT s.survey_id, s.barangay_id, s.purok_label, s.house_hold_id, s.residence_id,
+                       s.head_last_name, s.head_first_name, s.head_middle_name, s.household_head,
+                       s.children_count, s.members_count, s.has_pregnant, s.has_lactating,
+                       s.survey_date, s.surveyed_by, bi.barangay AS barangay_name,
+                       (
+                         SELECT COUNT(*) FROM nutrition_household_family_member m
+                         WHERE m.survey_id = s.survey_id
+                       ) AS member_rows,
+                       (
+                         SELECT COUNT(*) FROM nutrition_household_family_member m
+                         WHERE m.survey_id = s.survey_id
+                           AND (
+                             (m.weight_kg IS NOT NULL AND m.weight_kg > 0)
+                             OR TRIM(COALESCE(m.weight_for_age,'')) <> ''
+                             OR TRIM(COALESCE(m.height_for_age,'')) <> ''
+                             OR TRIM(COALESCE(m.weight_for_height,'')) <> ''
+                           )
+                       ) AS assessed_rows
+                FROM nutrition_household_survey s
+                LEFT JOIN barangay_information bi ON bi.id = s.barangay_id
+                WHERE UPPER(COALESCE(s.moved_out, 'NO')) <> 'YES'
+                  AND (
+                    (
+                      COALESCE(s.children_count, 0) > 0
+                      AND NOT EXISTS (
+                        SELECT 1 FROM nutrition_household_family_member m WHERE m.survey_id = s.survey_id
+                      )
+                    )
+                    OR (
+                      EXISTS (
+                        SELECT 1 FROM nutrition_household_family_member m WHERE m.survey_id = s.survey_id
+                      )
+                      AND NOT EXISTS (
+                        SELECT 1 FROM nutrition_household_family_member m
+                        WHERE m.survey_id = s.survey_id
+                          AND (
+                            (m.weight_kg IS NOT NULL AND m.weight_kg > 0)
+                            OR TRIM(COALESCE(m.weight_for_age,'')) <> ''
+                            OR TRIM(COALESCE(m.height_for_age,'')) <> ''
+                            OR TRIM(COALESCE(m.weight_for_height,'')) <> ''
+                          )
+                      )
+                      AND COALESCE(s.children_count, 0) > 0
+                    )
+                  )";
+        $types = '';
+        $params = [];
+        if ($barangayId !== '') {
+            $sql .= ' AND s.barangay_id = ?';
+            $types .= 's';
+            $params[] = $barangayId;
+        }
+        $sql .= ' ORDER BY bi.barangay ASC, s.survey_date DESC, s.survey_id DESC LIMIT ' . (int) $limit;
+
+        $rows = [];
+        if ($types !== '') {
+            $stmt = $con->prepare($sql);
+            if (!$stmt) {
+                return [];
+            }
+            $stmt->bind_param($types, ...$params);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            while ($res && ($row = $res->fetch_assoc())) {
+                $rows[] = $row;
+            }
+            $stmt->close();
+        } else {
+            $res = $con->query($sql);
+            while ($res && ($row = $res->fetch_assoc())) {
+                $rows[] = $row;
+            }
+        }
+
+        foreach ($rows as &$row) {
+            $memberRows = (int) ($row['member_rows'] ?? 0);
+            $assessedRows = (int) ($row['assessed_rows'] ?? 0);
+            if ($memberRows === 0) {
+                $row['issue'] = 'orphan_header';
+                $row['issue_label'] = 'Children count set, but no family members saved';
+            } elseif ($assessedRows === 0) {
+                $row['issue'] = 'unassessed_members';
+                $row['issue_label'] = 'Members saved, but no weight/height / growth status';
+            } else {
+                $row['issue'] = 'incomplete';
+                $row['issue_label'] = 'Incomplete survey data';
+            }
+        }
+        unset($row);
+
+        return $rows;
+    }
+}
+
+if (!function_exists('nutrition_align_survey_header_to_members')) {
+    /**
+     * Reset header children/members/pregnant flags to match saved member rows.
+     * Use when member rows are missing or incomplete and header counts are misleading.
+     */
+    function nutrition_align_survey_header_to_members(mysqli $con, string $surveyId): bool
+    {
+        $surveyId = trim($surveyId);
+        if ($surveyId === '' || !barangay_table_exists($con, 'nutrition_household_survey')) {
+            return false;
+        }
+
+        $memberRows = 0;
+        $childRows = 0;
+        $pregnant = false;
+        if (barangay_table_exists($con, 'nutrition_household_family_member')) {
+            $stmt = $con->prepare(
+                "SELECT COUNT(*) AS members,
+                        SUM(
+                          CASE
+                            WHEN UPPER(COALESCE(is_pregnant,'NO')) = 'YES' THEN 1
+                            WHEN birth_date IS NOT NULL
+                                 AND TIMESTAMPDIFF(YEAR, birth_date, CURDATE()) < 20 THEN 1
+                            ELSE 0
+                          END
+                        ) AS childish,
+                        SUM(CASE WHEN UPPER(COALESCE(is_pregnant,'NO')) = 'YES' THEN 1 ELSE 0 END) AS pregnant_n
+                 FROM nutrition_household_family_member
+                 WHERE survey_id = ?"
+            );
+            if ($stmt) {
+                $stmt->bind_param('s', $surveyId);
+                $stmt->execute();
+                $agg = $stmt->get_result()->fetch_assoc() ?: [];
+                $stmt->close();
+                $memberRows = (int) ($agg['members'] ?? 0);
+                $childRows = (int) ($agg['childish'] ?? 0);
+                $pregnant = ((int) ($agg['pregnant_n'] ?? 0)) > 0;
+            }
+        }
+
+        // When no members exist, clear inflated header counts (honest empty state).
+        if ($memberRows === 0) {
+            $childRows = 0;
+            $pregnant = false;
+        }
+
+        $hasPregnant = $pregnant ? 'YES' : 'NO';
+        $upd = $con->prepare(
+            'UPDATE nutrition_household_survey
+             SET members_count = ?, children_count = ?, has_pregnant = ?,
+                 head_is_pregnant = CASE WHEN ? = \'NO\' THEN \'NO\' ELSE head_is_pregnant END
+             WHERE survey_id = ?
+             LIMIT 1'
+        );
+        if (!$upd) {
+            return false;
+        }
+        $upd->bind_param('iisss', $memberRows, $childRows, $hasPregnant, $hasPregnant, $surveyId);
+        $ok = $upd->execute() && $upd->affected_rows >= 0;
+        $upd->close();
+
+        return $ok;
+    }
+}
+
+if (!function_exists('nutrition_audit_bns_purok_scope')) {
+    /**
+     * Compare master puroks vs BNS assignments for one or all barangays.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    function nutrition_audit_bns_purok_scope(mysqli $con, string $barangayId = ''): array
+    {
+        if (!function_exists('staff_assigned_purok_labels') || !function_exists('barangay_list_puroks')) {
+            return [];
+        }
+
+        $sql = "SELECT bi.id, bi.barangay
+                FROM barangay_information bi";
+        if ($barangayId !== '') {
+            $sql .= " WHERE bi.id = '" . $con->real_escape_string($barangayId) . "'";
+        }
+        $sql .= ' ORDER BY bi.barangay ASC';
+        $barangays = $con->query($sql);
+        $out = [];
+        while ($barangays && ($br = $barangays->fetch_assoc())) {
+            $bid = (string) $br['id'];
+            $master = [];
+            foreach (barangay_list_puroks($con, $bid) as $row) {
+                $label = trim((string) ($row['purok'] ?? ''));
+                if ($label !== '') {
+                    $key = function_exists('staff_normalize_purok_label')
+                        ? staff_normalize_purok_label($label)
+                        : mb_strtolower($label);
+                    $master[$key] = $label;
+                }
+            }
+
+            $bnsStmt = $con->prepare(
+                "SELECT id, username, first_name, last_name
+                 FROM users
+                 WHERE barangay_id = ? AND staff_role = 'barangay_nutrition_scholar'
+                 ORDER BY username ASC"
+            );
+            $bnsRows = [];
+            if ($bnsStmt) {
+                $bnsStmt->bind_param('s', $bid);
+                $bnsStmt->execute();
+                $bres = $bnsStmt->get_result();
+                while ($bres && ($u = $bres->fetch_assoc())) {
+                    $assigned = staff_assigned_purok_labels($con, (string) $u['id'], $bid);
+                    $bnsRows[] = [
+                        'user_id' => (string) $u['id'],
+                        'username' => (string) $u['username'],
+                        'name' => trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')),
+                        'assigned' => $assigned,
+                        'all_scope' => $assigned === [],
+                    ];
+                }
+                $bnsStmt->close();
+            }
+
+            $coverage = [];
+            foreach ($master as $key => $label) {
+                $coverage[$key] = ['label' => $label, 'bns' => []];
+            }
+            $overlaps = [];
+            foreach ($bnsRows as $bns) {
+                $labels = $bns['all_scope'] ? array_values($master) : $bns['assigned'];
+                foreach ($labels as $label) {
+                    $key = function_exists('staff_normalize_purok_label')
+                        ? staff_normalize_purok_label($label)
+                        : mb_strtolower($label);
+                    if (!isset($coverage[$key])) {
+                        continue;
+                    }
+                    $coverage[$key]['bns'][] = $bns['username'];
+                    if (count($coverage[$key]['bns']) > 1) {
+                        $overlaps[$key] = $coverage[$key];
+                    }
+                }
+            }
+            $gaps = [];
+            foreach ($coverage as $key => $info) {
+                if ($info['bns'] === []) {
+                    $gaps[] = $info['label'];
+                }
+            }
+
+            $out[] = [
+                'barangay_id' => $bid,
+                'barangay' => (string) $br['barangay'],
+                'master_count' => count($master),
+                'bns_count' => count($bnsRows),
+                'bns' => $bnsRows,
+                'gaps' => $gaps,
+                'overlaps' => array_values($overlaps),
+                'ok' => $gaps === [] && $overlaps === [] && count($bnsRows) > 0,
+            ];
+        }
+
+        return $out;
+    }
+}
+
 if (!function_exists('nutrition_scoped_totals')) {
     /**
      * @return array{
@@ -1291,7 +1716,7 @@ if (!function_exists('nutrition_scoped_totals')) {
      *   teenage_pregnant:int
      * }
      */
-    function nutrition_scoped_totals(mysqli $con, string $barangayId): array
+    function nutrition_scoped_totals(mysqli $con, string $barangayId, array $filters = []): array
     {
         $defaults = [
             'children' => 0,
@@ -1310,9 +1735,23 @@ if (!function_exists('nutrition_scoped_totals')) {
             'teenage_pregnant' => 0,
         ];
 
-        $surveyTotals = nutrition_survey_children_totals($con, $barangayId);
+        $surveyTotals = nutrition_survey_children_totals($con, $barangayId, $filters);
         foreach (['children', 'assessed', 'this_month', 'normal', 'underweight', 'wasted', 'severely_wasted', 'stunted', 'overweight', 'obese', 'at_risk'] as $key) {
             $defaults[$key] += (int) ($surveyTotals[$key] ?? 0);
+        }
+
+        // BNS purok scope: survey-only totals (residence assessments are barangay-wide).
+        $purokScoped = nutrition_filter_purok_label_set($filters) !== null;
+        if ($purokScoped) {
+            $defaults['pending'] = max(0, $defaults['children'] - $defaults['assessed']);
+            foreach (nutrition_list_household_surveys($con, $barangayId, 0, $filters) as $survey) {
+                if (strtoupper((string) ($survey['has_pregnant'] ?? 'NO')) === 'YES'
+                    || strtoupper((string) ($survey['head_is_pregnant'] ?? 'NO')) === 'YES') {
+                    $defaults['pregnant']++;
+                }
+            }
+
+            return nutrition_apply_survey_header_fallback($con, $barangayId, $defaults, $filters);
         }
 
         if (!nutrition_table_exists($con) || !barangay_column_exists($con, 'residence_status', 'barangay_id')) {
@@ -1320,7 +1759,7 @@ if (!function_exists('nutrition_scoped_totals')) {
             $defaults['teenage_pregnant'] = nutrition_teenage_pregnant_count($con, $barangayId);
             $defaults['pregnant'] = nutrition_pregnant_count($con, $barangayId);
 
-            return $defaults;
+            return nutrition_apply_survey_header_fallback($con, $barangayId, $defaults, $filters);
         }
 
         $childWhere = nutrition_children_where($con);
@@ -1374,7 +1813,7 @@ if (!function_exists('nutrition_scoped_totals')) {
         $defaults['teenage_pregnant'] = nutrition_teenage_pregnant_count($con, $barangayId);
         $defaults['pregnant'] = nutrition_pregnant_count($con, $barangayId);
 
-        return $defaults;
+        return nutrition_apply_survey_header_fallback($con, $barangayId, $defaults, $filters);
     }
 }
 
@@ -1451,54 +1890,63 @@ if (!function_exists('nutrition_recent_activity_rows')) {
      *
      * @return array<int, array{name:string,date:string,status:string,source:string,age_label:string}>
      */
-    function nutrition_recent_activity_rows(mysqli $con, string $barangayId, int $limit = 8): array
+    function nutrition_recent_activity_rows(mysqli $con, string $barangayId, int $limit = 8, array $filters = []): array
     {
         $rows = [];
         $limit = max(1, min(50, $limit));
+        $purokAllow = nutrition_filter_purok_label_set($filters);
+        $bnsScoped = $purokAllow !== null;
 
-        $recentSql = "SELECT na.assessment_date, na.nutritional_status, na.date_created,
-                ri.first_name, ri.last_name, ri.age
-            FROM nutrition_assessment na
-            INNER JOIN residence_information ri ON na.residence_id = ri.residence_id
-            WHERE na.barangay_id = ?
-            ORDER BY na.assessment_date DESC, na.date_created DESC
-            LIMIT ?";
-        $recentStmt = $con->prepare($recentSql);
-        if ($recentStmt) {
-            $recentStmt->bind_param('si', $barangayId, $limit);
-            $recentStmt->execute();
-            $result = $recentStmt->get_result();
-            while ($row = $result->fetch_assoc()) {
-                $date = trim((string) ($row['assessment_date'] ?? ''));
-                $rows[] = [
-                    'name' => trim((string) ($row['last_name'] ?? '') . ', ' . (string) ($row['first_name'] ?? ''), ' ,'),
-                    'date' => $date,
-                    'status' => (string) ($row['nutritional_status'] ?? 'normal'),
-                    'source' => 'assessment',
-                    'age_label' => trim((string) ($row['age'] ?? '')) !== ''
-                        ? 'Age ' . trim((string) $row['age'])
-                        : '',
-                    '_sort' => $date . ' ' . (string) ($row['date_created'] ?? ''),
-                ];
+        // Residence assessments are barangay-wide; skip them when BNS is purok-scoped.
+        if (!$bnsScoped) {
+            $recentSql = "SELECT na.assessment_date, na.nutritional_status, na.date_created,
+                    ri.first_name, ri.last_name, ri.age
+                FROM nutrition_assessment na
+                INNER JOIN residence_information ri ON na.residence_id = ri.residence_id
+                WHERE na.barangay_id = ?
+                ORDER BY na.assessment_date DESC, na.date_created DESC
+                LIMIT ?";
+            $recentStmt = $con->prepare($recentSql);
+            if ($recentStmt) {
+                $recentStmt->bind_param('si', $barangayId, $limit);
+                $recentStmt->execute();
+                $result = $recentStmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $date = trim((string) ($row['assessment_date'] ?? ''));
+                    $rows[] = [
+                        'name' => trim((string) ($row['last_name'] ?? '') . ', ' . (string) ($row['first_name'] ?? ''), ' ,'),
+                        'date' => $date,
+                        'status' => (string) ($row['nutritional_status'] ?? 'normal'),
+                        'source' => 'assessment',
+                        'age_label' => trim((string) ($row['age'] ?? '')) !== ''
+                            ? 'Age ' . trim((string) $row['age'])
+                            : '',
+                        '_sort' => $date . ' ' . (string) ($row['date_created'] ?? ''),
+                    ];
+                }
+                $recentStmt->close();
             }
-            $recentStmt->close();
         }
 
         if (barangay_table_exists($con, 'nutrition_household_family_member')
             && barangay_table_exists($con, 'nutrition_household_survey')) {
             $sql = "SELECT m.member_name, m.birth_date, m.age_months, m.date_measured, m.weight_for_age,
-                           m.height_for_age, m.weight_for_height, m.muac_status, s.survey_date
+                           m.height_for_age, m.weight_for_height, m.muac_status, s.survey_date, s.purok_label
                     FROM nutrition_household_family_member m
                     INNER JOIN nutrition_household_survey s ON s.survey_id = m.survey_id
                     WHERE m.barangay_id = ?
                     ORDER BY COALESCE(m.date_measured, s.survey_date) DESC, m.member_id DESC
-                    LIMIT 40";
+                    LIMIT 80";
             $stmt = $con->prepare($sql);
             if ($stmt) {
                 $stmt->bind_param('s', $barangayId);
                 $stmt->execute();
                 $result = $stmt->get_result();
                 while ($member = $result->fetch_assoc()) {
+                    if ($purokAllow !== null
+                        && !nutrition_purok_label_in_set((string) ($member['purok_label'] ?? ''), $purokAllow)) {
+                        continue;
+                    }
                     $ageMonths = isset($member['age_months']) && $member['age_months'] !== null && $member['age_months'] !== ''
                         ? (int) $member['age_months']
                         : nutrition_age_in_months(
@@ -1606,8 +2054,11 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
      *
      * @return array<int, array<string, mixed>>
      */
-    function nutrition_super_dashboard_rows(mysqli $con, ?array $limitBarangayIds = null): array
-    {
+    function nutrition_super_dashboard_rows(
+        mysqli $con,
+        ?array $limitBarangayIds = null,
+        array $filters = []
+    ): array {
         $rows = [];
         $surveysByBarangay = [];
         $bnsByBarangay = [];
@@ -1622,7 +2073,12 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
             }
         }
 
-        if (barangay_table_exists($con, 'nutrition_household_survey')) {
+        $hasDateFilters = trim((string) ($filters['date_from'] ?? '')) !== ''
+            || trim((string) ($filters['date_to'] ?? '')) !== ''
+            || trim((string) ($filters['purok'] ?? '')) !== ''
+            || !empty($filters['purok_in']);
+
+        if (barangay_table_exists($con, 'nutrition_household_survey') && !$hasDateFilters) {
             $surveyResult = $con->query(
                 'SELECT barangay_id, COUNT(*) AS total FROM nutrition_household_survey WHERE '
                 . nutrition_survey_current_condition($con) . ' GROUP BY barangay_id'
@@ -1661,8 +2117,12 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
                 continue;
             }
 
-            $scoped = nutrition_scoped_totals($con, $barangayId);
+            $scoped = nutrition_scoped_totals($con, $barangayId, $filters);
             $atRisk = (int) ($scoped['at_risk'] ?? 0);
+            $surveyCount = $surveysByBarangay[$barangayId] ?? 0;
+            if ($hasDateFilters) {
+                $surveyCount = count(nutrition_list_household_surveys($con, $barangayId, 0, $filters));
+            }
 
             $rows[] = [
                 'id' => $barangayId,
@@ -1674,7 +2134,7 @@ if (!function_exists('nutrition_super_dashboard_rows')) {
                 'pending' => (int) $scoped['pending'],
                 'at_risk' => $atRisk,
                 'this_month' => (int) $scoped['this_month'],
-                'surveys' => $surveysByBarangay[$barangayId] ?? 0,
+                'surveys' => $surveyCount,
                 'pregnant' => (int) ($scoped['pregnant'] ?? 0),
                 'teenage_pregnant' => (int) ($scoped['teenage_pregnant'] ?? 0),
                 'bns_username' => $bnsByBarangay[$barangayId] ?? '',
@@ -2050,32 +2510,62 @@ if (!function_exists('nutrition_load_resident_survey_prefill')) {
 
         $familyMembers = [];
         $spouseFirst = trim((string) ($resident['spouse_first_name'] ?? ''));
+        $spouseMiddle = trim((string) ($resident['spouse_middle_name'] ?? ''));
         $spouseLast = trim((string) ($resident['spouse_last_name'] ?? ''));
+        $spouseSuffix = trim((string) ($resident['spouse_suffix'] ?? ''));
         if ($spouseFirst !== '' || $spouseLast !== '') {
+            $spouseBirth = trim((string) ($resident['spouse_birth_date'] ?? ''));
+            $spouseMatch = residence_find_duplicate_name(
+                $con,
+                $barangayId,
+                $spouseFirst,
+                $spouseMiddle,
+                $spouseLast,
+                $spouseSuffix,
+                $residenceId,
+                $spouseBirth !== '' ? $spouseBirth : null
+            );
             $familyMembers[] = [
+                'residence_id' => (string) ($spouseMatch['residence_id'] ?? ''),
                 'member_name' => nutrition_format_member_display_name(
                     $spouseFirst,
-                    (string) ($resident['spouse_middle_name'] ?? ''),
+                    $spouseMiddle,
                     $spouseLast,
-                    (string) ($resident['spouse_suffix'] ?? '')
+                    $spouseSuffix
                 ),
                 'relationship' => 'Spouse',
                 'gender' => '',
-                'birth_date' => trim((string) ($resident['spouse_birth_date'] ?? '')),
+                'birth_date' => $spouseBirth,
             ];
         }
 
         foreach (residence_load_dependents($con, $residenceId) as $dependent) {
+            $depFirst = trim((string) ($dependent['first_name'] ?? ''));
+            $depMiddle = trim((string) ($dependent['middle_name'] ?? ''));
+            $depLast = trim((string) ($dependent['last_name'] ?? ''));
+            $depSuffix = trim((string) ($dependent['suffix'] ?? ''));
+            $depBirth = trim((string) ($dependent['birth_date'] ?? ''));
+            $depMatch = residence_find_duplicate_name(
+                $con,
+                $barangayId,
+                $depFirst,
+                $depMiddle,
+                $depLast,
+                $depSuffix,
+                $residenceId,
+                $depBirth !== '' ? $depBirth : null
+            );
             $familyMembers[] = [
+                'residence_id' => (string) ($depMatch['residence_id'] ?? ''),
                 'member_name' => nutrition_format_member_display_name(
-                    (string) ($dependent['first_name'] ?? ''),
-                    (string) ($dependent['middle_name'] ?? ''),
-                    (string) ($dependent['last_name'] ?? ''),
-                    (string) ($dependent['suffix'] ?? '')
+                    $depFirst,
+                    $depMiddle,
+                    $depLast,
+                    $depSuffix
                 ),
                 'relationship' => trim((string) ($dependent['relationship'] ?? '')),
                 'gender' => trim((string) ($dependent['gender'] ?? '')),
-                'birth_date' => trim((string) ($dependent['birth_date'] ?? '')),
+                'birth_date' => $depBirth,
             ];
         }
 
@@ -2127,6 +2617,7 @@ if (!function_exists('nutrition_allowed_redirect')) {
             'nutritionBarangaySurvey.php',
             'nutritionProfiles.php',
             'nutritionBnpReport.php',
+            'nutritionSchoolEntry.php',
             'nutritionMellpiBarangayProfile.php',
             'nutritionReport.php',
         ];
@@ -2182,6 +2673,7 @@ if (!function_exists('nutrition_ensure_module_tables')) {
                 `member_id` VARCHAR(32) NOT NULL,
                 `survey_id` VARCHAR(32) NOT NULL,
                 `barangay_id` VARCHAR(32) NOT NULL,
+                `residence_id` VARCHAR(32) NOT NULL DEFAULT '',
                 `member_name` VARCHAR(255) NOT NULL DEFAULT '',
                 `relationship` VARCHAR(120) NOT NULL DEFAULT '',
                 `gender` VARCHAR(20) NOT NULL DEFAULT '',
@@ -2213,7 +2705,8 @@ if (!function_exists('nutrition_ensure_module_tables')) {
                 `date_created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (`member_id`),
                 KEY `idx_nhfm_survey` (`survey_id`),
-                KEY `idx_nhfm_barangay` (`barangay_id`)
+                KEY `idx_nhfm_barangay` (`barangay_id`),
+                KEY `idx_nhfm_residence` (`residence_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         }
 
@@ -2309,6 +2802,7 @@ if (!function_exists('nutrition_ensure_module_tables')) {
         nutrition_ensure_column($con, 'nutrition_household_survey', 'head_lactating_bottle_feeding', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `head_lactating_mixed_feeding`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'head_lactating_other_feeding', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `head_lactating_bottle_feeding`");
         nutrition_ensure_column($con, 'nutrition_household_survey', 'head_lactating_other_specify', "VARCHAR(255) NOT NULL DEFAULT '' AFTER `head_lactating_other_feeding`");
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'residence_id', "VARCHAR(32) NOT NULL DEFAULT '' AFTER `barangay_id`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'weight_kg', 'DECIMAL(5,2) DEFAULT NULL AFTER `birth_date`');
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'height_cm', 'DECIMAL(5,2) DEFAULT NULL AFTER `weight_kg`');
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'date_measured', 'DATE DEFAULT NULL AFTER `height_cm`');
@@ -2323,6 +2817,11 @@ if (!function_exists('nutrition_ensure_module_tables')) {
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'muac_status', "VARCHAR(32) NOT NULL DEFAULT '' AFTER `muac_cm`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'edema', "VARCHAR(16) NOT NULL DEFAULT '' AFTER `muac_status`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'disability', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `edema`");
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'is_4ps', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `is_lactating`");
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'is_pwd', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `is_4ps`");
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'is_ip', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `is_pwd`");
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'is_solo_parent', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `is_ip`");
+        nutrition_ensure_column($con, 'nutrition_household_family_member', 'is_na_member', "VARCHAR(8) NOT NULL DEFAULT 'NO' AFTER `is_solo_parent`");
         nutrition_ensure_column($con, 'nutrition_household_family_member', 'pregnant_nutrition_status', "VARCHAR(64) NOT NULL DEFAULT '' AFTER `pregnancy_months`");
         nutrition_ensure_column($con, 'nutrition_settings', 'bnp_form_c1', "LONGTEXT NULL AFTER `enable_barangay_survey`");
 
@@ -2331,6 +2830,25 @@ if (!function_exists('nutrition_ensure_module_tables')) {
             if (function_exists('nutrition_mellpi_ensure_table')) {
                 nutrition_mellpi_ensure_table($con);
             }
+        }
+
+        if (!barangay_table_exists($con, 'nutrition_household_survey_history')) {
+            $con->query(
+                "CREATE TABLE IF NOT EXISTS `nutrition_household_survey_history` (
+                    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `survey_id` VARCHAR(32) NOT NULL,
+                    `barangay_id` VARCHAR(32) NOT NULL,
+                    `user_id` VARCHAR(32) NOT NULL DEFAULT '',
+                    `action` VARCHAR(32) NOT NULL DEFAULT 'update',
+                    `summary` VARCHAR(500) NOT NULL DEFAULT '',
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    KEY `idx_nhsh_survey` (`survey_id`),
+                    KEY `idx_nhsh_barangay` (`barangay_id`),
+                    KEY `idx_nhsh_created` (`created_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci"
+            );
+            barangay_table_exists($con, 'nutrition_household_survey_history', true);
         }
 
         if (barangay_table_exists($con, 'nutrition_settings')) {
@@ -2526,11 +3044,17 @@ if (!function_exists('nutrition_list_household_surveys')) {
         if (is_array($purokIn) && $purokIn !== []) {
             $normalized = [];
             foreach ($purokIn as $label) {
-                $label = function_exists('staff_normalize_purok_label')
-                    ? staff_normalize_purok_label((string) $label)
-                    : trim((string) $label);
-                if ($label !== '') {
-                    $normalized[$label] = $label;
+                $raw = trim((string) $label);
+                if ($raw === '') {
+                    continue;
+                }
+                // Keep master sitio names and normalized "PUROK …" forms so filters match surveys.
+                $normalized[$raw] = $raw;
+                if (function_exists('staff_normalize_purok_label')) {
+                    $canon = staff_normalize_purok_label($raw);
+                    if ($canon !== '') {
+                        $normalized[$canon] = $canon;
+                    }
                 }
             }
             $normalized = array_values($normalized);
@@ -2625,12 +3149,12 @@ if (!function_exists('nutrition_report_snapshot')) {
     /**
      * @return array<string, mixed>
      */
-    function nutrition_report_snapshot(mysqli $con, string $barangayId, string $barangayName): array
+    function nutrition_report_snapshot(mysqli $con, string $barangayId, string $barangayName, array $filters = []): array
     {
         return [
-            'totals' => nutrition_scoped_totals($con, $barangayId),
+            'totals' => nutrition_scoped_totals($con, $barangayId, $filters),
             'settings' => nutrition_load_settings($con, $barangayId, $barangayName),
-            'household_surveys' => nutrition_list_household_surveys($con, $barangayId, 10),
+            'household_surveys' => nutrition_list_household_surveys($con, $barangayId, 10, $filters),
             'barangay_surveys' => nutrition_list_barangay_surveys($con, $barangayId, 5),
             'generated_at' => date('Y-m-d H:i:s'),
         ];
@@ -2712,49 +3236,74 @@ if (!function_exists('nutrition_resolve_psfc_code')) {
 
 if (!function_exists('nutrition_next_household_series')) {
     /**
-     * Next household series number for a barangay (unique across all puroks).
-     * Format remains PSGC-Purok-##### so purok stays visible, but ##### never restarts per purok.
+     * Next Resident Number series for a barangay (unique across all puroks).
+     * Format: PSGC-Purok-##### — purok stays visible, but ##### never restarts per purok.
+     * Scans both household head IDs and family-member Resident Numbers.
      */
     function nutrition_next_household_series(mysqli $con, string $barangayId, string $psfc, string $purokCode = ''): int
     {
-        if (!barangay_table_exists($con, 'nutrition_household_survey')) {
-            return 1;
-        }
-
         $psfc = trim($psfc);
         if ($psfc === '') {
             return 1;
         }
 
-        // Barangay-wide max of the trailing 5-digit series (ignore purok for sequencing).
-        $stmt = $con->prepare(
-            "SELECT house_hold_id FROM nutrition_household_survey
-             WHERE barangay_id = ?
-               AND house_hold_id LIKE ?
-               AND house_hold_id REGEXP '-[0-9]{5}$'"
-        );
-        if (!$stmt) {
-            return 1;
-        }
-
-        $like = $psfc . '-%';
-        $stmt->bind_param('ss', $barangayId, $like);
-        $stmt->execute();
-        $result = $stmt->get_result();
         $maxSeries = 0;
-        while ($row = $result->fetch_assoc()) {
-            $id = (string) ($row['house_hold_id'] ?? '');
-            if (preg_match('/-(\d{5})$/', $id, $matches)) {
-                $maxSeries = max($maxSeries, (int) $matches[1]);
+        $like = $psfc . '-%';
+
+        // Barangay-wide max of the trailing 5-digit series (ignore purok for sequencing).
+        if (barangay_table_exists($con, 'nutrition_household_survey')) {
+            $stmt = $con->prepare(
+                "SELECT house_hold_id AS ref_id FROM nutrition_household_survey
+                 WHERE barangay_id = ?
+                   AND house_hold_id LIKE ?
+                   AND house_hold_id REGEXP '-[0-9]{5}$'
+                 UNION ALL
+                 SELECT residence_id AS ref_id FROM nutrition_household_survey
+                 WHERE barangay_id = ?
+                   AND residence_id LIKE ?
+                   AND residence_id REGEXP '-[0-9]{5}$'"
+            );
+            if ($stmt) {
+                $stmt->bind_param('ssss', $barangayId, $like, $barangayId, $like);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $id = (string) ($row['ref_id'] ?? '');
+                    if (preg_match('/-(\d{5})$/', $id, $matches)) {
+                        $maxSeries = max($maxSeries, (int) $matches[1]);
+                    }
+                }
+                $stmt->close();
             }
         }
-        $stmt->close();
+
+        if (barangay_table_exists($con, 'nutrition_household_family_member')) {
+            $stmt = $con->prepare(
+                "SELECT residence_id AS ref_id FROM nutrition_household_family_member
+                 WHERE barangay_id = ?
+                   AND residence_id LIKE ?
+                   AND residence_id REGEXP '-[0-9]{5}$'"
+            );
+            if ($stmt) {
+                $stmt->bind_param('ss', $barangayId, $like);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $id = (string) ($row['ref_id'] ?? '');
+                    if (preg_match('/-(\d{5})$/', $id, $matches)) {
+                        $maxSeries = max($maxSeries, (int) $matches[1]);
+                    }
+                }
+                $stmt->close();
+            }
+        }
 
         return max(1, $maxSeries + 1);
     }
 }
 
 if (!function_exists('nutrition_format_household_reference')) {
+    /** Resident Number format: PSGC-Purok-##### */
     function nutrition_format_household_reference(string $psfc, string $purokCode, int $series): string
     {
         return $psfc . '-' . $purokCode . '-' . str_pad((string) max(1, $series), 5, '0', STR_PAD_LEFT);
@@ -2776,22 +3325,58 @@ if (!function_exists('nutrition_generate_household_reference')) {
     }
 }
 
+if (!function_exists('nutrition_generate_resident_numbers')) {
+    /**
+     * Auto-generate sequential Resident Numbers (PSGC-Purok-#####).
+     *
+     * @return array<int, string>
+     */
+    function nutrition_generate_resident_numbers(
+        mysqli $con,
+        string $barangayId,
+        string $purokLabel,
+        int $count,
+        string $barangayName = ''
+    ): array {
+        $count = max(0, $count);
+        if ($count === 0) {
+            return [];
+        }
+
+        $psfc = nutrition_resolve_psfc_code($con, $barangayId, $barangayName);
+        $purokCode = nutrition_purok_code_from_label($purokLabel);
+        $series = nutrition_next_household_series($con, $barangayId, $psfc, $purokCode);
+        $numbers = [];
+        for ($i = 0; $i < $count; $i++) {
+            $numbers[] = nutrition_format_household_reference($psfc, $purokCode, $series + $i);
+        }
+
+        return $numbers;
+    }
+}
+
 if (!function_exists('nutrition_household_reference_preview')) {
     /**
-     * @return array{household_id:string,psfc_code:string,purok_code:string,series:int}
+     * @return array{household_id:string,resident_number:string,resident_numbers:array<int,string>,psfc_code:string,purok_code:string,series:int}
      */
     function nutrition_household_reference_preview(
         mysqli $con,
         string $barangayId,
         string $purokLabel,
-        string $barangayName = ''
+        string $barangayName = '',
+        int $count = 1
     ): array {
+        $count = max(1, $count);
+        $numbers = nutrition_generate_resident_numbers($con, $barangayId, $purokLabel, $count, $barangayName);
+        $first = $numbers[0] ?? '';
         $psfc = nutrition_resolve_psfc_code($con, $barangayId, $barangayName);
         $purokCode = nutrition_purok_code_from_label($purokLabel);
         $series = nutrition_next_household_series($con, $barangayId, $psfc, $purokCode);
 
         return [
-            'household_id' => nutrition_format_household_reference($psfc, $purokCode, $series),
+            'household_id' => $first,
+            'resident_number' => $first,
+            'resident_numbers' => $numbers,
             'psfc_code' => $psfc,
             'purok_code' => $purokCode,
             'series' => $series,
@@ -2799,15 +3384,110 @@ if (!function_exists('nutrition_household_reference_preview')) {
     }
 }
 
+if (!function_exists('nutrition_bns_scoped_purok_labels')) {
+    /**
+     * Master Purok/Sitio labels a BNS may report on.
+     * null = no restriction (not BNS, or BNS with all-puroks access).
+     *
+     * @return array<int, string>|null
+     */
+    function nutrition_bns_scoped_purok_labels(mysqli $con, string $userId, string $barangayId): ?array
+    {
+        if ($userId === '' || $barangayId === '') {
+            return null;
+        }
+        if (!function_exists('barangay_user_is_barangay_nutrition_scholar')
+            || !barangay_user_is_barangay_nutrition_scholar($con, $userId)) {
+            return null;
+        }
+        if (!function_exists('staff_assigned_purok_labels')) {
+            return null;
+        }
+        $assigned = staff_assigned_purok_labels($con, $userId, $barangayId);
+        if ($assigned === []) {
+            return null;
+        }
+
+        $labels = [];
+        if (function_exists('barangay_purok_options_for_user')) {
+            foreach (barangay_purok_options_for_user($con, $userId, $barangayId) as $opt) {
+                $label = trim((string) ($opt['label'] ?? $opt['value'] ?? ''));
+                if ($label !== '') {
+                    $labels[$label] = $label;
+                }
+            }
+        }
+        foreach ($assigned as $assignedLabel) {
+            $label = trim((string) $assignedLabel);
+            if ($label !== '') {
+                $labels[$label] = $label;
+            }
+        }
+
+        return array_values($labels);
+    }
+}
+
+if (!function_exists('nutrition_apply_bns_report_filters')) {
+    /**
+     * Merge BNS purok scope into report filters so each BNS only sees their assigned areas.
+     *
+     * @param array<string, mixed> $filters
+     * @return array<string, mixed>
+     */
+    function nutrition_apply_bns_report_filters(
+        mysqli $con,
+        string $userId,
+        string $barangayId,
+        array $filters = []
+    ): array {
+        $scoped = nutrition_bns_scoped_purok_labels($con, $userId, $barangayId);
+        if ($scoped === null) {
+            return $filters;
+        }
+
+        $requested = trim((string) ($filters['purok'] ?? ''));
+        if ($requested !== '') {
+            $allowed = false;
+            if (function_exists('staff_user_can_access_purok')) {
+                $allowed = staff_user_can_access_purok($con, $userId, $requested);
+            } else {
+                foreach ($scoped as $label) {
+                    if (strcasecmp($label, $requested) === 0) {
+                        $allowed = true;
+                        break;
+                    }
+                }
+            }
+            if (!$allowed) {
+                unset($filters['purok']);
+                $filters['purok_in'] = $scoped !== [] ? $scoped : ['__no_bns_purok__'];
+            }
+
+            return $filters;
+        }
+
+        $filters['purok_in'] = $scoped !== [] ? $scoped : ['__no_bns_purok__'];
+
+        return $filters;
+    }
+}
+
 if (!function_exists('nutrition_purok_select_options')) {
     /**
-     * @return array<int, array{value:string,label:string}>
+     * Locked Purok/Sitio options for survey forms (master list, optional BNS filter).
+     *
+     * @return array<int, array{purok_id?:string,value:string,label:string}>
      */
-    function nutrition_purok_select_options(mysqli $con, string $barangayId): array
+    function nutrition_purok_select_options(mysqli $con, string $barangayId, ?string $userId = null): array
     {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if (function_exists('barangay_purok_options_for_user')) {
+            return barangay_purok_options_for_user($con, $userId, $barangayId);
+        }
+
         $options = [];
         $seen = [];
-
         foreach (barangay_list_puroks($con, $barangayId) as $row) {
             $label = trim((string) ($row['purok'] ?? ''));
             if ($label === '') {
@@ -2818,14 +3498,11 @@ if (!function_exists('nutrition_purok_select_options')) {
                 continue;
             }
             $seen[$key] = true;
-            $options[] = ['value' => $label, 'label' => $label];
-        }
-
-        if ($options === []) {
-            for ($i = 1; $i <= 7; $i++) {
-                $label = 'PUROK ' . $i;
-                $options[] = ['value' => $label, 'label' => $label];
-            }
+            $options[] = [
+                'purok_id' => trim((string) ($row['purok_id'] ?? '')),
+                'value' => $label,
+                'label' => $label,
+            ];
         }
 
         return $options;
@@ -2886,14 +3563,23 @@ if (!function_exists('nutrition_duplicate_name_error_suffix')) {
     function nutrition_duplicate_name_error_suffix(array $duplicate): string
     {
         $parts = [];
-        $householdId = trim((string) ($duplicate['house_hold_id'] ?? ''));
-        if ($householdId !== '') {
-            $parts[] = 'Household ID: ' . $householdId;
+        $residenceId = trim((string) ($duplicate['residence_id'] ?? ''));
+        if ($residenceId !== '') {
+            $parts[] = 'Resident Number: ' . $residenceId;
+        } else {
+            $householdId = trim((string) ($duplicate['house_hold_id'] ?? ''));
+            if ($householdId !== '') {
+                $parts[] = 'Household ID: ' . $householdId;
+            }
         }
 
         $barangayName = trim((string) ($duplicate['barangay_name'] ?? ''));
         if ($barangayName !== '') {
             $parts[] = 'Barangay: ' . $barangayName;
+        }
+        $purok = trim((string) ($duplicate['purok_label'] ?? ''));
+        if ($purok !== '') {
+            $parts[] = 'Purok: ' . $purok;
         }
 
         if ($parts === []) {
@@ -2936,7 +3622,7 @@ if (!function_exists('nutrition_find_duplicate_household_head')) {
             return null;
         }
 
-        $sql = 'SELECT s.survey_id, s.house_hold_id, s.household_head,
+        $sql = 'SELECT s.survey_id, s.barangay_id, s.purok_label, s.residence_id, s.house_hold_id, s.household_head,
                        COALESCE(b.barangay, \'\') AS barangay_name
                 FROM nutrition_household_survey s
                 LEFT JOIN barangay_information b ON b.id = s.barangay_id
@@ -3000,7 +3686,8 @@ if (!function_exists('nutrition_find_duplicate_person_name')) {
         }
 
         if (barangay_table_exists($con, 'nutrition_household_survey')) {
-            $sql = 'SELECT s.survey_id, s.house_hold_id, s.household_head AS matched_name,
+            $sql = 'SELECT s.survey_id, s.barangay_id, s.purok_label, s.residence_id, s.house_hold_id,
+                           s.household_head AS matched_name,
                            COALESCE(b.barangay, \'\') AS barangay_name, \'household_head\' AS match_type
                     FROM nutrition_household_survey s
                     LEFT JOIN barangay_information b ON b.id = s.barangay_id
@@ -3033,7 +3720,10 @@ if (!function_exists('nutrition_find_duplicate_person_name')) {
         }
 
         $sql = 'SELECT fm.member_id, fm.survey_id, fm.member_name AS matched_name,
+                       COALESCE(fm.residence_id, \'\') AS residence_id,
                        COALESCE(h.house_hold_id, \'\') AS house_hold_id,
+                       COALESCE(h.purok_label, \'\') AS purok_label,
+                       COALESCE(h.barangay_id, fm.barangay_id) AS barangay_id,
                        COALESCE(b.barangay, \'\') AS barangay_name, \'family_member\' AS match_type
                 FROM nutrition_household_family_member fm
                 LEFT JOIN nutrition_household_survey h
@@ -3143,6 +3833,273 @@ if (!function_exists('nutrition_validate_household_survey_names')) {
         }
 
         return null;
+    }
+}
+
+if (!function_exists('nutrition_user_can_override_survey_duplicate')) {
+    function nutrition_user_can_override_survey_duplicate(mysqli $con, string $userId): bool
+    {
+        if ($userId === '') {
+            return false;
+        }
+        if (function_exists('barangay_user_is_ssa') && barangay_user_is_ssa($con, $userId)) {
+            return true;
+        }
+        if (function_exists('barangay_user_is_nutrition_portal_admin')
+            && barangay_user_is_nutrition_portal_admin($con, $userId)) {
+            return true;
+        }
+
+        return function_exists('barangay_user_is_cnpc') && barangay_user_is_cnpc($con, $userId);
+    }
+}
+
+if (!function_exists('nutrition_household_survey_duplicate_gate')) {
+    /**
+     * Hard-block duplicates unless privileged user confirms override.
+     *
+     * @param array<int, array<string, mixed>> $familyMembers
+     * @return array{ok:bool,status?:int,error?:string,code?:string,duplicate?:array<string,string>}
+     */
+    function nutrition_household_survey_duplicate_gate(
+        mysqli $con,
+        string $userId,
+        string $barangayId,
+        string $purokLabel,
+        string $headLastName,
+        string $headFirstName,
+        string $headMiddleName,
+        string $headSuffix,
+        array $familyMembers,
+        string $excludeSurveyId = '',
+        bool $allowOverride = false
+    ): array {
+        $error = nutrition_validate_household_survey_names(
+            $con,
+            $headLastName,
+            $headFirstName,
+            $headMiddleName,
+            $headSuffix,
+            $familyMembers,
+            $excludeSurveyId
+        );
+        if ($error === null) {
+            return ['ok' => true];
+        }
+
+        $duplicate = nutrition_find_duplicate_household_head(
+            $con,
+            $headLastName,
+            $headFirstName,
+            $headMiddleName,
+            $headSuffix,
+            $excludeSurveyId
+        );
+        $samePurok = false;
+        if (is_array($duplicate)) {
+            $sameBarangay = $barangayId !== ''
+                && (string) ($duplicate['barangay_id'] ?? '') === $barangayId;
+            $dupPurok = trim((string) ($duplicate['purok_label'] ?? ''));
+            $samePurok = $sameBarangay
+                && $purokLabel !== ''
+                && $dupPurok !== ''
+                && strcasecmp($dupPurok, $purokLabel) === 0;
+            if ($samePurok) {
+                $error = 'Possible duplicate household in the same purok: same head name.'
+                    . nutrition_duplicate_name_error_suffix($duplicate)
+                    . ' Confirm only if this is a different household.';
+            }
+        }
+
+        $canOverride = nutrition_user_can_override_survey_duplicate($con, $userId);
+        if ($canOverride && !$allowOverride) {
+            return [
+                'ok' => false,
+                'status' => 409,
+                'error' => $error,
+                'code' => 'duplicate_override_allowed',
+                'duplicate' => is_array($duplicate) ? $duplicate : [],
+                'same_purok' => $samePurok,
+            ];
+        }
+        if ($canOverride && $allowOverride) {
+            return ['ok' => true, 'override_used' => true];
+        }
+
+        return [
+            'ok' => false,
+            'status' => 409,
+            'error' => $error,
+            'code' => 'duplicate',
+            'duplicate' => is_array($duplicate) ? $duplicate : [],
+            'same_purok' => $samePurok,
+        ];
+    }
+}
+
+if (!function_exists('nutrition_validate_household_survey_completeness')) {
+    /**
+     * Pre-submit completeness checklist.
+     *
+     * @param array<int, array<string, mixed>> $familyMembers
+     * @return array{ok:bool,errors:array<int,string>,checklist:array<int,array{id:string,label:string,ok:bool,detail:string}>}
+     */
+    function nutrition_validate_household_survey_completeness(
+        array $familyMembers,
+        string $hasPregnant = 'NO',
+        string $headIsPregnant = 'NO'
+    ): array {
+        $checklist = [];
+        $errors = [];
+
+        $child05 = 0;
+        $child05Complete = 0;
+        $pregnantMembers = 0;
+        foreach ($familyMembers as $member) {
+            if (strtoupper((string) ($member['is_pregnant'] ?? 'NO')) === 'YES') {
+                $pregnantMembers++;
+            }
+            $ageMonths = $member['age_months'] ?? null;
+            if ($ageMonths === null || !nutrition_is_child_0_to_5((int) $ageMonths)) {
+                continue;
+            }
+            $child05++;
+            $weight = (float) ($member['weight_kg'] ?? 0);
+            $height = (float) ($member['height_cm'] ?? 0);
+            $name = trim((string) ($member['member_name'] ?? 'Child'));
+            if ($weight > 0 && $height > 0) {
+                $child05Complete++;
+                $checklist[] = [
+                    'id' => 'child_' . $child05,
+                    'label' => $name . ' (0–5): weight & height',
+                    'ok' => true,
+                    'detail' => number_format($weight, 1) . ' kg / ' . number_format($height, 1) . ' cm',
+                ];
+            } else {
+                $missing = [];
+                if ($weight <= 0) {
+                    $missing[] = 'weight';
+                }
+                if ($height <= 0) {
+                    $missing[] = 'height';
+                }
+                $detail = 'Missing ' . implode(' & ', $missing);
+                $errors[] = $name . ': ' . $detail . ' required for children 0–5 years.';
+                $checklist[] = [
+                    'id' => 'child_' . $child05,
+                    'label' => $name . ' (0–5): weight & height',
+                    'ok' => false,
+                    'detail' => $detail,
+                ];
+            }
+        }
+
+        $checklist[] = [
+            'id' => 'children_05',
+            'label' => 'Children 0–5 with weight & height',
+            'ok' => $child05 === 0 || $child05Complete === $child05,
+            'detail' => $child05 === 0
+                ? 'No 0–5 children on this form'
+                : $child05Complete . '/' . $child05 . ' complete',
+        ];
+
+        $pregnantClaimed = strtoupper($hasPregnant) === 'YES' || strtoupper($headIsPregnant) === 'YES';
+        $pregnantOk = !$pregnantClaimed || $pregnantClaimed;
+        // Pregnant is satisfied by head and/or member flags already rolled into $hasPregnant.
+        $checklist[] = [
+            'id' => 'pregnant',
+            'label' => 'Pregnant household marked',
+            'ok' => true,
+            'detail' => $pregnantClaimed
+                ? ('Yes' . ($pregnantMembers > 0 ? ' (' . $pregnantMembers . ' member flag)' : ' (head/member)'))
+                : 'No pregnant member claimed',
+        ];
+
+        $checklist[] = [
+            'id' => 'members',
+            'label' => 'Family members listed',
+            'ok' => true,
+            'detail' => count($familyMembers) . ' member(s) beside household head',
+        ];
+
+        return [
+            'ok' => $errors === [],
+            'errors' => $errors,
+            'checklist' => $checklist,
+        ];
+    }
+}
+
+if (!function_exists('nutrition_log_household_survey_history')) {
+    function nutrition_log_household_survey_history(
+        mysqli $con,
+        string $surveyId,
+        string $barangayId,
+        string $userId,
+        string $action,
+        string $summary = ''
+    ): void {
+        if ($surveyId === '' || $barangayId === '') {
+            return;
+        }
+        nutrition_ensure_module_tables($con);
+        if (!barangay_table_exists($con, 'nutrition_household_survey_history')) {
+            return;
+        }
+        $action = strtolower(trim($action));
+        if ($action === '') {
+            $action = 'update';
+        }
+        $summary = mb_substr(trim($summary), 0, 500);
+        $stmt = $con->prepare(
+            'INSERT INTO nutrition_household_survey_history
+             (survey_id, barangay_id, user_id, action, summary)
+             VALUES (?,?,?,?,?)'
+        );
+        if (!$stmt) {
+            return;
+        }
+        $stmt->bind_param('sssss', $surveyId, $barangayId, $userId, $action, $summary);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+if (!function_exists('nutrition_list_household_survey_history')) {
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    function nutrition_list_household_survey_history(
+        mysqli $con,
+        string $surveyId,
+        int $limit = 50
+    ): array {
+        if ($surveyId === '' || !barangay_table_exists($con, 'nutrition_household_survey_history')) {
+            return [];
+        }
+        $limit = max(1, min(200, $limit));
+        $sql = "SELECT h.id, h.survey_id, h.barangay_id, h.user_id, h.action, h.summary, h.created_at,
+                       TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS user_name,
+                       COALESCE(u.username, '') AS username
+                FROM nutrition_household_survey_history h
+                LEFT JOIN users u ON u.id = h.user_id
+                WHERE h.survey_id = ?
+                ORDER BY h.created_at DESC, h.id DESC
+                LIMIT " . (int) $limit;
+        $stmt = $con->prepare($sql);
+        if (!$stmt) {
+            return [];
+        }
+        $stmt->bind_param('s', $surveyId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $rows = [];
+        while ($res && ($row = $res->fetch_assoc())) {
+            $rows[] = $row;
+        }
+        $stmt->close();
+
+        return $rows;
     }
 }
 
@@ -4102,6 +5059,7 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
             );
 
             $members[] = [
+                'residence_id' => trim((string) ($row['residence_id'] ?? '')),
                 'member_name' => $name,
                 'relationship' => nutrition_compose_member_relationship(
                     trim((string) ($row['relationship'] ?? '')),
@@ -4123,6 +5081,11 @@ if (!function_exists('nutrition_parse_family_members_from_post')) {
                 'weight_for_height' => (string) ($growth['weight_for_height'] ?? ''),
                 'is_pregnant' => $isPregnant,
                 'is_lactating' => $isLactating,
+                'is_4ps' => nutrition_family_member_yes_no($row, 'is_4ps'),
+                'is_pwd' => nutrition_family_member_yes_no($row, 'is_pwd'),
+                'is_ip' => nutrition_family_member_yes_no($row, 'is_ip'),
+                'is_solo_parent' => nutrition_family_member_yes_no($row, 'is_solo_parent'),
+                'is_na_member' => nutrition_family_member_yes_no($row, 'is_na_member'),
                 'pregnancy_months' => $isPregnant === 'YES' ? max(0, (int) ($row['pregnancy_months'] ?? 0)) : null,
                 'pregnant_nutrition_status' => $isPregnant === 'YES'
                     ? nutrition_prf_pick_option((string) ($row['pregnant_nutrition_status'] ?? ''), nutrition_prf_pregnant_status_options())
@@ -4160,13 +5123,14 @@ if (!function_exists('nutrition_save_household_family_members')) {
 
         $stmt = $con->prepare(
             'INSERT INTO nutrition_household_family_member
-             (member_id, survey_id, barangay_id, member_name, relationship, gender, birth_date, weight_kg, height_cm,
-              date_measured, prev_weight_kg, prev_height_cm, prev_date_measured, age_months, weight_for_age, height_for_age, weight_for_height, is_pregnant, is_lactating, pregnancy_months,
+             (member_id, survey_id, barangay_id, residence_id, member_name, relationship, gender, birth_date, weight_kg, height_cm,
+              date_measured, prev_weight_kg, prev_height_cm, prev_date_measured, age_months, weight_for_age, height_for_age, weight_for_height, is_pregnant, is_lactating,
+              is_4ps, is_pwd, is_ip, is_solo_parent, is_na_member, disability, pregnancy_months,
               pregnant_nutrition_status,
               planned_exclusive_breastfeeding, planned_mixed_feeding, planned_bottle_feeding, planned_other_feeding,
               planned_other_specify, lactating_exclusive_breastfeeding, lactating_mixed_feeding,
               lactating_bottle_feeding, lactating_other_feeding, lactating_other_specify, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         if (!$stmt) {
             return 0;
@@ -4175,6 +5139,7 @@ if (!function_exists('nutrition_save_household_family_members')) {
         $saved = 0;
         foreach ($members as $index => $member) {
             $memberId = (string) hexdec(uniqid());
+            $memberResidenceId = trim((string) ($member['residence_id'] ?? ''));
             $pregnancyMonths = $member['pregnancy_months'];
             $pregnancyMonthsValue = $pregnancyMonths !== null ? (int) $pregnancyMonths : null;
             $ageMonths = $member['age_months'];
@@ -4202,11 +5167,24 @@ if (!function_exists('nutrition_save_household_family_members')) {
             $prevWeightKgBind = $prevWeightKgValue === null ? null : (string) $prevWeightKgValue;
             $prevHeightCmBind = $prevHeightCmValue === null ? null : (string) $prevHeightCmValue;
 
-            $stmt->bind_param(
-                'sssssssssssssssssssssssssssssssi',
+            $is4ps = (string) ($member['is_4ps'] ?? 'NO');
+            $isPwd = (string) ($member['is_pwd'] ?? 'NO');
+            $isIp = (string) ($member['is_ip'] ?? 'NO');
+            $isSoloParent = (string) ($member['is_solo_parent'] ?? 'NO');
+            $isNaMember = (string) ($member['is_na_member'] ?? 'NO');
+            if ($isNaMember === 'YES') {
+                $is4ps = 'NO';
+                $isIp = 'NO';
+            }
+            $disability = $isPwd === 'YES' ? 'YES' : 'NO';
+
+            // 38 strings + 1 int (sort_order) = 39 placeholders.
+            $ok = $stmt->bind_param(
+                str_repeat('s', 38) . 'i',
                 $memberId,
                 $surveyId,
                 $barangayId,
+                $memberResidenceId,
                 $member['member_name'],
                 $member['relationship'],
                 $member['gender'],
@@ -4223,6 +5201,12 @@ if (!function_exists('nutrition_save_household_family_members')) {
                 $member['weight_for_height'],
                 $member['is_pregnant'],
                 $member['is_lactating'],
+                $is4ps,
+                $isPwd,
+                $isIp,
+                $isSoloParent,
+                $isNaMember,
+                $disability,
                 $pregnancyMonthsBind,
                 $pregnantNutritionStatus,
                 $member['planned_exclusive_breastfeeding'],
@@ -4237,7 +5221,7 @@ if (!function_exists('nutrition_save_household_family_members')) {
                 $member['lactating_other_specify'],
                 $sortOrder
             );
-            if (!$stmt->execute()) {
+            if (!$ok || !$stmt->execute()) {
                 continue;
             }
             $saved++;
@@ -4336,33 +5320,24 @@ if (!function_exists('nutrition_growth_result_is_at_risk')) {
 
 if (!function_exists('nutrition_list_household_puroks')) {
     /**
+     * Distinct purok labels from household surveys (optional report filters / BNS scope).
+     *
+     * @param array<string, mixed> $filters
      * @return array<int, string>
      */
-    function nutrition_list_household_puroks(mysqli $con, string $barangayId): array
+    function nutrition_list_household_puroks(mysqli $con, string $barangayId, array $filters = []): array
     {
-        if (!barangay_table_exists($con, 'nutrition_household_survey')) {
-            return [];
+        $labels = [];
+        foreach (nutrition_list_household_surveys($con, $barangayId, 0, $filters) as $row) {
+            $label = trim((string) ($row['purok_label'] ?? ''));
+            if ($label !== '') {
+                $labels[$label] = $label;
+            }
         }
+        $labels = array_values($labels);
+        natcasesort($labels);
 
-        $stmt = $con->prepare(
-            'SELECT DISTINCT purok_label
-             FROM nutrition_household_survey
-             WHERE barangay_id = ? AND purok_label <> \'\'
-             ORDER BY purok_label ASC'
-        );
-        if (!$stmt) {
-            return [];
-        }
-
-        $stmt->bind_param('s', $barangayId);
-        $stmt->execute();
-        $rows = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return array_values(array_filter(array_map(
-            static fn (array $row): string => trim((string) ($row['purok_label'] ?? '')),
-            $rows
-        )));
+        return array_values($labels);
     }
 }
 
@@ -4499,7 +5474,7 @@ if (!function_exists('nutrition_household_consolidated_report')) {
             'summary' => $summary,
             'growth_summary' => $growthSummary,
             'households' => $reportHouseholds,
-            'purok_options' => nutrition_list_household_puroks($con, $barangayId),
+            'purok_options' => nutrition_list_household_puroks($con, $barangayId, $filters),
         ];
     }
 }
@@ -4867,7 +5842,7 @@ if (!function_exists('nutrition_pregnant_families_report')) {
             'most_common_occupation' => $mostCommon,
             'individuals' => $individuals,
             'bns_name' => $bnsName,
-            'purok_options' => nutrition_list_household_puroks($con, $barangayId),
+            'purok_options' => nutrition_list_household_puroks($con, $barangayId, $filters),
             'calendar_year' => (int) date('Y'),
         ];
     }
@@ -5215,7 +6190,7 @@ if (!function_exists('nutrition_household_survey_build_form_sheet')) {
         }
         $wide(
             'How to fill in Excel: type on the lines. To check a box, replace ☐ with ☑ or type X before the option. '
-            . 'Save the file and use "Upload Excel" on the Household Nutrition Survey page. Household No. is generated automatically.',
+            . 'Save the file and use "Upload Excel" on the Household Nutrition Survey page. Resident Number (PSGC-Purok-Number) is generated automatically.',
             'note',
             26
         );
@@ -5225,7 +6200,7 @@ if (!function_exists('nutrition_household_survey_build_form_sheet')) {
         $fields([
             ['Name of Barangay', 0, 3, $barangayName],
             ['Purok', 5, 8, $prefillPurok, 'purok_number'],
-            ['Household No. (auto-generated)', 10, 14],
+            ['Resident Number (auto PSGC-Purok-Number)', 10, 14],
         ]);
         $fields([
             ['Name of BNS', 0, 3, '', 'bns_name'],

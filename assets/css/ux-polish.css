@@ -1,0 +1,243 @@
+/**
+ * System-wide UX polish — focus, density, mobile, filters, motion.
+ * Loaded after AdminLTE / portal themes; does not replace brand themes.
+ */
+
+:root {
+  --ux-focus: #2dd4bf;
+  --ux-focus-ring: 0 0 0 3px rgba(45, 212, 191, 0.35);
+  --ux-radius: 12px;
+  --ux-tap: 44px;
+}
+
+/* Visible keyboard focus */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.nav-link:focus-visible,
+.page-link:focus-visible {
+  outline: 2px solid var(--ux-focus) !important;
+  outline-offset: 2px;
+  box-shadow: var(--ux-focus-ring) !important;
+}
+
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 2000;
+  padding: 0.65rem 1rem;
+  background: #0f172a;
+  color: #fff;
+  border-radius: 0 0 8px 0;
+  font-weight: 700;
+}
+.skip-to-content:focus {
+  left: 0;
+}
+
+/* Comfortable tap targets on mobile */
+@media (max-width: 767.98px) {
+  .btn,
+  .nav-link,
+  .page-link {
+    min-height: var(--ux-tap);
+  }
+
+  .content-wrapper {
+    padding-bottom: 4.5rem;
+  }
+
+  .table-responsive {
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--ux-radius);
+  }
+
+  .dataTables_wrapper .dataTables_filter input,
+  .dataTables_wrapper .dataTables_length select {
+    min-height: 40px;
+    font-size: 16px; /* avoid iOS zoom */
+  }
+}
+
+/* Cards / panels — calmer elevation */
+.card,
+.nutrition-panel,
+.dashboard-panel {
+  border-radius: var(--ux-radius);
+}
+
+.card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.card-tools {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+/* Sticky filter toolbars */
+.ux-filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.75rem 1rem;
+  margin: -0.25rem -0.25rem 1rem;
+  border-radius: var(--ux-radius);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.nutrition-portal .ux-filter-bar {
+  background: rgba(10, 28, 18, 0.82);
+  border-color: rgba(34, 197, 94, 0.18);
+  top: 3.5rem;
+}
+
+.ux-filter-bar .form-group label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 0.25rem;
+}
+
+.ux-filter-bar .btn-block {
+  white-space: nowrap;
+}
+
+.ux-filter-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ux-filter-actions .btn {
+  flex: 1 1 auto;
+}
+
+/* Alerts — readable */
+.alert {
+  border-radius: 10px;
+  border-width: 1px;
+}
+
+.alert a.alert-link {
+  text-decoration: underline;
+  font-weight: 700;
+}
+
+/* End-term checklist tiles */
+.ux-check-tile {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.ux-check-tile:hover {
+  transform: translateY(-2px);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+.ux-check-tile .text-muted {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* DataTables density */
+table.dataTable tbody td {
+  vertical-align: middle;
+}
+
+table.dataTable thead th {
+  white-space: nowrap;
+}
+
+/* Empty / loading helpers */
+.ux-empty {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  opacity: 0.8;
+}
+.ux-empty i {
+  font-size: 2rem;
+  opacity: 0.45;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+/* Login polish */
+.barangay-login-card .form-control {
+  min-height: 48px;
+  font-size: 1rem;
+}
+.barangay-login-card .btn-lg {
+  min-height: 52px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border-radius: 12px;
+}
+.barangay-login-card .ux-field-label {
+  display: block;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 0.35rem;
+}
+.barangay-login-card .ux-login-banner {
+  text-align: left;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.barangay-login-card .ux-login-banner--warn {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+}
+
+/* Nutrition page header — sticky actions on long forms */
+@media (min-width: 768px) {
+  .nutrition-page-actions {
+    position: sticky;
+    top: 4.25rem;
+    z-index: 15;
+    align-self: flex-start;
+  }
+}
+
+.nutrition-page-description {
+  max-width: 42rem;
+  line-height: 1.45;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

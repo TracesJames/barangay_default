@@ -8,6 +8,7 @@ require_once '../includes/nutrition_context.php';
 require_once '../includes/nutrition_bnp_reports.php';
 require_once '../includes/nutrition_eopt_reports.php';
 require_once '../includes/nutrition_mellpi.php';
+require_once '../includes/nutrition_export_xlsx.php';
 
 nutrition_ensure_module_tables($con);
 
@@ -24,14 +25,13 @@ if (!barangay_user_can_open_nutrition_city_hub($con, $user_id)) {
 
 date_default_timezone_set('Asia/Manila');
 
-$filters = [
-    'purok' => trim((string) ($_GET['purok'] ?? '')),
-    'date_from' => trim((string) ($_GET['date_from'] ?? '')),
-    'date_to' => trim((string) ($_GET['date_to'] ?? '')),
-];
+$filters = nutrition_export_filters_from_request($_GET);
 $calendarYear = (int) ($_GET['year'] ?? date('Y'));
 if ($calendarYear < 2000 || $calendarYear > 2100) {
     $calendarYear = (int) date('Y');
+}
+if (($filters['month'] ?? '') !== '' && preg_match('/^(\d{4})-/', (string) $filters['month'], $ym)) {
+    $calendarYear = (int) $ym[1];
 }
 
 $reportMode = 'consolidated';

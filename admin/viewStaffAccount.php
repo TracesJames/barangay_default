@@ -102,7 +102,7 @@ foreach ($assignedBarangayIds as $assignedId) {
 
           <?php if ($isBns && !($canChangeRole && !$isSelf)) : ?>
           <div class="form-group" id="edit_bns_purok_group_locked_role">
-            <label>Update assigned purok(s)</label>
+            <label>Update assigned purok(s) <small class="text-muted">(each purok shows the BNS assigned to it)</small></label>
             <div class="mb-2">
               <div class="custom-control custom-radio custom-control-inline">
                 <input type="radio" id="edit_purok_scope_all_lr" name="purok_scope" value="all" class="custom-control-input edit-purok-scope" <?= $bnsPurokScopeAll ? 'checked' : '' ?>>
@@ -133,7 +133,7 @@ foreach ($assignedBarangayIds as $assignedId) {
             </select>
           </div>
           <div class="form-group" id="edit_bns_purok_group" style="<?= $isBns ? '' : 'display:none;' ?>">
-            <label>Assigned purok(s) <small class="text-muted">(BNS — all, one, or many)</small></label>
+            <label>Assigned purok(s) <small class="text-muted">(each purok shows the BNS assigned to it)</small></label>
             <div class="mb-2">
               <div class="custom-control custom-radio custom-control-inline">
                 <input type="radio" id="edit_purok_scope_all" name="purok_scope" value="all" class="custom-control-input" <?= $bnsPurokScopeAll ? 'checked' : '' ?>>
@@ -235,9 +235,11 @@ $(function () {
         var val = String(opt.value || '');
         var id = 'edit_purok_' + idx + '_' + Math.floor(Math.random() * 1000);
         var checked = selectedLabels.indexOf(val) !== -1 ? ' checked' : '';
-        html += '<div class="custom-control custom-checkbox">'
+        var note = opt.assigned_note || (opt.assigned && opt.assigned.length ? ('Assigned: ' + opt.assigned.join(', ')) : 'Not assigned');
+        html += '<div class="custom-control custom-checkbox mb-1">'
           + '<input type="checkbox" class="custom-control-input edit-purok-check" name="purok_labels[]" id="' + id + '" value="' + $('<div>').text(val).html() + '"' + checked + '>'
-          + '<label class="custom-control-label" for="' + id + '">' + $('<div>').text(opt.label || val).html() + '</label>'
+          + '<label class="custom-control-label" for="' + id + '">' + $('<div>').text(opt.label || val).html()
+          + ' <small class="text-muted">— ' + $('<div>').text(note).html() + '</small></label>'
           + '</div>';
       });
       $box.html(html);

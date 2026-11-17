@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api/nutrition_api.dart';
+import 'config.dart';
 import 'session.dart';
 import 'screens/change_password_screen.dart';
 import 'screens/login_screen.dart';
@@ -22,6 +23,8 @@ class NutritionBnsApp extends StatefulWidget {
 class _NutritionBnsAppState extends State<NutritionBnsApp> {
   late final Session session;
   bool _ready = false;
+  bool _forceUpdate = false;
+  String _updateMessage = '';
 
   @override
   void initState() {
@@ -30,9 +33,26 @@ class _NutritionBnsAppState extends State<NutritionBnsApp> {
     session.onEnded = () {
       if (mounted) setState(() {});
     };
-    session.load().whenComplete(() {
+    session.load().whenComplete(() async {
+      await _checkVersion();
       if (mounted) setState(() => _ready = true);
     });
+  }
+
+  Future<void> _checkVersion() async {
+    try {
+      final cfg = await session.api.appConfig(versionCode: appVersionCode);
+      final force = cfg['force_update'] == true || cfg['needs_update'] == true;
+      if (force && mounted) {
+        setState(() {
+          _forceUpdate = true;
+          _updateMessage = cfg['update_message']?.toString() ??
+              'Please install the latest Nutrition BNS APK.';
+        });
+      }
+    } catch (_) {
+      // Offline / LAN down — allow app to open.
+    }
   }
 
   void _refresh() => setState(() {});
@@ -70,6 +90,38 @@ class _NutritionBnsAppState extends State<NutritionBnsApp> {
                 ),
               ),
             )
+          : _forceUpdate
+              ? Scaffold(
+                  backgroundColor: AppColors.fog,
+                  body: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.system_update_rounded, size: 56, color: AppColors.forest),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Update required',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _updateMessage,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Installed $appVersionName ($appVersionCode)',
+                            style: const TextStyle(color: AppColors.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
           : !session.isLoggedIn
               ? LoginScreen(session: session, onLoggedIn: _refresh)
               : session.mustChangePassword

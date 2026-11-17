@@ -6,7 +6,8 @@ require_once '../includes/partials/nutrition_init.php';
 
 $activePage = 'report';
 $nutritionPageTitle = 'Generate Report';
-$snapshot = nutrition_report_snapshot($con, (string) $barangay_id, (string) $barangay);
+$reportFilters = nutrition_apply_bns_report_filters($con, (string) $user_id, (string) $barangay_id);
+$snapshot = nutrition_report_snapshot($con, (string) $barangay_id, (string) $barangay, $reportFilters);
 $totals = $snapshot['totals'];
 $atRisk = $totals['underweight'] + $totals['wasted'] + $totals['severely_wasted'] + $totals['stunted'] + $totals['overweight'] + $totals['obese'];
 
@@ -65,7 +66,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                 <h5 class="mb-3">Recent Household Surveys</h5>
                 <div class="table-responsive mb-4">
                   <table class="table table-dark table-striped">
-                    <thead><tr><th>Date</th><th>Household ID</th><th>Household Head</th><th>Purok</th><th>Gender</th><th>Occupation</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Resident Number</th><th>Household Head</th><th>Purok</th><th>Gender</th><th>Occupation</th></tr></thead>
                     <tbody>
                       <?php if ($snapshot['household_surveys'] === []) : ?>
                       <tr><td colspan="6" class="text-center text-muted">No household surveys recorded.</td></tr>
@@ -73,7 +74,7 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                       <?php foreach ($snapshot['household_surveys'] as $row) : ?>
                       <tr>
                         <td><?= barangay_h(date('M j, Y', strtotime((string) $row['survey_date']))) ?></td>
-                        <td><code><?= barangay_h((string) ($row['house_hold_id'] ?? '')) ?></code></td>
+                        <td><code><?= barangay_h(trim((string) ($row['house_hold_id'] ?? '')) !== '' ? (string) $row['house_hold_id'] : '—') ?></code></td>
                         <td><?= barangay_h(nutrition_household_head_display($row)) ?></td>
                         <td><?= barangay_h((string) ($row['purok_label'] ?? '')) ?></td>
                         <td><?= barangay_h((string) ($row['gender'] ?? '')) ?></td>

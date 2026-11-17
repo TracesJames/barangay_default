@@ -8,27 +8,17 @@ $activePage = 'dashboard';
 $nutritionPageTitle = 'Nutrition Dashboard';
 
 $barangayId = (string) $barangay_id;
-$totals = nutrition_scoped_totals($con, $barangayId);
+$dashboardFilters = nutrition_apply_bns_report_filters($con, (string) $user_id, $barangayId);
+$totals = nutrition_scoped_totals($con, $barangayId, $dashboardFilters);
 $atRisk = (int) ($totals['at_risk'] ?? 0);
 
-$householdSurveyCount = 0;
-if (barangay_table_exists($con, 'nutrition_household_survey')) {
-    $surveyCountStmt = $con->prepare(
-        'SELECT COUNT(*) AS total FROM nutrition_household_survey WHERE barangay_id = ?'
-    );
-    if ($surveyCountStmt) {
-        $surveyCountStmt->bind_param('s', $barangayId);
-        $surveyCountStmt->execute();
-        $householdSurveyCount = (int) ($surveyCountStmt->get_result()->fetch_assoc()['total'] ?? 0);
-        $surveyCountStmt->close();
-    }
-}
+$householdSurveyCount = count(nutrition_list_household_surveys($con, $barangayId, 0, $dashboardFilters));
 
 $coverage = ((int) $totals['children'] > 0)
     ? (int) round(((int) $totals['assessed'] / (int) $totals['children']) * 100)
     : 0;
 
-$recentRows = nutrition_recent_activity_rows($con, $barangayId, 8);
+$recentRows = nutrition_recent_activity_rows($con, $barangayId, 8, $dashboardFilters);
 $canOpenRegisteredHouseholds = nutrition_user_can_view_registered_households($con, $user_id);
 
 require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
@@ -152,19 +142,31 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                 <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i>Nutritional Status Breakdown</h3>
               </div>
               <div class="card-body">
+                <?php
+                $statusCards = [
+                    ['key' => 'normal', 'label' => 'Normal', 'class' => 'is-normal'],
+                    ['key' => 'underweight', 'label' => 'Underweight', 'class' => 'is-underweight'],
+                    ['key' => 'wasted', 'label' => 'Wasted', 'class' => 'is-wasted'],
+                    ['key' => 'severely_wasted', 'label' => 'Severely Wasted', 'class' => 'is-severe'],
+                    ['key' => 'stunted', 'label' => 'Stunted', 'class' => 'is-stunted'],
+                    ['key' => 'overweight', 'label' => 'Overweight', 'class' => 'is-overweight'],
+                    ['key' => 'obese', 'label' => 'Obese', 'class' => 'is-obese'],
+                ];
+                $statusSum = 0;
+                foreach ($statusCards as $card) {
+                    $statusSum += (int) ($totals[$card['key']] ?? 0);
+                }
+                ?>
+                <?php if ($statusSum === 0 && ((int) ($totals['children'] ?? 0) > 0 || $householdSurveyCount > 0)) : ?>
+                <div class="alert alert-dark border-warning mb-3 py-2 px-3">
+                  <i class="fas fa-info-circle text-warning mr-1"></i>
+                  Status chips stay at 0 until family members (0–59 months) have weight/height saved on the household survey.
+                  <a href="nutritionBarangaySurvey.php" class="text-success font-weight-bold">Open surveys</a>
+                  and edit each household to re-enter measured children.
+                </div>
+                <?php endif; ?>
                 <div class="nutrition-status-grid">
-                  <?php
-                  $statusCards = [
-                      ['key' => 'normal', 'label' => 'Normal', 'class' => 'is-normal'],
-                      ['key' => 'underweight', 'label' => 'Underweight', 'class' => 'is-underweight'],
-                      ['key' => 'wasted', 'label' => 'Wasted', 'class' => 'is-wasted'],
-                      ['key' => 'severely_wasted', 'label' => 'Severely Wasted', 'class' => 'is-severe'],
-                      ['key' => 'stunted', 'label' => 'Stunted', 'class' => 'is-stunted'],
-                      ['key' => 'overweight', 'label' => 'Overweight', 'class' => 'is-overweight'],
-                      ['key' => 'obese', 'label' => 'Obese', 'class' => 'is-obese'],
-                  ];
-                  foreach ($statusCards as $card) :
-                  ?>
+                  <?php foreach ($statusCards as $card) : ?>
                   <button type="button"
                           class="nutrition-status-chip <?= barangay_h($card['class']) ?>"
                           data-status="<?= barangay_h($card['key']) ?>"
@@ -187,10 +189,17 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
               <div class="card-body p-0">
                 <?php if ($recentRows === []) : ?>
                 <div class="p-4 text-center text-muted">
+                  <?php if ($householdSurveyCount > 0) : ?>
+                  <?= number_format($householdSurveyCount) ?> household survey<?= $householdSurveyCount === 1 ? '' : 's' ?> on file, but no assessed children 0–19 yet.
+                  <a href="nutritionBarangaySurvey.php" class="text-success">Open surveys</a>
+                  and edit each household to add / re-save family members with measurements<?php if ($canOpenRegisteredHouseholds) : ?>,
+                  or <a href="nutritionAssess.php?assess=1" class="text-success">record an individual assessment</a><?php endif; ?>.
+                  <?php else : ?>
                   No assessments yet for this barangay.
                   <a href="nutritionHouseholdSurvey.php" class="text-success">Add a household survey</a><?php if ($canOpenRegisteredHouseholds) : ?>
                   or
                   <a href="nutritionAssess.php?assess=1" class="text-success">record an individual assessment</a><?php endif; ?>.
+                  <?php endif; ?>
                 </div>
                 <?php else : ?>
                 <div class="table-responsive">

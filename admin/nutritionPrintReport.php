@@ -4,7 +4,8 @@ include_once '../connection.php';
 include_once '../includes/auth_admin.php';
 require_once '../includes/partials/nutrition_init.php';
 
-$snapshot = nutrition_report_snapshot($con, (string) $barangay_id, (string) $barangay);
+$reportFilters = nutrition_apply_bns_report_filters($con, (string) $user_id, (string) $barangay_id);
+$snapshot = nutrition_report_snapshot($con, (string) $barangay_id, (string) $barangay, $reportFilters);
 $totals = $snapshot['totals'];
 $atRisk = $totals['underweight'] + $totals['wasted'] + $totals['severely_wasted'] + $totals['stunted'] + $totals['overweight'] + $totals['obese'];
 $reportHeader = $nutritionSettings['report_header'] ?? ('Barangay ' . $barangay . ' Nutrition Profiling');
@@ -63,7 +64,7 @@ $reportHeader = $nutritionSettings['report_header'] ?? ('Barangay ' . $barangay 
 
   <h2>Household Nutrition Surveys</h2>
   <table>
-    <thead><tr><th>Date</th><th>Household ID</th><th>Household Head</th><th>Purok</th><th>Gender</th><th>Occupation</th></tr></thead>
+    <thead><tr><th>Date</th><th>Resident Number</th><th>Household Head</th><th>Purok</th><th>Gender</th><th>Occupation</th></tr></thead>
     <tbody>
       <?php if ($snapshot['household_surveys'] === []) : ?>
       <tr><td colspan="6">No records.</td></tr>
@@ -71,7 +72,7 @@ $reportHeader = $nutritionSettings['report_header'] ?? ('Barangay ' . $barangay 
       <?php foreach ($snapshot['household_surveys'] as $row) : ?>
       <tr>
         <td><?= barangay_h(date('M j, Y', strtotime((string) $row['survey_date']))) ?></td>
-        <td><?= barangay_h((string) ($row['house_hold_id'] ?? '')) ?></td>
+        <td><?= barangay_h(trim((string) ($row['house_hold_id'] ?? '')) !== '' ? (string) $row['house_hold_id'] : '—') ?></td>
         <td><?= barangay_h(nutrition_household_head_display($row)) ?></td>
         <td><?= barangay_h((string) ($row['purok_label'] ?? '')) ?></td>
         <td><?= barangay_h((string) ($row['gender'] ?? '')) ?></td>

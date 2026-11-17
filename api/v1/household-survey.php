@@ -28,11 +28,20 @@ foreach (['survey_date', 'birth_date'] as $dateKey) {
     }
 }
 
-// Purok: accept purok_number or purok_label.
-if (empty($survey['purok_number']) && !empty($survey['purok_label'])) {
-    $survey['purok_number'] = nutrition_purok_input_from_label((string) $survey['purok_label'])
-        ?: (string) $survey['purok_label'];
+// Purok / Sitio: locked to master list (+ BNS assignment when applicable).
+$purokRaw = trim((string) ($survey['purok_label'] ?? $survey['purok_number'] ?? ''));
+$purokGate = barangay_assert_purok_allowed(
+    $con,
+    (string) ($auth['user_id'] ?? ''),
+    (string) ($ctx['barangay_id'] ?? ''),
+    $purokRaw
+);
+if (!$purokGate['ok']) {
+    nutrition_api_error((string) ($purokGate['error'] ?? 'Invalid Purok / Sitio.'), (int) ($purokGate['status'] ?? 400));
 }
+$survey['purok_label'] = (string) ($purokGate['purok_label'] ?? $purokRaw);
+$survey['purok_number'] = nutrition_purok_input_from_label($survey['purok_label'])
+    ?: $survey['purok_label'];
 
 // Edit key aliases.
 if (empty($survey['existing_survey_id']) && !empty($survey['survey_id'])) {
@@ -71,6 +80,7 @@ if (isset($survey['family_planning_methods_list']) && is_array($survey['family_p
 
 $memberBoolFlags = [
     'is_pregnant', 'is_lactating',
+    'is_4ps', 'is_pwd', 'is_ip', 'is_solo_parent', 'is_na_member',
     'planned_exclusive_breastfeeding', 'planned_mixed_feeding',
     'planned_bottle_feeding', 'planned_other_feeding',
     'lactating_exclusive_breastfeeding', 'lactating_mixed_feeding',
@@ -135,9 +145,17 @@ $result = nutrition_commit_household_survey(
 );
 
 if (empty($result['ok'])) {
+    $extra = [];
+    if (!empty($result['code'])) {
+        $extra['code'] = (string) $result['code'];
+    }
+    if (array_key_exists('same_purok', $result)) {
+        $extra['same_purok'] = !empty($result['same_purok']);
+    }
     nutrition_api_error(
         (string) ($result['error'] ?? 'Could not save household survey.'),
-        (int) ($result['status'] ?? 400)
+        (int) ($result['status'] ?? 400),
+        $extra
     );
 }
 

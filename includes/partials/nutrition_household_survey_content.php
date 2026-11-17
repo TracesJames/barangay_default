@@ -42,7 +42,10 @@ foreach ($surveys as $surveyRow) {
             </a>
             <a href="nutritionBarangaySurvey.php" class="btn btn-success btn-sm">
               <i class="fas fa-poll mr-1"></i> Consolidated Report
-            </a>';
+            </a>
+            <button type="button" class="btn btn-outline-light btn-sm" id="nutritionLangToggle" title="Toggle English / Bisaya labels">
+              <i class="fas fa-language mr-1"></i> Bisaya labels
+            </button>';
         require __DIR__ . '/nutrition_page_header.php';
         require_once __DIR__ . '/nutrition_prf_field_helpers.php';
         ?>
@@ -110,9 +113,29 @@ foreach ($surveys as $surveyRow) {
                     <input type="text" class="form-control" value="<?= barangay_h($barangay) ?>" readonly>
                   </div>
                   <div class="col-md-3 form-group">
-                    <label for="purok_number">Purok <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control nutrition-input-narrow" id="purok_number" name="purok_number" maxlength="32" value="<?= barangay_h((string) ($defaultPurokInput ?? $defaultPurokNumber ?? '1')) ?>" placeholder="1, 1A, A" autocomplete="off" required>
-                    <small class="text-muted">Number and/or letters (e.g. 1, 1A, A)</small>
+                    <label for="purok_number" data-i18n-en="Purok / Sitio" data-i18n-bis="Purok / Sitio">Purok / Sitio <span class="text-danger">*</span></label>
+                    <?php
+                    $purokSelectOptions = $purokSelectOptions ?? [];
+                    $selectedPurokLabel = trim((string) ($editingSurvey['purok_label'] ?? $defaultPurokLabel ?? ''));
+                    ?>
+                    <select class="form-control" id="purok_number" name="purok_label" required>
+                      <option value="">Select Purok / Sitio…</option>
+                      <?php foreach ($purokSelectOptions as $purokOpt) :
+                          $optValue = (string) ($purokOpt['value'] ?? $purokOpt['label'] ?? '');
+                          if ($optValue === '') {
+                              continue;
+                          }
+                          $isSelected = $selectedPurokLabel !== ''
+                              && strcasecmp($selectedPurokLabel, $optValue) === 0;
+                          ?>
+                      <option value="<?= barangay_h($optValue) ?>"<?= $isSelected ? ' selected' : '' ?>><?= barangay_h($optValue) ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <?php if ($purokSelectOptions === []) : ?>
+                    <small class="text-danger">No Purok / Sitio configured. Ask an admin to add them under Manage Purok / Sitio.</small>
+                    <?php else : ?>
+                    <small class="text-muted">Locked to the official barangay list<?= !empty($isNutritionScholar) ? ' (your assigned puroks only)' : '' ?>.</small>
+                    <?php endif; ?>
                   </div>
                   <div class="col-md-3 form-group">
                     <label for="survey_date">Survey Date <span class="text-danger">*</span></label>
@@ -121,23 +144,30 @@ foreach ($surveys as $surveyRow) {
                   </div>
                   <div class="col-md-6 form-group">
                     <label for="bns_name">Name of BNS</label>
-                    <input type="text" class="form-control" id="bns_name" name="bns_name" placeholder="Barangay Nutrition Scholar">
+                    <?php
+                    $bnsNameValue = trim((string) ($editingSurvey['bns_name'] ?? ''));
+                    if ($bnsNameValue === '') {
+                        $bnsNameValue = trim((string) ($defaultBnsName ?? ''));
+                    }
+                    ?>
+                    <input type="text" class="form-control" id="bns_name" name="bns_name" value="<?= barangay_h($bnsNameValue) ?>" placeholder="Barangay Nutrition Scholar" autocomplete="name">
+                    <?php if ($bnsNameValue !== '' && empty($editingSurvey)) : ?>
+                    <small class="text-muted">Auto-filled from your logged-in account.</small>
+                    <?php endif; ?>
                   </div>
                   <div class="col-lg-6 form-group">
-                    <label for="house_hold_id">Household No.</label>
+                    <label for="house_hold_id_display" data-i18n-en="Resident Number" data-i18n-bis="Numero sa Residente">Resident Number <span class="text-danger">*</span></label>
                     <div class="input-group">
-                      <input type="text" class="form-control nutrition-readonly-id" id="house_hold_id" name="house_hold_id" value="<?= barangay_h($defaultHouseholdId) ?>" readonly>
+                      <input type="text" class="form-control nutrition-readonly-id" id="house_hold_id_display" value="<?= barangay_h((string) ($editingSurvey['house_hold_id'] ?? $defaultHouseholdId)) ?>" readonly placeholder="Auto-generated from PSGC + Purok">
                       <div class="input-group-append">
-                        <?php if (empty($editingSurvey['survey_id'])) : ?>
-                        <button type="button" class="btn btn-outline-success" id="refreshHouseholdId" title="Refresh number">
+                        <button type="button" class="btn btn-outline-light" id="refreshHouseholdId" title="Refresh auto Resident Number">
                           <i class="fas fa-sync-alt"></i>
                         </button>
-                        <?php endif; ?>
                       </div>
                     </div>
+                    <input type="hidden" id="house_hold_id" name="house_hold_id" value="<?= barangay_h((string) ($editingSurvey['house_hold_id'] ?? $defaultHouseholdId)) ?>">
                     <small class="text-muted d-block mt-1">
-                      Auto-generated from the purok when you save (also for uploaded Excel forms).
-                      Format: <code>PSGC-Purok-5DigitSeries</code> (e.g. <code><?= barangay_h($psgcCode) ?>-P1-00001</code>)
+                      Auto-generated as <strong>PSGC-Purok-Number</strong> (e.g. 1001321024-P1-00001). Each family member also gets their own Resident Number.
                     </small>
                   </div>
                 </div>
@@ -146,26 +176,25 @@ foreach ($surveys as $surveyRow) {
               <div class="nutrition-form-section" id="nutritionStepHead">
                 <h5 class="nutrition-form-section-title"><i class="fas fa-user mr-2"></i>Household Head</h5>
                 <div class="form-group">
-                  <label for="barangay_residence_id">Load from Barangay Residents <span class="text-warning">*</span></label>
+                  <label for="barangay_residence_id">Link Barangay Hub resident <span class="text-muted">(optional)</span></label>
                   <select class="form-control" id="barangay_residence_id" name="residence_id" style="width: 100%;">
-                    <option value="">Search registered resident…</option>
+                    <option value="">Search Hub resident to prefill details…</option>
                   </select>
-                  <small class="form-text text-warning">
-                    Recommended: link to a registered resident so Nutrition Hub and Barangay Hub share one identity.
-                    Unlinked surveys appear under <em>Unlinked Nutrition Households</em>.
+                  <small class="form-text text-muted">
+                    Optional. Prefills head/family details from Barangay Hub. Resident Number above stays auto-generated.
                   </small>
                 </div>
                 <div class="row nutrition-name-fields-row">
                   <div class="col-md-6 col-lg-3 form-group">
-                    <label for="head_last_name">Last Name <span class="text-danger">*</span></label>
+                    <label for="head_last_name" data-i18n-en="Last Name" data-i18n-bis="Apelyido">Last Name <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="head_last_name" name="head_last_name" required>
                   </div>
                   <div class="col-md-6 col-lg-3 form-group">
-                    <label for="head_first_name">First Name <span class="text-danger">*</span></label>
+                    <label for="head_first_name" data-i18n-en="First Name" data-i18n-bis="Pangalan">First Name <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="head_first_name" name="head_first_name" required>
                   </div>
                   <div class="col-md-6 col-lg-3 form-group">
-                    <label for="head_middle_name">Middle Name</label>
+                    <label for="head_middle_name" data-i18n-en="Middle Name" data-i18n-bis="Tunga-tungang Ngalan">Middle Name</label>
                     <input type="text" class="form-control" id="head_middle_name" name="head_middle_name">
                   </div>
                   <div class="col-md-6 col-lg-3 form-group">
@@ -180,11 +209,11 @@ foreach ($surveys as $surveyRow) {
                     <small class="text-muted">Format: Month/Day/YYYY</small>
                   </div>
                   <div class="col-md-4 form-group">
-                    <label for="gender">Gender <span class="text-danger">*</span></label>
+                    <label for="gender">Gender (Boy / Girl) <span class="text-danger">*</span></label>
                     <select class="form-control" id="gender" name="gender" required>
                       <option value="">Select gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
+                      <option value="Male">Male (Boy)</option>
+                      <option value="Female">Female (Girl)</option>
                     </select>
                   </div>
                   <div class="col-md-4 form-group">
@@ -203,11 +232,11 @@ foreach ($surveys as $surveyRow) {
                   <div class="d-flex flex-wrap gap-3 mb-3">
                     <div class="custom-control custom-checkbox mr-3">
                       <input type="checkbox" class="custom-control-input" id="head_is_pregnant" name="head_is_pregnant" value="YES">
-                      <label class="custom-control-label" for="head_is_pregnant">Pregnant</label>
+                      <label class="custom-control-label" for="head_is_pregnant" data-i18n-en="Pregnant" data-i18n-bis="Buntis">Pregnant</label>
                     </div>
                     <div class="custom-control custom-checkbox">
                       <input type="checkbox" class="custom-control-input" id="head_is_lactating" name="head_is_lactating" value="YES">
-                      <label class="custom-control-label" for="head_is_lactating">Lactating</label>
+                      <label class="custom-control-label" for="head_is_lactating" data-i18n-en="Lactating" data-i18n-bis="Nagapasuso">Lactating</label>
                     </div>
                   </div>
 
@@ -469,6 +498,15 @@ foreach ($surveys as $surveyRow) {
                   WFA / HFA / WFH are computed from child growth standards. Pregnant/Lactating status can be recorded for eligible members.
                   No. of household members is computed automatically.
                 </p>
+                <div id="nutritionCompletenessChecklist" class="nutrition-completeness-box mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong><i class="fas fa-clipboard-check mr-1"></i> Completeness checklist</strong>
+                    <span class="badge badge-secondary" id="nutritionCompletenessBadge">Checking…</span>
+                  </div>
+                  <ul class="mb-0 pl-3 small" id="nutritionCompletenessList">
+                    <li class="text-muted">Add family members to see checklist items.</li>
+                  </ul>
+                </div>
                 <div id="familyMembersContainer"></div>
                 <div id="familyMembersEmpty" class="nutrition-family-empty text-center py-4">
                   <i class="fas fa-users fa-2x text-muted mb-2 d-block"></i>
@@ -484,7 +522,8 @@ foreach ($surveys as $surveyRow) {
               </div>
             </div>
             <div class="card-footer nutrition-form-sticky-bar d-flex flex-wrap gap-2 justify-content-between align-items-center">
-              <small class="text-muted mb-0 d-none d-md-inline">Required: survey date, purok, household head name, and gender.</small>
+              <small class="text-muted mb-0 d-none d-md-inline">Required: survey date, purok, household head, gender; weight &amp; height for children 0–5.</small>
+              <input type="hidden" name="allow_duplicate_override" id="allow_duplicate_override" value="0">
               <div class="d-flex flex-wrap gap-2 ml-md-auto">
                 <button type="button" class="btn btn-outline-light" id="resetHouseholdSurveyForm">
                   <i class="fas fa-undo mr-1"></i> Reset
@@ -496,6 +535,43 @@ foreach ($surveys as $surveyRow) {
             </div>
           </form>
         </div>
+
+        <?php if (!empty($surveyHistory) && is_array($surveyHistory)) : ?>
+        <div class="card nutrition-panel mb-3">
+          <div class="card-header">
+            <h3 class="card-title mb-0"><i class="fas fa-user-clock mr-2"></i>Edit history</h3>
+          </div>
+          <div class="card-body table-responsive p-0">
+            <table class="table table-sm table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Who</th>
+                  <th>Action</th>
+                  <th>Summary</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($surveyHistory as $hist) :
+                    $when = trim((string) ($hist['created_at'] ?? ''));
+                    $whenLabel = $when !== '' && strtotime($when) ? date('M j, Y g:i A', strtotime($when)) : $when;
+                    $who = trim((string) ($hist['user_name'] ?? ''));
+                    if ($who === '') {
+                        $who = trim((string) ($hist['username'] ?? '')) ?: 'Unknown';
+                    }
+                    ?>
+                <tr>
+                  <td class="text-nowrap"><?= barangay_h($whenLabel) ?></td>
+                  <td><?= barangay_h($who) ?></td>
+                  <td><span class="badge badge-info"><?= barangay_h((string) ($hist['action'] ?? '')) ?></span></td>
+                  <td><?= barangay_h((string) ($hist['summary'] ?? '')) ?></td>
+                </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <?php endif; ?>
 
         <div class="card nutrition-panel">
           <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -512,7 +588,7 @@ foreach ($surveys as $surveyRow) {
               <table class="table table-dark table-striped mb-0" id="householdSurveyTable">
                 <thead>
                   <tr>
-                    <th>Household ID</th>
+                    <th>Resident Number</th>
                     <th>Date</th>
                     <th>Purok</th>
                     <th>Household Head</th>
@@ -537,8 +613,10 @@ foreach ($surveys as $surveyRow) {
                       if (strtoupper((string) ($survey['has_lactating'] ?? 'NO')) === 'YES') {
                           $statusBadges[] = 'Lactating';
                       }
+                      $residentNumber = trim((string) ($survey['house_hold_id'] ?? ''));
                       $searchText = strtolower(implode(' ', [
-                          (string) ($survey['house_hold_id'] ?? ''),
+                          $residentNumber,
+                          (string) ($survey['residence_id'] ?? ''),
                           $headDisplay,
                           (string) ($survey['purok_label'] ?? ''),
                           (string) ($survey['occupation'] ?? ''),
@@ -547,7 +625,7 @@ foreach ($surveys as $surveyRow) {
                       $viewUrl = 'nutritionBarangaySurvey.php?highlight=' . urlencode((string) ($survey['survey_id'] ?? ''));
                       ?>
                   <tr data-search="<?= barangay_h($searchText) ?>">
-                    <td><code><?= barangay_h((string) ($survey['house_hold_id'] ?? '')) ?></code></td>
+                    <td><code><?= barangay_h($residentNumber !== '' ? $residentNumber : '—') ?></code></td>
                     <td><?= barangay_h(date('M j, Y', strtotime((string) $survey['survey_date']))) ?></td>
                     <td><?= barangay_h((string) ($survey['purok_label'] ?? '')) ?></td>
                     <td>
@@ -594,8 +672,10 @@ foreach ($surveys as $surveyRow) {
               <?php else : ?>
               <?php foreach ($surveys as $survey) :
                   $headDisplay = nutrition_household_head_display($survey);
+                  $residentNumber = trim((string) ($survey['house_hold_id'] ?? ''));
                   $searchText = strtolower(implode(' ', [
-                      (string) ($survey['house_hold_id'] ?? ''),
+                      $residentNumber,
+                      (string) ($survey['residence_id'] ?? ''),
                       $headDisplay,
                       (string) ($survey['purok_label'] ?? ''),
                   ]));
@@ -609,7 +689,7 @@ foreach ($surveys as $surveyRow) {
                   <?php endif; ?>
                 </div>
                 <div class="nutrition-mobile-record-meta">
-                  <code><?= barangay_h((string) ($survey['house_hold_id'] ?? '')) ?></code>
+                  <code><?= barangay_h($residentNumber !== '' ? $residentNumber : '—') ?></code>
                   · <?= barangay_h((string) ($survey['purok_label'] ?? '')) ?>
                   · <?= barangay_h(date('M j, Y', strtotime((string) $survey['survey_date']))) ?>
                 </div>

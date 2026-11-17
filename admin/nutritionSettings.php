@@ -84,20 +84,14 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                   </div>
 
                   <hr class="my-4">
-                  <h5 class="mb-3"><i class="fas fa-file-alt mr-2"></i>BNP Form C1 — Manual Fields</h5>
-                  <p class="text-muted small">Fill barangay-level counts that are not taken from household surveys (schools, FIC, workers, stores). These print on the official ALL HOUSEHOLDS form.</p>
+                  <h5 class="mb-1"><i class="fas fa-school mr-2"></i>BNP Form C1 — Educational institutions (items 16–20)</h5>
+                  <p class="text-muted small">Type the DepEd and day care counts here. They print on the ALL HOUSEHOLDS form. Item 20 fills from items 18 and 19 when you leave it blank.</p>
                   <?php
                   require_once __DIR__ . '/../includes/nutrition_bnp_reports.php';
                   $formC1Settings = nutrition_bnp_load_form_c1($con, (string) $barangay_id);
+                  $c1SchoolReadonly = !$canSaveNutritionSettings;
+                  require __DIR__ . '/../includes/partials/nutrition_bnp_c1_school_entry.php';
                   $c1Fields = [
-                      'daycare_public' => 'Day Care Centers (Public)',
-                      'daycare_private' => 'Day Care Centers (Private)',
-                      'elementary_public' => 'Elementary Schools (Public)',
-                      'elementary_private' => 'Elementary Schools (Private)',
-                      'kindergarten' => 'Kindergarten enrolled (DepEd)',
-                      'grade1' => 'School children',
-                      'school_weighed' => 'School children weighed (start of SY)',
-                      'school_weighing_pct' => 'School weighing coverage %',
                       'school_sev_wasted' => 'School status — Severely Wasted',
                       'school_wasted' => 'School status — Wasted',
                       'school_normal' => 'School status — Normal',
@@ -114,6 +108,8 @@ require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
                       'ip_6_23' => 'IP — 6–23 months children (override)',
                   ];
                   ?>
+                  <h5 class="mb-3 mt-4"><i class="fas fa-file-alt mr-2"></i>Other manual BNP counts</h5>
+                  <p class="text-muted small mb-3">School nutritional status, FIC, workers, and stores. These also print on the ALL HOUSEHOLDS form.</p>
                   <div class="row">
                     <?php foreach ($c1Fields as $key => $label) : ?>
                     <div class="col-md-6 form-group">

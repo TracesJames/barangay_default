@@ -8,6 +8,7 @@ $sessionUserId = (string) $user_id;
 $editSurveyId = trim((string) ($_GET['edit'] ?? ''));
 $editingSurvey = null;
 $editingMembers = [];
+$surveyHistory = [];
 
 if ($editSurveyId !== '') {
     if (!nutrition_user_can_edit_household_surveys($con, $sessionUserId)) {
@@ -24,6 +25,7 @@ if ($editSurveyId !== '') {
         exit;
     }
     $editingMembers = nutrition_list_household_family_members($con, $editSurveyId);
+    $surveyHistory = nutrition_list_household_survey_history($con, $editSurveyId, 40);
 } elseif (!nutrition_user_can_add_household_surveys($con, $sessionUserId)) {
     header('Location: nutritionBarangaySurvey.php');
     exit;
@@ -31,32 +33,37 @@ if ($editSurveyId !== '') {
 
 $activePage = 'household_survey';
 $nutritionPageTitle = $editingSurvey ? 'Edit Household Nutrition Survey' : 'Household Nutrition Survey';
-$bnsPurokFilter = [];
-if (barangay_user_is_barangay_nutrition_scholar($con, $sessionUserId)) {
-    $bnsPurokFilter = staff_assigned_purok_labels($con, $sessionUserId, (string) $barangay_id);
-}
-$surveyListFilters = $bnsPurokFilter !== [] ? ['purok_in' => $bnsPurokFilter] : [];
+$surveyListFilters = nutrition_apply_bns_report_filters($con, $sessionUserId, (string) $barangay_id);
 $surveys = nutrition_list_household_surveys($con, (string) $barangay_id, 50, $surveyListFilters);
-$report = nutrition_household_consolidated_report($con, (string) $barangay_id);
+$report = nutrition_household_consolidated_report($con, (string) $barangay_id, $surveyListFilters);
 $summary = $report['summary'] ?? [];
 $relationshipOptions = nutrition_relationship_options();
-$defaultPurokInput = '1';
-if ($editingSurvey === null && $bnsPurokFilter !== []) {
-    $defaultPurokInput = nutrition_purok_input_from_label($bnsPurokFilter[0]) ?: '1';
+$purokSelectOptions = nutrition_purok_select_options($con, (string) $barangay_id, $sessionUserId);
+$defaultPurokLabel = '';
+if ($editingSurvey !== null) {
+    $defaultPurokLabel = trim((string) ($editingSurvey['purok_label'] ?? ''));
+} elseif ($purokSelectOptions !== []) {
+    $defaultPurokLabel = (string) ($purokSelectOptions[0]['value'] ?? '');
 }
-$defaultHouseholdId = nutrition_generate_household_reference(
-    $con,
-    (string) $barangay_id,
-    $defaultPurokInput,
-    (string) $barangay
-);
+$defaultPurokInput = $defaultPurokLabel !== ''
+    ? (nutrition_purok_input_from_label($defaultPurokLabel) ?: $defaultPurokLabel)
+    : '';
+$defaultHouseholdId = $defaultPurokLabel !== ''
+    ? nutrition_generate_household_reference(
+        $con,
+        (string) $barangay_id,
+        $defaultPurokLabel,
+        (string) $barangay
+    )
+    : '';
+$defaultBnsName = nutrition_staff_display_name([
+    'first_name' => $first_name_user ?? '',
+    'middle_name' => $middle_name_user ?? '',
+    'last_name' => $last_name_user ?? '',
+]);
 $psgcCode = nutrition_barangay_psgc_code($con, (string) $barangay_id, (string) $barangay);
 
 if ($editingSurvey !== null) {
-    $defaultPurokInput = nutrition_purok_input_from_label((string) ($editingSurvey['purok_label'] ?? 'Purok 1'));
-    if ($defaultPurokInput === '') {
-        $defaultPurokInput = '1';
-    }
     $defaultHouseholdId = (string) ($editingSurvey['house_hold_id'] ?? $defaultHouseholdId);
     $nutritionSurveyCardTitle = 'Edit Household Survey';
     $nutritionSurveySaveLabel = 'Update Household Survey';
@@ -95,6 +102,7 @@ if ($editingSurvey !== null) {
     foreach ($editingMembers as $member) {
         $relParts = nutrition_split_member_relationship((string) ($member['relationship'] ?? ''));
         $memberPayload[] = [
+            'residence_id' => (string) ($member['residence_id'] ?? ''),
             'member_name' => (string) ($member['member_name'] ?? ''),
             'relationship' => $relParts['relationship'],
             'relationship_other' => $relParts['relationship_other'],
@@ -112,6 +120,11 @@ if ($editingSurvey !== null) {
             'weight_for_height' => (string) ($member['weight_for_height'] ?? ''),
             'is_pregnant' => strtoupper((string) ($member['is_pregnant'] ?? 'NO')) === 'YES',
             'is_lactating' => strtoupper((string) ($member['is_lactating'] ?? 'NO')) === 'YES',
+            'is_4ps' => strtoupper((string) ($member['is_4ps'] ?? 'NO')) === 'YES',
+            'is_pwd' => strtoupper((string) ($member['is_pwd'] ?? ($member['disability'] ?? 'NO'))) === 'YES',
+            'is_ip' => strtoupper((string) ($member['is_ip'] ?? 'NO')) === 'YES',
+            'is_solo_parent' => strtoupper((string) ($member['is_solo_parent'] ?? 'NO')) === 'YES',
+            'is_na_member' => strtoupper((string) ($member['is_na_member'] ?? 'NO')) === 'YES',
             'pregnancy_months' => $member['pregnancy_months'] ?? '',
             'pregnant_nutrition_status' => (string) ($member['pregnant_nutrition_status'] ?? ''),
             'planned_exclusive_breastfeeding' => strtoupper((string) ($member['planned_exclusive_breastfeeding'] ?? 'NO')) === 'YES',
@@ -131,7 +144,8 @@ if ($editingSurvey !== null) {
         'survey_id' => (string) ($editingSurvey['survey_id'] ?? ''),
         'residence_id' => (string) ($editingSurvey['residence_id'] ?? ''),
         'house_hold_id' => (string) ($editingSurvey['house_hold_id'] ?? ''),
-        'purok_number' => $defaultPurokInput,
+        'purok_label' => $defaultPurokLabel,
+        'purok_number' => $defaultPurokLabel,
         'purok_input' => $defaultPurokInput,
         'survey_date' => $fmt($editingSurvey['survey_date'] ?? ''),
         'bns_name' => (string) ($editingSurvey['bns_name'] ?? ''),
@@ -186,20 +200,37 @@ if ($editingSurvey !== null) {
     ];
 }
 
+// OPT guidance + Nutrition Result badges: Developer Account, Nutrition SA, Nutrition Admin, CNPC only.
+// BNS still enters weight/height; results are saved in hidden fields but not shown.
+$showOptGrowthUi = !empty($isSsa)
+    || !empty($isNutritionPortalAdmin)
+    || !empty($isBnsAdmin)
+    || !empty($isCnpc);
+
 require __DIR__ . '/../includes/partials/nutrition_layout_start.php';
 require __DIR__ . '/../includes/partials/nutrition_household_survey_content.php';
 ?>
-<?php if (barangay_user_is_barangay_nutrition_scholar($con, $sessionUserId)): ?>
-<style>
-  /* Results are still computed into hidden inputs and saved; BNS only does not see them. */
-  #familyMembersContainer .nutrition-growth-result-col { display: none !important; }
-</style>
-<?php endif; ?>
 <script>
 window.nutritionRelationshipOptions = <?= json_encode($relationshipOptions, JSON_UNESCAPED_UNICODE) ?>;
 window.nutritionPregnantStatusOptions = <?= json_encode(nutrition_prf_pregnant_status_options(), JSON_UNESCAPED_UNICODE) ?>;
 window.nutritionSurveyEditPayload = <?= json_encode($nutritionEditPayload, JSON_UNESCAPED_UNICODE) ?>;
+window.nutritionDefaultBnsName = <?= json_encode($defaultBnsName, JSON_UNESCAPED_UNICODE) ?>;
+window.nutritionShowOptResults = <?= $showOptGrowthUi ? 'true' : 'false' ?>;
+window.nutritionShowExpectedMedian = <?= $showOptGrowthUi ? 'true' : 'false' ?>;
 </script>
+<?php if (!$showOptGrowthUi) : ?>
+<style id="nutrition-bns-hide-opt-ui">
+  /* BNS: encode weight/height only — hide OPT guidance and result badges. */
+  #familyMembersContainer .nutrition-child-anthro-banner,
+  #familyMembersContainer .nutrition-growth-expected,
+  #familyMembersContainer .nutrition-prev-expected,
+  #familyMembersContainer .nutrition-growth-result-col,
+  #familyMembersContainer .nutrition-growth-results,
+  #familyMembersContainer .nutrition-weight-gain {
+    display: none !important;
+  }
+</style>
+<?php endif; ?>
 <?php
 require __DIR__ . '/../includes/partials/nutrition_household_survey_scripts.php';
 require __DIR__ . '/../includes/partials/nutrition_layout_end.php';

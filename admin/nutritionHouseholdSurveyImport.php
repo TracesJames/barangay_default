@@ -43,16 +43,17 @@ if (!$result['ok']) {
 $payload = $result['payload'];
 $warnings = $result['warnings'] ?? [];
 
-$purokLabel = nutrition_purok_label_from_number((string) $payload['purok_number']);
-if ($purokLabel === '' && $payload['purok_number'] !== '') {
-    $purokLabel = (string) $payload['purok_number'];
-}
-if ($purokLabel === '') {
-    $warnings[] = 'Purok is blank in the file. Enter the purok to generate the Household No.';
+$purokRaw = trim((string) ($payload['purok_label'] ?? $payload['purok_number'] ?? ''));
+if ($purokRaw === '') {
+    $warnings[] = 'Purok / Sitio is blank in the file. Select one from the official list to generate the Resident Number.';
 } else {
-    if (!staff_user_can_access_purok($con, $userId, $purokLabel)) {
-        $respond(403, ['error' => 'The uploaded form is for ' . $purokLabel . ', which is not assigned to you.']);
+    $purokGate = barangay_assert_purok_allowed($con, $userId, $barangayId, $purokRaw);
+    if (!$purokGate['ok']) {
+        $respond((int) ($purokGate['status'] ?? 400), ['error' => (string) ($purokGate['error'] ?? 'Invalid Purok / Sitio.')]);
     }
+    $purokLabel = (string) ($purokGate['purok_label'] ?? $purokRaw);
+    $payload['purok_label'] = $purokLabel;
+    $payload['purok_number'] = $purokLabel;
     $preview = nutrition_household_reference_preview($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
     $payload['house_hold_id'] = $preview['household_id'];
 }

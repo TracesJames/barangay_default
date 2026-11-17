@@ -157,10 +157,11 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
   <link rel="stylesheet" href="assets/plugins/sweetalert2/css/sweetalert2.min.css">
 <?php require_once 'includes/head_csrf_root.php'; ?>
   <link rel="stylesheet" href="assets/css/public-portal.css?v=20260730a">
+  <link rel="stylesheet" href="assets/css/ux-polish.css?v=20261116a">
 </head>
 <body class="hold-transition layout-top-nav barangay-portal public-portal-page public-portal-page--slideshow<?= $isNutritionLogin ? ' public-portal-page--nutrition' : '' ?>">
 
-
+<a class="skip-to-content" href="#loginForm">Skip to sign in</a>
 <div class="wrapper">
 
   <?php
@@ -215,35 +216,47 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
                 <p class="public-login-hub-sub mt-2 mb-0" id="loginHubHint"><?= barangay_h($loginHubSubtitle) ?></p>
               </div>
               <input type="hidden" name="preferred_hub" id="preferred_hub" value="<?= barangay_h($loginHub) ?>">
+
+              <?php if ($loginReason === 'session_taken') : ?>
+              <div class="col-sm-12 mt-3">
+                <div class="ux-login-banner ux-login-banner--warn" role="status">
+                  Signed out: this account was used on another device. Sign in again here if that was you.
+                </div>
+              </div>
+              <?php endif; ?>
              
               <div class="col-sm-12 mt-4">
-                <div class="form-group">
+                <div class="form-group mb-0">
+                  <label class="ux-field-label" for="username">Username or resident number</label>
                   <div class="input-group mb-3">
                     <div class="input-group-prepend">
                       <span class="input-group-text bg-transparent"><i class="fas fa-user"></i></span>
                     </div>
-                    <input type="text" id="username" name="username" class="form-control" placeholder="USERNAME OR RESIDENT NUMBER" >
+                    <input type="text" id="username" name="username" class="form-control" placeholder="Username or resident number" autocomplete="username" autocapitalize="none" spellcheck="false" required>
                   </div>
                 </div>
               </div>
-              <div class="col-sm-12 mt-4">
-                <div  class="form-group">
+              <div class="col-sm-12">
+                <div class="form-group mb-0">
+                  <label class="ux-field-label" for="password">Password</label>
                   <div class="input-group mb-3" id="show_hide_password">
                     <div class="input-group-prepend">
                       <span class="input-group-text bg-transparent"><i class="fas fa-key"></i></span>
                     </div>
-                    <input type="password"  id="password" name="password" class="form-control" placeholder="PASSWORD"  style="border-right: none;">
+                    <input type="password" id="password" name="password" class="form-control" placeholder="Password" style="border-right: none;" autocomplete="current-password" required>
                     <div class="input-group-append bg">
-                      <span class="input-group-text bg-transparent"> <a href="" style=" text-decoration:none;"><i class="fas fa-eye-slash" aria-hidden="true"></i></a></span>
+                      <span class="input-group-text bg-transparent">
+                        <a href="#" style="text-decoration:none;" aria-label="Show or hide password"><i class="fas fa-eye-slash" aria-hidden="true"></i></a>
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             <div class="col-sm-12 text-right">
-                    <a href="forgot.php">Forgot Password</a>
+                    <a href="forgot.php">Forgot password?</a>
             </div>
-            <div class="col-sm-12 mt-4">
-                <button type="submit" class="btn btn-flat bg-blue btn-lg btn-block">Sign In</button>
+            <div class="col-sm-12 mt-3">
+                <button type="submit" class="btn btn-flat bg-blue btn-lg btn-block">Sign in to <?= barangay_h($loginHubTitle) ?></button>
             </div>
           </div>
           </form>
@@ -345,13 +358,14 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
                 barangayError('Too many attempts', 'Please wait 15 minutes before trying again.');
               }else if(data == 'errorAlreadyLoggedIn'){
                 Swal.fire({
-                  title: 'Already signed in',
-                  html: '<p class="mb-0">This account is already logged in on another browser or device.</p><p class="mt-2 mb-0">Only one active session is allowed. End the other session and continue here?</p>',
+                  title: 'Already signed in elsewhere',
+                  html: '<p class="mb-0">This account is active on another browser or device.</p>'
+                    + '<p class="mt-2 mb-0">Only <b>one session</b> is allowed. Continue here to sign out the other device?</p>',
                   icon: 'warning',
                   showCancelButton: true,
-                  confirmButtonText: 'End other session & sign in',
+                  confirmButtonText: 'Sign in here (end other session)',
                   cancelButtonText: 'Cancel',
-                  width: '440px'
+                  width: '460px'
                 }).then(function(result){
                   if(result.value || result.isConfirmed){
                     $('#force_login').val('1');
@@ -359,6 +373,19 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
                   }else{
                     $('#force_login').val('0');
                   }
+                });
+              }else if(data == 'must_change_password'){
+                $('#force_login').val('0');
+                Swal.fire({
+                  title: 'Password update required',
+                  html: '<b>You must set a new password before using the portal.</b>',
+                  icon: 'info',
+                  width: '420px',
+                  showConfirmButton: false,
+                  allowOutsideClick: false,
+                  timer: 1800
+                }).then(function(){
+                  window.location.href = 'admin/nutritionAccountProfile.php?force_password=1';
                 });
               }else if(data == 'admin_barangay'){
                 $('#force_login').val('0');
@@ -461,10 +488,11 @@ $sql = "SELECT * FROM `barangay_information` ORDER BY barangay ASC LIMIT 1";
 
     <?php if ($loginReason === 'session_taken'): ?>
     Swal.fire({
-      title: 'Signed out',
-      html: '<b>This account was signed in on another browser or device. Only one session is allowed at a time.</b>',
+      title: 'Signed in on another device',
+      html: '<p class="mb-0"><b>You were signed out because this account logged in somewhere else.</b></p>'
+        + '<p class="mt-2 mb-0">Only one active session is allowed. Sign in again here if that was you.</p>',
       icon: 'warning',
-      width: '440px',
+      width: '460px',
       confirmButtonText: 'OK'
     });
     <?php endif; ?>

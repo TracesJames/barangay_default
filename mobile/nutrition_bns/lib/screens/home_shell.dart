@@ -8,6 +8,7 @@ import '../widgets/app_ui.dart';
 import 'change_password_screen.dart';
 import 'dashboard_screen.dart';
 import 'households_screen.dart';
+import 'incomplete_households_screen.dart';
 import 'offline_queue_screen.dart';
 import 'reports_screen.dart';
 import 'survey_screen.dart';
@@ -25,6 +26,7 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
   int _pending = 0;
+  int _incomplete = 0;
   bool _resolvingBarangay = true;
   final _queue = SurveyQueue();
   final _barangaySearchCtrl = TextEditingController();
@@ -53,11 +55,26 @@ class _HomeShellState extends State<HomeShell> {
     if (!mounted) return;
     setState(() => _resolvingBarangay = false);
     widget.onChanged();
+    await _refreshIncomplete();
   }
 
   Future<void> _refreshPending() async {
     final list = await _queue.list();
     if (mounted) setState(() => _pending = list.length);
+    await _refreshIncomplete();
+  }
+
+  Future<void> _refreshIncomplete() async {
+    if ((widget.session.activeBarangayId ?? '').isEmpty) {
+      if (mounted) setState(() => _incomplete = 0);
+      return;
+    }
+    try {
+      final rows = await widget.session.api.incompleteHouseholds(limit: 200);
+      if (mounted) setState(() => _incomplete = rows.length);
+    } catch (_) {
+      // Keep last known count when offline.
+    }
   }
 
   void _openOfflineQueue() {
@@ -71,6 +88,19 @@ class _HomeShellState extends State<HomeShell> {
       ),
     )
         .then((_) => _refreshPending());
+  }
+
+  void _openIncomplete() {
+    Navigator.of(context)
+        .push<void>(
+      MaterialPageRoute(
+        builder: (_) => IncompleteHouseholdsScreen(
+          session: widget.session,
+          onChanged: _refreshPending,
+        ),
+      ),
+    )
+        .then((_) => _refreshIncomplete());
   }
 
   Future<void> _pickBarangay() async {
@@ -181,6 +211,13 @@ class _HomeShellState extends State<HomeShell> {
               onTap: () => Navigator.pop(ctx, 'offline'),
             ),
             ListTile(
+              leading: const Icon(Icons.warning_amber_rounded, color: AppColors.forest),
+              title: Text(_incomplete > 0
+                  ? 'Incomplete households ($_incomplete)'
+                  : 'Incomplete households'),
+              onTap: () => Navigator.pop(ctx, 'incomplete'),
+            ),
+            ListTile(
               leading: const Icon(Icons.place_outlined, color: AppColors.forest),
               title: const Text('Change barangay'),
               onTap: () => Navigator.pop(ctx, 'barangay'),
@@ -197,6 +234,7 @@ class _HomeShellState extends State<HomeShell> {
     );
     if (choice == 'password') _openChangePassword();
     if (choice == 'offline') _openOfflineQueue();
+    if (choice == 'incomplete') _openIncomplete();
     if (choice == 'barangay') _pickBarangay();
     if (choice == 'logout') _logout();
   }
@@ -278,6 +316,7 @@ class _HomeShellState extends State<HomeShell> {
     try {
       await widget.session.selectBarangay(id);
       widget.onChanged();
+      await _refreshIncomplete();
       if (mounted) setState(() {});
     } on ApiException catch (e) {
       if (await widget.session.expireIfUnauthorized(e)) return;
@@ -361,6 +400,16 @@ class _HomeShellState extends State<HomeShell> {
           ],
         ),
         actions: [
+          if (_incomplete > 0)
+            IconButton(
+              tooltip: '$_incomplete incomplete household(s)',
+              onPressed: _openIncomplete,
+              icon: Badge(
+                isLabelVisible: true,
+                label: Text('$_incomplete'),
+                child: const Icon(Icons.warning_amber_rounded),
+              ),
+            ),
           if (_pending > 0)
             IconButton(
               tooltip: '$_pending offline survey(s)',

@@ -21,16 +21,26 @@ if ($purokLabel === '' && $purokInput !== '') {
 }
 if ($purokLabel === '') {
     http_response_code(400);
-    echo json_encode(['error' => 'Please enter a valid purok (number or letters, e.g. 1, 1A, A).']);
+    echo json_encode(['error' => 'Please select a Purok / Sitio from the official list.']);
     exit;
 }
 
-$preview = nutrition_household_reference_preview($con, $barangayId, $purokLabel, (string) ($barangay ?? ''));
+$count = max(1, (int) ($_GET['count'] ?? $_POST['count'] ?? 1));
+$preview = nutrition_household_reference_preview(
+    $con,
+    $barangayId,
+    $purokLabel,
+    (string) ($barangay ?? ''),
+    $count
+);
+
 echo json_encode([
     'ok' => true,
     'household_id' => $preview['household_id'],
+    'resident_number' => $preview['resident_number'],
+    'resident_numbers' => $preview['resident_numbers'],
     'psfc_code' => $preview['psfc_code'],
     'purok_code' => $preview['purok_code'],
     'series' => $preview['series'],
-    'format' => 'PSGC-Purok-5DigitSeries',
+    'format' => 'PSGC-Purok-#####',
 ]);

@@ -47,21 +47,22 @@ function blog(string $path, string $line): void
 
 blog($logFile, 'Starting daily backup');
 
-$mysqldump = 'C:\\xampp\\mysql\\bin\\mysqldump.exe';
+$mysqldumpCandidates = [
+    'C:\\Program Files\\MariaDB 13.0\\bin\\mysqldump.exe',
+    'C:\\xampp\\mysql\\bin\\mysqldump.exe',
+];
+$mysqldump = '';
+foreach ($mysqldumpCandidates as $candidate) {
+    if (is_file($candidate)) {
+        $mysqldump = $candidate;
+        break;
+    }
+}
 $okSql = false;
-if (is_file($mysqldump)) {
-    $passArg = DB_PASSWORD !== '' ? '-p' . escapeshellarg(DB_PASSWORD) : '';
-    $cmd = sprintf(
-        '"%s" -h%s -u%s %s --single-transaction --routines --triggers %s > %s',
-        $mysqldump,
-        escapeshellarg(DB_HOST),
-        escapeshellarg(DB_USER),
-        $passArg,
-        escapeshellarg(DB_NAME),
-        escapeshellarg($sqlFile)
-    );
+if ($mysqldump !== '') {
+    $dbPort = defined('DB_PORT') ? (int) DB_PORT : 3000;
     // Windows cmd redirection needs careful quoting
-    $cmd = '"' . $mysqldump . '" -h' . DB_HOST . ' -u' . DB_USER
+    $cmd = '"' . $mysqldump . '" -h' . DB_HOST . ' -P' . $dbPort . ' -u' . DB_USER
         . (DB_PASSWORD !== '' ? ' -p' . DB_PASSWORD : '')
         . ' --single-transaction --routines --triggers ' . DB_NAME
         . ' > "' . $sqlFile . '" 2> "' . $outDir . DIRECTORY_SEPARATOR . 'mysqldump.err"';

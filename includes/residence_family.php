@@ -230,6 +230,42 @@ if (!function_exists('residence_parse_dependents_post')) {
     }
 }
 
+if (!function_exists('residence_resolve_purok_from_post')) {
+    /**
+     * Resolve locked Purok/Sitio selection from registration POST.
+     *
+     * @return array{purok_id:string,purok_label:string,error:?string}
+     */
+    function residence_resolve_purok_from_post(mysqli $con, string $barangayId, array $post): array
+    {
+        $raw = trim((string) ($post['add_purok_id'] ?? $post['add_address'] ?? ''));
+        if ($raw === '') {
+            return ['purok_id' => '', 'purok_label' => '', 'error' => 'Purok / Sitio is required.'];
+        }
+
+        if (function_exists('barangay_find_purok_by_label')) {
+            $resolved = barangay_find_purok_by_label($con, $barangayId, $raw);
+            if ($resolved !== null) {
+                return [
+                    'purok_id' => trim((string) ($resolved['purok_id'] ?? '')),
+                    'purok_label' => trim((string) ($resolved['purok'] ?? '')),
+                    'error' => null,
+                ];
+            }
+            if (function_exists('barangay_list_puroks') && barangay_list_puroks($con, $barangayId) !== []) {
+                return [
+                    'purok_id' => '',
+                    'purok_label' => '',
+                    'error' => 'Select a Purok / Sitio from the official barangay list.',
+                ];
+            }
+        }
+
+        // Legacy: treat free text as label when master list is empty.
+        return ['purok_id' => '', 'purok_label' => $raw, 'error' => null];
+    }
+}
+
 if (!function_exists('residence_load_dependents')) {
     function residence_load_dependents(mysqli $con, string $residenceId): array
     {
@@ -748,6 +784,7 @@ if (!function_exists('residence_exit_add_result')) {
             'errorMinorGuardian' => 'minor_guardian',
             'errorValidation' => 'validation',
             'errorImage' => 'image',
+            'errorPurok' => 'purok',
             'errorServer' => 'server',
         ];
         $code = $map[$result] ?? '1';

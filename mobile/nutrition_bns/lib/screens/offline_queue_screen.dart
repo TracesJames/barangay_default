@@ -69,19 +69,44 @@ class _OfflineQueueScreenState extends State<OfflineQueueScreen> {
     }
   }
 
-  Future<void> _retryOne(QueuedSurvey item) async {
+  Future<void> _retryOne(QueuedSurvey item, {bool allowOverride = false}) async {
     setState(() => _busy = true);
     try {
-      await _queue.retryOne(item.id, widget.session.api);
+      await _queue.retryOne(
+        item.id,
+        widget.session.api,
+        allowDuplicateOverride: allowOverride,
+      );
       await _reload();
       widget.onChanged?.call();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Survey synced.')),
+        SnackBar(content: Text(allowOverride ? 'Saved with duplicate override.' : 'Survey synced.')),
       );
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (e.duplicateOverrideAllowed) {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Possible duplicate'),
+            content: Text(e.message),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep queued')),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Save anyway'),
+              ),
+            ],
+          ),
+        );
+        if (ok == true) {
+          await _retryOne(item, allowOverride: true);
+          return;
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
       await _reload();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -138,19 +163,31 @@ class _OfflineQueueScreenState extends State<OfflineQueueScreen> {
                   itemBuilder: (context, i) {
                     final item = _items[i];
                     final hasError = item.lastError != null && item.lastError!.isNotEmpty;
+                    final statusBits = <String>[
+                      'Queued ${dateFmt.format(item.createdAt)}',
+                      if (item.attempts > 0) 'Tries: ${item.attempts}/${QueuedSurvey.maxAttempts}',
+                      if (item.permanentFail) 'Stopped — delete or fix data',
+                      if (item.isConflict) 'Conflict — review before sync',
+                      if (hasError) item.lastError!,
+                    ];
                     return AppListCard(
                       title: item.headLabel,
-                      subtitle: [
-                        'Queued ${dateFmt.format(item.createdAt)}',
-                        if (hasError) item.lastError!,
-                      ].join('\n'),
+                      subtitle: statusBits.join('\n'),
                       leading: CircleAvatar(
-                        backgroundColor: hasError
+                        backgroundColor: item.permanentFail || item.isConflict
                             ? Theme.of(context).colorScheme.errorContainer
-                            : AppColors.mist,
+                            : hasError
+                                ? Theme.of(context).colorScheme.errorContainer
+                                : AppColors.mist,
                         child: Icon(
-                          hasError ? Icons.sync_problem_rounded : Icons.cloud_queue_rounded,
-                          color: hasError
+                          item.permanentFail
+                              ? Icons.block_rounded
+                              : item.isConflict
+                                  ? Icons.warning_amber_rounded
+                                  : hasError
+                                      ? Icons.sync_problem_rounded
+                                      : Icons.cloud_queue_rounded,
+                          color: (item.permanentFail || item.isConflict || hasError)
                               ? Theme.of(context).colorScheme.error
                               : AppColors.forest,
                         ),
@@ -159,11 +196,15 @@ class _OfflineQueueScreenState extends State<OfflineQueueScreen> {
                         enabled: !_busy,
                         onSelected: (v) {
                           if (v == 'retry') _retryOne(item);
+                          if (v == 'override') _retryOne(item, allowOverride: true);
                           if (v == 'delete') _deleteOne(item);
                         },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'retry', child: Text('Retry sync')),
-                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        itemBuilder: (_) => [
+                          if (!item.permanentFail || item.canOverrideDuplicate)
+                            const PopupMenuItem(value: 'retry', child: Text('Retry sync')),
+                          if (item.canOverrideDuplicate)
+                            const PopupMenuItem(value: 'override', child: Text('Save anyway (override)')),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
                       ),
                     );

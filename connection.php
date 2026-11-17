@@ -39,7 +39,10 @@ foreach ($dbConfigCandidates as $candidate) {
 
 if (!is_array($dbConfig)) {
     $dbConfig = [
-        'host' => getenv('BARANGAY_DB_HOST') ?: 'localhost',
+        'host' => getenv('BARANGAY_DB_HOST') ?: '127.0.0.1',
+        'port' => getenv('BARANGAY_DB_PORT') !== false && getenv('BARANGAY_DB_PORT') !== ''
+            ? (int) getenv('BARANGAY_DB_PORT')
+            : 3000,
         'user' => getenv('BARANGAY_DB_USER') ?: 'barangay_app',
         'password' => getenv('BARANGAY_DB_PASSWORD') !== false ? (string) getenv('BARANGAY_DB_PASSWORD') : '',
         'name' => getenv('BARANGAY_DB_NAME') ?: 'barangay',
@@ -68,7 +71,17 @@ require_once __DIR__ . '/includes/security.php';
 barangay_send_security_headers();
 
 if (!defined('DB_HOST')) {
-    define('DB_HOST', (string) ($dbConfig['host'] ?? 'localhost'));
+    define('DB_HOST', (string) ($dbConfig['host'] ?? '127.0.0.1'));
+}
+if (!defined('DB_PORT')) {
+    $dbPort = (int) ($dbConfig['port'] ?? 0);
+    if ($dbPort <= 0 && getenv('BARANGAY_DB_PORT') !== false && getenv('BARANGAY_DB_PORT') !== '') {
+        $dbPort = (int) getenv('BARANGAY_DB_PORT');
+    }
+    if ($dbPort <= 0) {
+        $dbPort = 3000;
+    }
+    define('DB_PORT', $dbPort);
 }
 if (!defined('DB_USER')) {
     define('DB_USER', (string) ($dbConfig['user'] ?? 'barangay_app'));
@@ -93,12 +106,18 @@ if (!function_exists('barangay_die_connection_failed')) {
         if ($wantsJson) {
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
-                'error' => 'Database is not running. Start MySQL in XAMPP, then refresh this page.',
+                'error' => 'Database is not running. Start the MariaDB service, then refresh this page.',
                 'detail' => 'Connection failed: ' . $detail,
+                'code' => 'db_unavailable',
             ]);
             exit;
         }
-        exit('Connection failed: ' . $detail);
+        $barangayMaintenanceDetail = 'Connection failed: ' . $detail;
+        $maintenance = __DIR__ . DIRECTORY_SEPARATOR . 'maintenance.php';
+        if (is_file($maintenance)) {
+            require $maintenance;
+        }
+        exit('Database unavailable. Start the MariaDB service, then refresh. (' . $detail . ')');
     }
 }
 
@@ -110,9 +129,9 @@ $barangayConnect = static function (string $user, string $password): mysqli {
         $failed = new mysqli();
         return $failed;
     }
-    // Fail fast when MySQL is down instead of hanging until max_execution_time.
+    // Fail fast when MariaDB is down instead of hanging until max_execution_time.
     $link->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
-    @$link->real_connect(DB_HOST, $user, $password, DB_NAME);
+    @$link->real_connect(DB_HOST, $user, $password, DB_NAME, DB_PORT);
 
     return $link;
 };

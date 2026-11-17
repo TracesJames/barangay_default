@@ -99,6 +99,12 @@ function nutritionBuildFamilyMemberCard(index) {
       '</div>' +
       '<div class="row">' +
         '<div class="col-md-6 form-group">' +
+          '<label>Resident Number <span class="text-danger">*</span></label>' +
+          '<input type="text" class="form-control nutrition-readonly-id family-member-residence-display" value="" readonly placeholder="Auto PSGC-Purok-Number">' +
+          '<input type="hidden" class="family-member-residence-id" name="family_members[' + index + '][residence_id]" value="">' +
+          '<small class="text-muted">Auto-generated as PSGC-Purok-Number when you save (or previewed from Purok).</small>' +
+        '</div>' +
+        '<div class="col-md-6 form-group">' +
           '<label>Name <span class="text-danger">*</span></label>' +
           '<input type="text" class="form-control" name="family_members[' + index + '][member_name]">' +
         '</div>' +
@@ -142,37 +148,64 @@ function nutritionBuildFamilyMemberCard(index) {
             '</div>' +
           '</div>' +
         '</div>' +
+        '<div class="col-12 form-group">' +
+          '<h6 class="mt-1 mb-2">Check if:</h6>' +
+          '<div class="nutrition-checkbox-grid nutrition-checkbox-grid--inline">' +
+            '<div class="custom-control custom-checkbox">' +
+              '<input type="checkbox" class="custom-control-input family-member-4ps" id="family_is_4ps_' + index + '" name="family_members[' + index + '][is_4ps]" value="YES">' +
+              '<label class="custom-control-label" for="family_is_4ps_' + index + '">4P’s Member</label>' +
+            '</div>' +
+            '<div class="custom-control custom-checkbox">' +
+              '<input type="checkbox" class="custom-control-input family-member-ip" id="family_is_ip_' + index + '" name="family_members[' + index + '][is_ip]" value="YES">' +
+              '<label class="custom-control-label" for="family_is_ip_' + index + '">IP’s Member</label>' +
+            '</div>' +
+            '<div class="custom-control custom-checkbox">' +
+              '<input type="checkbox" class="custom-control-input family-member-na" id="family_is_na_' + index + '" name="family_members[' + index + '][is_na_member]" value="YES">' +
+              '<label class="custom-control-label" for="family_is_na_' + index + '">N/A</label>' +
+            '</div>' +
+            '<div class="custom-control custom-checkbox">' +
+              '<input type="checkbox" class="custom-control-input family-member-pwd" id="family_is_pwd_' + index + '" name="family_members[' + index + '][is_pwd]" value="YES">' +
+              '<label class="custom-control-label" for="family_is_pwd_' + index + '">PWD</label>' +
+            '</div>' +
+            '<div class="custom-control custom-checkbox">' +
+              '<input type="checkbox" class="custom-control-input family-member-solo-parent" id="family_is_solo_' + index + '" name="family_members[' + index + '][is_solo_parent]" value="YES">' +
+              '<label class="custom-control-label" for="family_is_solo_' + index + '">Solo Parent</label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
       '</div>' +
       '<div class="family-child-anthropometry nutrition-child-anthro" style="display:none;">' +
         '<div class="nutrition-child-anthro-banner mb-3">' +
           '<i class="fas fa-baby mr-1"></i>' +
           '<strong>Child 0–5 years</strong> — enter previous (optional) and present weight &amp; height. ' +
           'OPT results use <span class="nutrition-growth-sex-label">boy/girl</span> standards on the <strong>present</strong> date.' +
-          '<div class="nutrition-growth-expected small mt-1 text-muted"></div>' +
+          '<div class="nutrition-growth-expected small mt-1"></div>' +
         '</div>' +
         '<div class="nutrition-anthro-block mb-3">' +
           '<div class="small text-muted font-weight-bold mb-2 text-uppercase">Previous measurement <span class="font-weight-normal">(optional)</span></div>' +
           '<div class="row">' +
-            '<div class="col-md-3 form-group">' +
+            '<div class="col-md-4 form-group">' +
               '<label>Previous Date Measured</label>' +
               '<input type="text" class="form-control nutrition-date-mdy family-member-prev-date-measured" name="family_members[' + index + '][prev_date_measured]" value="" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
               '<small class="text-muted">MM/DD/YYYY</small>' +
             '</div>' +
-            '<div class="col-md-2 form-group">' +
+            '<div class="col-md-4 form-group">' +
               '<label>Previous Weight (kg)</label>' +
               '<input type="number" min="0" step="0.01" class="form-control family-member-prev-weight" name="family_members[' + index + '][prev_weight_kg]" placeholder="kg">' +
             '</div>' +
-            '<div class="col-md-2 form-group">' +
+            '<div class="col-md-4 form-group">' +
               '<label>Previous Height / Length (cm)</label>' +
               '<input type="number" min="0" step="0.1" class="form-control family-member-prev-height" name="family_members[' + index + '][prev_height_cm]" placeholder="cm">' +
             '</div>' +
-            '<div class="col-md-5 form-group nutrition-growth-result-col">' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="col-12 form-group nutrition-growth-result-col nutrition-growth-result-col--prev">' +
               '<label class="d-block">Nutrition Result (auto-computed from previous)</label>' +
               '<div class="nutrition-growth-results nutrition-growth-results--prev small">' +
                 '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-prev-wfa badge badge-secondary">—</span></div>' +
                 '<div><span class="text-muted">Height for Age:</span> <span class="nutrition-growth-prev-hfa badge badge-secondary">—</span></div>' +
                 '<div><span class="text-muted">Weight for Height/Length:</span> <span class="nutrition-growth-prev-wfh badge badge-secondary">—</span></div>' +
-                '<div class="nutrition-prev-expected small mt-1 text-muted"></div>' +
+                '<div class="nutrition-prev-expected small mt-1"></div>' +
                 '<input type="hidden" name="family_members[' + index + '][prev_weight_for_age]" value="">' +
                 '<input type="hidden" name="family_members[' + index + '][prev_height_for_age]" value="">' +
                 '<input type="hidden" name="family_members[' + index + '][prev_weight_for_height]" value="">' +
@@ -183,20 +216,22 @@ function nutritionBuildFamilyMemberCard(index) {
         '<div class="nutrition-anthro-block mb-2">' +
           '<div class="small text-muted font-weight-bold mb-2 text-uppercase">Present measurement</div>' +
           '<div class="row">' +
-            '<div class="col-md-3 form-group">' +
+            '<div class="col-md-4 form-group">' +
               '<label>Present Date Measured <span class="text-danger">*</span></label>' +
               '<input type="text" class="form-control nutrition-date-mdy family-member-growth-input family-member-date-measured" name="family_members[' + index + '][date_measured]" value="" placeholder="MM/DD/YYYY" inputmode="numeric" autocomplete="off">' +
               '<small class="text-muted">MM/DD/YYYY</small>' +
             '</div>' +
-            '<div class="col-md-2 form-group">' +
+            '<div class="col-md-4 form-group">' +
               '<label>Present Weight (kg) <span class="text-danger">*</span></label>' +
               '<input type="number" min="0" step="0.01" class="form-control family-member-growth-input family-member-present-weight" name="family_members[' + index + '][weight_kg]" placeholder="kg">' +
             '</div>' +
-            '<div class="col-md-2 form-group">' +
+            '<div class="col-md-4 form-group">' +
               '<label>Present Height / Length (cm) <span class="text-danger">*</span></label>' +
               '<input type="number" min="0" step="0.1" class="form-control family-member-growth-input family-member-present-height" name="family_members[' + index + '][height_cm]" placeholder="cm">' +
             '</div>' +
-            '<div class="col-md-5 form-group nutrition-growth-result-col">' +
+          '</div>' +
+          '<div class="row">' +
+            '<div class="col-12 form-group nutrition-growth-result-col nutrition-growth-result-col--present">' +
               '<label class="d-block">Nutrition Result (auto-computed from present)</label>' +
               '<div class="nutrition-growth-results small">' +
                 '<div><span class="text-muted">Weight for Age:</span> <span class="nutrition-growth-wfa badge badge-secondary">—</span></div>' +
@@ -314,7 +349,10 @@ function nutritionRefreshPreviousGrowth($card) {
     url: 'nutritionFamilyMemberGrowth.php',
     method: 'GET',
     dataType: 'json',
+    cache: false,
+    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     data: {
+      ajax: 1,
       gender: gender,
       birth_date: birthYmd,
       weight_kg: prevWeight,
@@ -335,7 +373,9 @@ function nutritionRefreshPreviousGrowth($card) {
     nutritionSetGrowthResult($card, 'wfa', res.weight_for_age || '', 'prev');
     nutritionSetGrowthResult($card, 'hfa', res.height_for_age || '', 'prev');
     nutritionSetGrowthResult($card, 'wfh', res.weight_for_height || '', 'prev');
-    if (res.expected_weight_kg && res.expected_height_cm && res.sex_label) {
+    if (nutritionCanShowOptUi()
+        && res.sex_label && res.expected_weight_kg != null && res.expected_weight_kg !== ''
+        && res.expected_height_cm != null && res.expected_height_cm !== '') {
       $prevExpected.text(
         'Expected median at previous date (' + res.sex_label + '): ~' +
         res.expected_weight_kg + ' kg · ~' + res.expected_height_cm + ' cm'
@@ -525,7 +565,48 @@ function nutritionAgeInMonthsLocal(birthDate, referenceDate) {
   return Math.max(0, months);
 }
 
-function nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro) {
+function nutritionSexLabelFromGender(gender) {
+  if (gender === 'Female') return 'girl';
+  if (gender === 'Male') return 'boy';
+  return '';
+}
+
+function nutritionCanShowOptUi() {
+  return window.nutritionShowOptResults !== false && window.nutritionShowExpectedMedian !== false;
+}
+
+function nutritionApplyExpectedMedian($card, sexLabel, expectedWeight, expectedHeight, gender) {
+  if (!nutritionCanShowOptUi()) {
+    $card.find('.nutrition-growth-expected').text('');
+    $card.find('.nutrition-prev-expected').text('');
+    return;
+  }
+  var sex = sexLabel || nutritionSexLabelFromGender(gender);
+  // Template already ends with " standards"; only put boy / girl / boy/girl here.
+  $card.find('.nutrition-growth-sex-label').text(sex || 'boy/girl');
+  if (sex && expectedWeight != null && expectedWeight !== '' && expectedHeight != null && expectedHeight !== '') {
+    $card.find('.nutrition-growth-expected').text(
+      'Expected median for this age (' + sex + '): ~' +
+      expectedWeight + ' kg · ~' + expectedHeight + ' cm'
+    );
+    return;
+  }
+  if (!gender) {
+    $card.find('.nutrition-growth-expected').text(
+      'Select Male (Boy) or Female (Girl) to apply the correct growth standard.'
+    );
+    return;
+  }
+  if (sex) {
+    $card.find('.nutrition-growth-expected').text(
+      'Using ' + sex + ' growth standards. Enter birthday to load the expected median weight and height.'
+    );
+    return;
+  }
+  $card.find('.nutrition-growth-expected').text('');
+}
+
+function nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro, gender) {
   var ageMonths = nutritionAgeInMonthsLocal(birthDate, dateMeasured);
   if (ageMonths === null) {
     $ageLabel.text('Could not compute age').addClass('text-muted');
@@ -545,6 +626,7 @@ function nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabe
     nutritionClearGrowthResults($card);
   } else {
     $anthro.show();
+    nutritionApplyExpectedMedian($card, '', null, null, gender || '');
   }
 }
 
@@ -567,6 +649,9 @@ function nutritionRefreshFamilyMemberGrowth($card) {
     $card.find('.family-member-age-months').val('');
     $anthro.hide();
     nutritionClearGrowthResults($card);
+    if (gender === 'Male' || gender === 'Female') {
+      nutritionApplyExpectedMedian($card, '', null, null, gender);
+    }
     return;
   }
 
@@ -579,11 +664,18 @@ function nutritionRefreshFamilyMemberGrowth($card) {
   var measuredYmd = nutritionToYmd(dateMeasured);
   var surveyYmd = nutritionToYmd(surveyDate);
 
+  // Show the 0–5 panel + boy/girl expected line immediately (BNS / all roles),
+  // then fill exact medians and OPT badges when the growth API responds.
+  nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro, gender || '');
+
   $.ajax({
     url: 'nutritionFamilyMemberGrowth.php',
     method: 'GET',
     dataType: 'json',
+    cache: false,
+    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
     data: {
+      ajax: 1,
       gender: gender || '',
       birth_date: birthYmd || birthDate,
       weight_kg: weight > 0 ? weight : 0,
@@ -596,7 +688,7 @@ function nutritionRefreshFamilyMemberGrowth($card) {
     }
   }).done(function (res) {
     if (!res || !res.ok) {
-      nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro);
+      nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro, gender);
       return;
     }
 
@@ -621,19 +713,13 @@ function nutritionRefreshFamilyMemberGrowth($card) {
     if (!$dateMeasured.val()) {
       $dateMeasured.val(dateMeasured);
     }
-    var sexText = res.sex_label ? (res.sex_label + ' standards') : 'boy/girl standards (select gender)';
-    $card.find('.nutrition-growth-sex-label').text(sexText);
-
-    if (res.expected_weight_kg && res.expected_height_cm && res.sex_label) {
-      $card.find('.nutrition-growth-expected').text(
-        'Expected median for this age (' + res.sex_label + '): ~' +
-        res.expected_weight_kg + ' kg · ~' + res.expected_height_cm + ' cm'
-      );
-    } else if (!gender) {
-      $card.find('.nutrition-growth-expected').text('Select Male (Boy) or Female (Girl) to apply the correct growth standard.');
-    } else {
-      $card.find('.nutrition-growth-expected').text('');
-    }
+    nutritionApplyExpectedMedian(
+      $card,
+      res.sex_label || '',
+      res.expected_weight_kg,
+      res.expected_height_cm,
+      gender || ''
+    );
 
     if (weight > 0 && height > 0 && gender) {
       nutritionSetGrowthResult($card, 'wfa', res.weight_for_age || '');
@@ -646,8 +732,8 @@ function nutritionRefreshFamilyMemberGrowth($card) {
     }
     nutritionUpdateWeightGain($card);
   }).fail(function () {
-    // Endpoint may fail (auth/BOM/HTML); still show age so staff can continue.
-    nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro);
+    // Endpoint may fail (auth/BOM/HTML); still show age and boy/girl standard for BNS.
+    nutritionApplyLocalAgeFallback($card, birthDate, dateMeasured, $ageLabel, $anthro, gender);
   });
 }
 
@@ -666,6 +752,21 @@ function nutritionToggleOtherSpecify($checkbox) {
   target.prop('disabled', false).focus();
 }
 
+function nutritionSetMemberResidentNumber($card, residentNumber) {
+  var value = $.trim(residentNumber || '');
+  $card.find('.family-member-residence-id').val(value);
+  $card.find('.family-member-residence-display').val(value);
+}
+
+function nutritionSyncHeadResidentNumberDisplay() {
+  var rid = $.trim($('#house_hold_id').val() || '');
+  $('#house_hold_id_display').val(rid);
+}
+
+function nutritionIsEditSurveyMode() {
+  return $.trim($('#existing_survey_id').val() || '') !== '';
+}
+
 $('#addFamilyMemberBtn, .nutrition-add-first-member').on('click', function () {
   $('#familyMembersContainer').append(nutritionBuildFamilyMemberCard(familyMemberIndex));
   familyMemberIndex++;
@@ -674,8 +775,8 @@ $('#addFamilyMemberBtn, .nutrition-add-first-member').on('click', function () {
   if ($lastCard.length) {
     nutritionInitDatePickers($lastCard);
     nutritionSyncRelationshipOther($lastCard);
+    nutritionRefreshHouseholdId();
     $('html, body').animate({ scrollTop: $lastCard.offset().top - 120 }, 250);
-    $lastCard.find('input[name*="[member_name]"]').focus();
   }
 });
 
@@ -683,6 +784,9 @@ $(document).on('click', '.remove-family-member-btn', function () {
   $(this).closest('.nutrition-family-member-card').remove();
   nutritionRefreshFamilyMemberLabels();
   nutritionUpdateFamilyMembersEmptyState();
+  if (!nutritionIsEditSurveyMode()) {
+    nutritionRefreshHouseholdId();
+  }
 });
 
 $(document).on('change', '.family-member-relationship', function () {
@@ -751,7 +855,9 @@ $('#head_is_lactating').on('change', function () {
 });
 
 $(document).on('change', '.nutrition-family-member-card select[name*="[gender]"]', function () {
-  nutritionSyncFamilyMemberFemaleStatus($(this).closest('.nutrition-family-member-card'));
+  var $card = $(this).closest('.nutrition-family-member-card');
+  nutritionSyncFamilyMemberFemaleStatus($card);
+  nutritionRefreshFamilyMemberGrowth($card);
 });
 
 $(document).on('change', '.nutrition-other-feeding-toggle', function () {
@@ -822,6 +928,21 @@ $('#is_4ps, #is_ip').on('change', function () {
   }
 });
 
+$(document).on('change', '.family-member-na', function () {
+  if (this.checked) {
+    $(this).closest('.nutrition-family-member-card')
+      .find('.family-member-4ps, .family-member-ip')
+      .prop('checked', false);
+  }
+});
+$(document).on('change', '.family-member-4ps, .family-member-ip', function () {
+  if (this.checked) {
+    $(this).closest('.nutrition-family-member-card')
+      .find('.family-member-na')
+      .prop('checked', false);
+  }
+});
+
 nutritionSyncPrfToggles();
 
 $(document).on('input change', '.family-member-growth-input, .family-member-growth-trigger, .family-member-prev-weight, .family-member-prev-height, .family-member-prev-date-measured', function () {
@@ -836,14 +957,48 @@ $('#survey_date').on('change', function () {
 
 function nutritionRefreshHouseholdId() {
   var purok = ($('#purok_number').val() || '').trim();
-  if (!purok) return;
-  $.getJSON('nutritionNextHouseholdId.php', { purok: purok }, function (res) {
+  if (!purok) {
+    if (!nutritionIsEditSurveyMode()) {
+      $('#house_hold_id').val('');
+      nutritionSyncHeadResidentNumberDisplay();
+    }
+    return;
+  }
+  var isEdit = nutritionIsEditSurveyMode();
+  var $memberCards = $('#familyMembersContainer .nutrition-family-member-card');
+  var memberCount = $memberCards.length;
+  var previewCount = isEdit ? Math.max(1, memberCount) : (1 + memberCount);
+  $.getJSON('nutritionNextHouseholdId.php', { purok: purok, count: previewCount }, function (res) {
     if (($('#purok_number').val() || '').trim() !== purok) {
       return;
     }
-    if (res && res.household_id) {
-      $('#house_hold_id').val(res.household_id);
+    if (!res || !res.ok) {
+      return;
     }
+    var numbers = Array.isArray(res.resident_numbers) ? res.resident_numbers : [];
+    if (!isEdit) {
+      var headNumber = res.resident_number || res.household_id || numbers[0] || '';
+      if (headNumber) {
+        $('#house_hold_id').val(headNumber);
+        nutritionSyncHeadResidentNumberDisplay();
+      }
+      $memberCards.each(function (index) {
+        nutritionSetMemberResidentNumber($(this), numbers[index + 1] || '');
+      });
+      return;
+    }
+    // Edit mode: keep locked head/member numbers; only preview blanks for new members.
+    var assignIndex = 0;
+    $memberCards.each(function () {
+      var $card = $(this);
+      var existing = $.trim($card.find('.family-member-residence-id').val() || '');
+      if (existing !== '') {
+        nutritionSetMemberResidentNumber($card, existing);
+        return;
+      }
+      nutritionSetMemberResidentNumber($card, numbers[assignIndex] || '');
+      assignIndex++;
+    });
   });
 }
 
@@ -897,9 +1052,16 @@ function nutritionApplyResidentPrefill(resident) {
   $('#is_solo_parent').prop('checked', resident.is_solo_parent === 'YES');
   nutritionSyncHeadFemaleStatus();
 
-  var purokValue = resident.purok_input || resident.purok_label || resident.purok_number || '';
+  var purokValue = resident.purok_label || resident.purok_input || resident.purok_number || '';
   if (purokValue) {
-    $('#purok_number').val(purokValue).trigger('change');
+    var $purok = $('#purok_number');
+    var matched = $purok.find('option').filter(function () {
+      return String($(this).val()).toLowerCase() === String(purokValue).toLowerCase();
+    }).first();
+    // Keep Purok / Sitio locked to master list — do not append free-text options.
+    if (matched.length) {
+      $purok.val(matched.val()).trigger('change');
+    }
   }
 
   $('#familyMembersContainer').empty();
@@ -909,6 +1071,7 @@ function nutritionApplyResidentPrefill(resident) {
     $('#familyMembersContainer').append(nutritionBuildFamilyMemberCard(familyMemberIndex));
     var $card = $('#familyMembersContainer .nutrition-family-member-card').last();
     nutritionInitDatePickers($card);
+    nutritionSetMemberResidentNumber($card, '');
     $card.find('input[name*="[member_name]"]').val(member.member_name || '');
     nutritionApplyRelationshipToCard($card, member.relationship || '', member.relationship_other || '');
     $card.find('select[name*="[gender]"]').val(member.gender || '');
@@ -919,11 +1082,12 @@ function nutritionApplyResidentPrefill(resident) {
   });
   nutritionUpdateFamilyMembersEmptyState();
   nutritionRefreshFamilyMemberLabels();
+  nutritionRefreshHouseholdId();
 }
 
 $('#barangay_residence_id').select2({
   theme: 'bootstrap4',
-  placeholder: 'Search registered resident…',
+  placeholder: 'Optional: search Hub resident to prefill…',
   allowClear: true,
   minimumInputLength: 2,
   ajax: {
@@ -941,7 +1105,7 @@ $('#barangay_residence_id').select2({
 
 $('#barangay_residence_id').on('change', function () {
   var residenceId = $(this).val();
-  if (!residenceId) {
+  if (!residenceId || window.nutritionSkipResidentPrefill) {
     return;
   }
 
@@ -955,7 +1119,7 @@ $('#barangay_residence_id').on('change', function () {
       toast: true,
       position: 'top-end',
       type: 'success',
-      title: 'Barangay resident loaded',
+      title: 'Hub resident details loaded',
       showConfirmButton: false,
       timer: 1800
     });
@@ -1027,10 +1191,22 @@ function nutritionApplySurveyEditPayload(data) {
     );
   }
 
-  $('#purok_number').val(data.purok_input || data.purok_number || '1');
+  (function () {
+    var editPurok = data.purok_label || data.purok_input || data.purok_number || '';
+    var $purok = $('#purok_number');
+    if (!editPurok) {
+      $purok.val('').trigger('change');
+      return;
+    }
+    var match = $purok.find('option').filter(function () {
+      return String($(this).val()).toLowerCase() === String(editPurok).toLowerCase();
+    }).first();
+    $purok.val(match.length ? match.val() : '').trigger('change');
+  })();
   $('#survey_date').val(data.survey_date || '');
-  $('#bns_name').val(data.bns_name || '');
+  $('#bns_name').val(data.bns_name || window.nutritionDefaultBnsName || '');
   $('#house_hold_id').val(data.house_hold_id || '');
+  nutritionSyncHeadResidentNumberDisplay();
   $('#head_last_name').val(data.head_last_name || '');
   $('#head_first_name').val(data.head_first_name || '');
   $('#head_middle_name').val(data.head_middle_name || '');
@@ -1046,8 +1222,13 @@ function nutritionApplySurveyEditPayload(data) {
 
   if (data.residence_id) {
     var rid = String(data.residence_id);
-    var opt = new Option('Linked resident #' + rid, rid, true, true);
-    $('#barangay_residence_id').append(opt).trigger('change');
+    // Only treat as Hub link when it is not an auto PSGC-Purok-##### Resident Number.
+    if (!/^\d{10}-P[A-Z0-9]+-\d{5}$/i.test(rid)) {
+      var opt = new Option('Hub resident ' + rid, rid, true, true);
+      window.nutritionSkipResidentPrefill = true;
+      $('#barangay_residence_id').append(opt).val(rid).trigger('change');
+      window.nutritionSkipResidentPrefill = false;
+    }
   }
 
   nutritionSyncHeadFemaleStatus();
@@ -1162,6 +1343,7 @@ function nutritionApplySurveyEditPayload(data) {
     $('#familyMembersContainer').append(nutritionBuildFamilyMemberCard(familyMemberIndex));
     var $card = $('#familyMembersContainer .nutrition-family-member-card').last();
     nutritionInitDatePickers($card);
+    nutritionSetMemberResidentNumber($card, member.residence_id || '');
     $card.find('input[name*="[member_name]"]').val(member.member_name || '');
     nutritionApplyRelationshipToCard($card, member.relationship || '', member.relationship_other || '');
     $card.find('select[name*="[gender]"]').val(member.gender || '');
@@ -1177,6 +1359,11 @@ function nutritionApplySurveyEditPayload(data) {
     $card.find('input[name*="[weight_for_height]"]').val(member.weight_for_height || '');
     $card.find('.family-member-pregnant').prop('checked', !!member.is_pregnant);
     $card.find('.family-member-lactating').prop('checked', !!member.is_lactating);
+    $card.find('.family-member-4ps').prop('checked', !!member.is_4ps);
+    $card.find('.family-member-ip').prop('checked', !!member.is_ip);
+    $card.find('.family-member-na').prop('checked', !!member.is_na_member);
+    $card.find('.family-member-pwd').prop('checked', !!member.is_pwd);
+    $card.find('.family-member-solo-parent').prop('checked', !!member.is_solo_parent);
     $card.find('input[name*="[pregnancy_months]"]').val(member.pregnancy_months || '');
     if (member.pregnant_nutrition_status) {
       $card.find('input[name*="[pregnant_nutrition_status]"][value="' + String(member.pregnant_nutrition_status).replace(/"/g, '\\"') + '"]').prop('checked', true);
@@ -1201,6 +1388,9 @@ function nutritionApplySurveyEditPayload(data) {
 
 if (window.nutritionSurveyEditPayload) {
   nutritionApplySurveyEditPayload(window.nutritionSurveyEditPayload);
+} else {
+  nutritionSyncHeadResidentNumberDisplay();
+  nutritionRefreshHouseholdId();
 }
 
 $('#uploadHouseholdSurveyExcelBtn').on('click', function () {
@@ -1253,7 +1443,7 @@ $('#uploadHouseholdSurveyExcelInput').on('change', function () {
     var html = '<div class="text-left">' +
       '<div><strong>Household head:</strong> ' + $('<div>').text(head || '—').html() + '</div>' +
       '<div><strong>Family members:</strong> ' + (res.members || 0) + '</div>' +
-      '<div><strong>Household No.:</strong> <code>' + $('<div>').text(res.payload.house_hold_id || 'auto').html() + '</code> (auto-generated)</div>';
+      '<div><strong>Resident Number:</strong> <code>' + $('<div>').text(res.payload.house_hold_id || res.payload.residence_id || 'auto on save').html() + '</code></div>';
     if (res.warnings && res.warnings.length) {
       html += '<div class="mt-2 text-warning"><strong>Check:</strong><ul class="mb-0 pl-3">' +
         res.warnings.map(function (w) { return '<li>' + $('<div>').text(w).html() + '</li>'; }).join('') +
@@ -1292,6 +1482,140 @@ $('#uploadHouseholdSurveyExcelInput').on('change', function () {
   $('#downloadHouseholdSurveyPdf').attr('href', pdfHref);
 })();
 
+function nutritionRefreshCompletenessChecklist() {
+  var $list = $('#nutritionCompletenessList');
+  var $badge = $('#nutritionCompletenessBadge');
+  if (!$list.length) return true;
+  var items = [];
+  var incomplete = [];
+  var child05 = 0;
+  var child05Ok = 0;
+  var memberCount = $('#familyMembersContainer .nutrition-family-member-card').length;
+
+  $('#familyMembersContainer .nutrition-family-member-card').each(function () {
+    var $card = $(this);
+    var name = $.trim($card.find('input[name*="[member_name]"]').val() || 'Child');
+    var ageRaw = $card.find('.family-member-age-months').val();
+    var ageMonths = ageRaw === '' || ageRaw == null ? null : parseInt(ageRaw, 10);
+    if (ageMonths === null || isNaN(ageMonths)) {
+      var birth = $.trim($card.find('input[name*="[birth_date]"]').val() || '');
+      var measured = $.trim($card.find('.family-member-date-measured').val() || '') || nutritionTodayMdy();
+      ageMonths = nutritionAgeInMonthsLocal(birth, measured);
+    }
+    if (ageMonths === null || isNaN(ageMonths) || ageMonths > 60) {
+      return;
+    }
+    child05++;
+    var weight = parseFloat($card.find('.family-member-present-weight').val() || '0');
+    var height = parseFloat($card.find('.family-member-present-height').val() || '0');
+    if (weight > 0 && height > 0) {
+      child05Ok++;
+      items.push({ ok: true, text: name + ' (0–5): weight & height OK' });
+    } else {
+      var missing = [];
+      if (!(weight > 0)) missing.push('weight');
+      if (!(height > 0)) missing.push('height');
+      var detail = 'Missing ' + missing.join(' & ');
+      incomplete.push(name + ': ' + detail);
+      items.push({ ok: false, text: name + ' (0–5): ' + detail });
+    }
+  });
+
+  items.unshift({
+    ok: child05 === 0 || child05Ok === child05,
+    text: child05 === 0
+      ? 'No children ages 0–5 on this form'
+      : ('Children 0–5 measured: ' + child05Ok + '/' + child05)
+  });
+  items.unshift({
+    ok: true,
+    text: memberCount + ' family member(s) listed (besides household head)'
+  });
+
+  $list.empty();
+  items.forEach(function (item) {
+    $list.append(
+      $('<li/>')
+        .addClass(item.ok ? 'text-success' : 'text-warning')
+        .text((item.ok ? '✓ ' : '⚠ ') + item.text)
+    );
+  });
+  if (incomplete.length) {
+    $badge.removeClass('badge-success badge-secondary').addClass('badge-warning').text('Incomplete');
+  } else {
+    $badge.removeClass('badge-warning badge-secondary').addClass('badge-success').text('Ready');
+  }
+  return incomplete.length === 0;
+}
+
+$(document).on(
+  'input change blur',
+  '#familyMembersContainer input, #familyMembersContainer select, #survey_date, #head_is_pregnant',
+  function () {
+    nutritionRefreshCompletenessChecklist();
+  }
+);
+$(document).on('click', '#addFamilyMemberBtn, .nutrition-add-first-member', function () {
+  setTimeout(nutritionRefreshCompletenessChecklist, 50);
+});
+setTimeout(nutritionRefreshCompletenessChecklist, 200);
+
+function nutritionSubmitHouseholdSurvey($form, residentNumber) {
+  var isEdit = nutritionIsEditSurveyMode();
+  if (typeof barangaySyncCsrfForms === 'function') barangaySyncCsrfForms();
+  $.post('saveNutritionHouseholdSurvey.php', $form.serialize(), function (res) {
+    $('#allow_duplicate_override').val('0');
+    var savedNumber = (res && (res.house_hold_id || res.residence_id)) || residentNumber;
+    Swal.fire({
+      title: isEdit ? 'Updated' : 'Saved',
+      html: (res.message || (isEdit ? 'Household survey updated.' : 'Household survey recorded.')) +
+        '<div class="mt-2">Resident Number: <code>' + $('<div>').text(savedNumber).html() + '</code></div>',
+      type: 'success'
+    }).then(function () {
+      if (isEdit) {
+        window.location.href = 'nutritionBarangaySurvey.php?highlight=' + encodeURIComponent(res.survey_id || '');
+        return;
+      }
+      window.location.reload();
+    });
+  }, 'json').fail(function (xhr) {
+    var msg = 'Could not save survey.';
+    var code = '';
+    try {
+      var data = JSON.parse(xhr.responseText);
+      if (data.error) msg = data.error;
+      if (data.code) code = data.code;
+      if (data.checklist) nutritionRefreshCompletenessChecklist();
+    } catch (err) {
+      if (xhr.status === 403) {
+        msg = 'Session expired. Please refresh the page and try again.';
+      } else if (xhr.responseText) {
+        msg = 'Server error while saving. Please try again.';
+      }
+    }
+    if (code === 'duplicate_override_allowed') {
+      Swal.fire({
+        title: 'Possible duplicate household',
+        html: '<p class="mb-2">' + $('<div>').text(msg).html() + '</p>'
+          + '<p class="mb-0">CNPC / Nutrition Admin can continue if this is a different household.</p>',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Save anyway',
+        cancelButtonText: 'Cancel'
+      }).then(function (result) {
+        if (result.value || result.isConfirmed) {
+          $('#allow_duplicate_override').val('1');
+          nutritionSubmitHouseholdSurvey($form, residentNumber);
+        } else {
+          $('#allow_duplicate_override').val('0');
+        }
+      });
+      return;
+    }
+    Swal.fire({ title: code === 'incomplete' ? 'Incomplete survey' : 'Error', text: msg, type: 'error' });
+  });
+}
+
 $('#householdSurveyForm').on('submit', function (e) {
   e.preventDefault();
   var $form = $(this);
@@ -1321,52 +1645,51 @@ $('#householdSurveyForm').on('submit', function (e) {
     return;
   }
 
-  var linkedResidence = $.trim($('#barangay_residence_id').val() || '');
-  var isEdit = $.trim($('#existing_survey_id').val() || '') !== '';
-  var doSave = function () {
-    if (typeof barangaySyncCsrfForms === 'function') barangaySyncCsrfForms();
-    $.post('saveNutritionHouseholdSurvey.php', $form.serialize(), function (res) {
-      Swal.fire({
-        title: isEdit ? 'Updated' : 'Saved',
-        html: (res.message || (isEdit ? 'Household survey updated.' : 'Household survey recorded.')) +
-          (res.house_hold_id ? '<div class="mt-2"><code>' + $('<div>').text(res.house_hold_id).html() + '</code></div>' : ''),
-        type: 'success'
-      }).then(function () {
-        if (isEdit) {
-          window.location.href = 'nutritionBarangaySurvey.php?highlight=' + encodeURIComponent(res.survey_id || '');
-          return;
-        }
-        window.location.reload();
-      });
-    }, 'json').fail(function (xhr) {
-      var msg = 'Could not save survey.';
-      try {
-        var data = JSON.parse(xhr.responseText);
-        if (data.error) msg = data.error;
-      } catch (err) {
-        if (xhr.status === 403) {
-          msg = 'Session expired. Please refresh the page and try again.';
-        } else if (xhr.responseText) {
-          msg = 'Server error while saving. Please try again.';
-        }
-      }
-      Swal.fire({ title: 'Error', text: msg, type: 'error' });
-    });
-  };
-  if (linkedResidence === '') {
+  var residentNumber = $.trim($('#house_hold_id').val() || '');
+  if (residentNumber === '') {
     Swal.fire({
-      title: 'No resident link',
-      html: 'This household is not linked to a Barangay resident. Link now for unified Hub records, or continue without linking.',
-      type: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Save anyway',
-      cancelButtonText: 'Go back'
-    }).then(function (result) {
-      if (result.value) doSave();
+      title: 'Resident Number required',
+      text: 'Enter a Purok first so the Resident Number (PSGC-Purok-Number) can be auto-generated.',
+      type: 'warning'
+    });
+    $('#purok_number').focus();
+    return;
+  }
+
+  if (!nutritionRefreshCompletenessChecklist()) {
+    Swal.fire({
+      title: 'Completeness checklist',
+      text: 'Add weight and height for every child ages 0–5 before saving.',
+      type: 'warning'
     });
     return;
   }
-  doSave();
+
+  nutritionSubmitHouseholdSurvey($form, residentNumber);
 });
+
+(function nutritionLangToggleInit() {
+  var lang = localStorage.getItem('nutrition_form_lang') || 'en';
+  function applyLang(next) {
+    lang = next;
+    localStorage.setItem('nutrition_form_lang', lang);
+    $('[data-i18n-en][data-i18n-bis]').each(function () {
+      var $el = $(this);
+      var en = $el.attr('data-i18n-en') || '';
+      var bis = $el.attr('data-i18n-bis') || '';
+      var required = $el.find('.text-danger').length ? ' <span class="text-danger">*</span>' : '';
+      $el.html((lang === 'bis' ? bis : en) + required);
+    });
+    $('#nutritionLangToggle').html(
+      lang === 'bis'
+        ? '<i class="fas fa-language mr-1"></i> English labels'
+        : '<i class="fas fa-language mr-1"></i> Bisaya labels'
+    );
+  }
+  $(document).on('click', '#nutritionLangToggle', function () {
+    applyLang(lang === 'bis' ? 'en' : 'bis');
+  });
+  applyLang(lang);
+})();
 </script>
 HTML;

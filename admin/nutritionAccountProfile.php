@@ -42,6 +42,11 @@ if ($stmtSeen) {
     }
 }
 
+$forcePasswordChange = isset($_GET['force_password'])
+    || !empty($_SESSION['force_password_change'])
+    || (function_exists('barangay_user_must_change_password')
+        && barangay_user_must_change_password($con, $user_id));
+
 $profileCssHref = '../assets/css/account-profile.css?v=20261006b';
 
 $profileScript = <<<'HTML'
@@ -413,18 +418,34 @@ if ($useCityNutritionShell) {
                 </div>
               </div>
 
+              <?php if ($forcePasswordChange) : ?>
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                You must set a new password (min 8 characters, upper + lower + number) before using other pages.
+                Nutrition staff passwords expire every <?= (int) barangay_password_expiry_days() ?> days.
+              </div>
+              <?php endif; ?>
+
               <div class="card nutrition-panel acct-section mb-4">
                 <div class="card-header">
                   <h3 class="card-title"><i class="fas fa-key mr-2"></i>Change password</h3>
-                  <div class="card-tools"><span class="badge badge-secondary">Optional</span></div>
+                  <div class="card-tools">
+                    <span class="badge <?= $forcePasswordChange ? 'badge-warning' : 'badge-secondary' ?>">
+                      <?= $forcePasswordChange ? 'Required' : 'Optional' ?>
+                    </span>
+                  </div>
                 </div>
                 <div class="card-body">
-                  <p class="text-muted small mb-3">Leave these blank to keep your current password.</p>
+                  <p class="text-muted small mb-3">
+                    <?= $forcePasswordChange
+                        ? 'Enter your current password and choose a new strong password.'
+                        : 'Leave these blank to keep your current password.' ?>
+                  </p>
                   <div class="row">
                     <div class="col-md-6 form-group">
-                      <label for="new_password">New password</label>
+                      <label for="new_password">New password<?= $forcePasswordChange ? ' <span class="text-danger">*</span>' : '' ?></label>
                       <div class="input-group">
-                        <input type="password" class="form-control" id="new_password" name="new_password" autocomplete="new-password" minlength="8">
+                        <input type="password" class="form-control" id="new_password" name="new_password" autocomplete="new-password" minlength="8"<?= $forcePasswordChange ? ' required' : '' ?>>
                         <div class="input-group-append">
                           <button type="button" class="btn btn-outline-secondary" data-toggle-password="new_password" title="Show password" aria-pressed="false"><i class="fas fa-eye"></i></button>
                         </div>

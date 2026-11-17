@@ -29,6 +29,11 @@ try{
     echo $e->getMessage();
   }
 
+$endTermBarangayId = (string) ($barangay_id ?? (function_exists('barangay_session_id') ? barangay_session_id() : ''));
+$endTermChecklist = ($endTermBarangayId !== '' && function_exists('barangay_official_end_term_checklist'))
+    ? barangay_official_end_term_checklist($con, $endTermBarangayId)
+    : ['overfilled' => [], 'missing_term' => [], 'vacant' => [], 'active_count' => 0];
+
 ?>
 
 <!DOCTYPE html>
@@ -593,6 +598,22 @@ input:checked + .slider .off{
     <section class="content mt-3">
       <div class="container-fluid">
 
+    <?php if (!empty($endTermChecklist['overfilled']) || !empty($endTermChecklist['missing_term'])) : ?>
+    <div class="alert alert-warning">
+      <strong>Before ending terms:</strong>
+      <?php if (!empty($endTermChecklist['overfilled'])) : ?>
+        Overfilled seats —
+        <?php foreach ($endTermChecklist['overfilled'] as $pos) : ?>
+          <?= barangay_h((string) ($pos['position'] ?? '')) ?> (<?= (int) ($pos['filled'] ?? 0) ?>/<?= (int) ($pos['position_limit'] ?? 0) ?>);
+        <?php endforeach; ?>
+      <?php endif; ?>
+      <?php if (!empty($endTermChecklist['missing_term'])) : ?>
+        <?= count($endTermChecklist['missing_term']) ?> official(s) missing valid term dates.
+      <?php endif; ?>
+      <a href="officialEndTerm.php" class="alert-link ml-1">Open checklist</a>
+    </div>
+    <?php endif; ?>
+
     <div class="card">
         <!-- <div class="card-header">
             <div class="card-title">
@@ -871,30 +892,41 @@ input:checked + .slider .off{
 function deleteOfficial(){
   $(document).on('click','.deleteOfficial',function(){
     var official_id = $(this).attr('id');
+    var name = $(this).data('name') || 'this official';
+    var position = $(this).data('position') || '—';
+    var termFrom = $(this).data('term-from') || '—';
+    var termTo = $(this).data('term-to') || '—';
     Swal.fire({
-        title: '<strong class="text-danger">ARE YOU SURE?</strong>',
-        html: "You want delete this Official?",
+        title: '<strong class="text-danger">End official term?</strong>',
+        html: '<div class="text-left">'
+          + '<p class="mb-2">This moves the official to <strong>End Term</strong> archive (not a hard delete).</p>'
+          + '<ul class="mb-0 pl-3">'
+          + '<li><strong>Name:</strong> ' + $('<div>').text(name).html() + '</li>'
+          + '<li><strong>Position:</strong> ' + $('<div>').text(position).html() + '</li>'
+          + '<li><strong>Term:</strong> ' + $('<div>').text(termFrom + ' → ' + termTo).html() + '</li>'
+          + '</ul></div>',
         type: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
         allowOutsideClick: false,
-        confirmButtonText: 'Yes, delete it!',
-        width: '400px',
+        confirmButtonText: 'Yes, end term',
+        width: '460px',
       }).then((result) => {
         if (result.value) {
           $.ajax({
             url: 'deleteOfficial.php',
             type: 'POST',
             data: {
-              official_id:official_id,
+              official_id: official_id,
+              csrf_token: $('meta[name="csrf-token"]').attr('content') || ''
             },
             cache: false,
-            success:function(data){
+            success:function(){
               Swal.fire({
                 title: '<strong class="text-success">Success</strong>',
                 type: 'success',
-                html: '<b>Delete Official has Successfully<b>',
+                html: '<b>Official term ended and archived.</b>',
                 width: '400px',
                 showConfirmButton: false,
                 allowOutsideClick: false,

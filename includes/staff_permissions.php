@@ -525,6 +525,66 @@ if (!function_exists('staff_assigned_purok_labels')) {
     }
 }
 
+if (!function_exists('staff_purok_bns_assignments')) {
+    /**
+     * BNS names covering each purok in a barangay.
+     * A BNS with no saved purok rows covers every purok.
+     *
+     * @return array{all:array<int,string>,by_purok:array<string,array<int,string>>}
+     */
+    function staff_purok_bns_assignments(mysqli $con, string $barangayId): array
+    {
+        $empty = ['all' => [], 'by_purok' => []];
+        $barangayId = trim($barangayId);
+        if ($barangayId === '' || !function_exists('staff_role_column_exists') || !staff_role_column_exists($con)) {
+            return $empty;
+        }
+
+        $role = STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR;
+        $stmt = $con->prepare(
+            'SELECT id, first_name, middle_name, last_name, username
+             FROM users
+             WHERE staff_role = ? AND barangay_id = ?
+             ORDER BY last_name ASC, first_name ASC'
+        );
+        if (!$stmt) {
+            return $empty;
+        }
+        $stmt->bind_param('ss', $role, $barangayId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $all = [];
+        $byPurok = [];
+        while ($row = $result->fetch_assoc()) {
+            $name = function_exists('nutrition_staff_display_name')
+                ? trim(nutrition_staff_display_name($row))
+                : '';
+            if ($name === '') {
+                $name = trim((string) ($row['username'] ?? ''));
+            }
+            if ($name === '') {
+                continue;
+            }
+            $labels = staff_assigned_purok_labels($con, (string) ($row['id'] ?? ''), $barangayId);
+            if ($labels === []) {
+                $all[$name] = $name;
+                continue;
+            }
+            foreach ($labels as $label) {
+                $byPurok[$label][$name] = $name;
+            }
+        }
+        $stmt->close();
+
+        $normalized = [];
+        foreach ($byPurok as $label => $names) {
+            $normalized[$label] = array_values($names);
+        }
+
+        return ['all' => array_values($all), 'by_purok' => $normalized];
+    }
+}
+
 if (!function_exists('staff_set_purok_assignments')) {
     /**
      * @param array<int, string> $purokLabels Empty clears all (means all puroks).
@@ -629,8 +689,8 @@ if (!function_exists('barangay_user_can_manage_staff_accounts')) {
     /**
      * Create/manage staff accounts:
      * - SSA: system-wide (all hubs/portals)
-     * - Barangay Hub SA / Nutrition SA: within assigned hub scope only
-     * - Admin / CNPC / BNS: never
+     * - Barangay Hub SA / Nutrition SA / Nutrition Admin: within assigned hub scope only
+     * - Barangay Admin / CNPC / BNS: never
      */
     function barangay_user_can_manage_staff_accounts(mysqli $con, ?string $userId = null): bool
     {
@@ -649,6 +709,120 @@ if (!function_exists('barangay_require_staff_account_management')) {
     function barangay_require_staff_account_management(mysqli $con, string $message = 'You do not have permission to manage staff accounts.'): void
     {
         barangay_require_permission(barangay_user_can_manage_staff_accounts($con), $message);
+    }
+}
+
+if (!function_exists('barangay_role_capability_matrix')) {
+    /**
+     * Documented capability matrix for Sprint 2 locks.
+     *
+     * @return array<string, array<string, bool|string>>
+     */
+    function barangay_role_capability_matrix(): array
+    {
+        return [
+            'create_bns' => [
+                'ssa' => true,
+                'nutrition_sa' => true,
+                'nutrition_admin' => true,
+                'cnpc' => false,
+                'bns' => false,
+                'barangay_hub_sa' => false,
+                'barangay_admin' => false,
+                'barangay_staff' => false,
+            ],
+            'manage_puroks' => [
+                'ssa' => true,
+                'nutrition_sa' => true,
+                'nutrition_admin' => true,
+                'cnpc' => false,
+                'bns' => false,
+                'barangay_hub_sa' => true,
+                'barangay_admin' => false,
+                'barangay_staff' => false,
+            ],
+            'end_official_term' => [
+                'ssa' => true,
+                'nutrition_sa' => false,
+                'nutrition_admin' => false,
+                'cnpc' => false,
+                'bns' => false,
+                'barangay_hub_sa' => true,
+                'barangay_admin' => true,
+                'barangay_staff' => true,
+                'city_admin' => false,
+            ],
+            'survey_repair' => [
+                'ssa' => true,
+                'nutrition_sa' => true,
+                'nutrition_admin' => true,
+                'cnpc' => true,
+                'bns' => false,
+            ],
+        ];
+    }
+}
+
+if (!function_exists('barangay_user_can_create_bns')) {
+    function barangay_user_can_create_bns(mysqli $con, ?string $userId = null): bool
+    {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if ($userId === '' || !barangay_user_can_manage_staff_accounts($con, $userId)) {
+            return false;
+        }
+        if (!function_exists('staff_account_creatable_roles')) {
+            require_once __DIR__ . '/staff_accounts.php';
+        }
+        $prev = $_SESSION['user_id'] ?? null;
+        $_SESSION['user_id'] = $userId;
+        $roles = staff_account_creatable_roles($con);
+        if ($prev === null) {
+            unset($_SESSION['user_id']);
+        } else {
+            $_SESSION['user_id'] = $prev;
+        }
+
+        return in_array(STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR, $roles, true);
+    }
+}
+
+if (!function_exists('barangay_user_can_end_official_term')) {
+    /**
+     * Barangay Hub end-of-term only (not Nutrition portal / City Admin A).
+     */
+    function barangay_user_can_end_official_term(mysqli $con, ?string $userId = null): bool
+    {
+        $userId = $userId ?? (string) ($_SESSION['user_id'] ?? '');
+        if ($userId === '') {
+            return false;
+        }
+        if (barangay_user_is_ssa($con, $userId) || barangay_user_is_barangay_hub_super_admin($con, $userId)) {
+            return true;
+        }
+        if (function_exists('barangay_user_is_city_admin') && barangay_user_is_city_admin($con, $userId)) {
+            return false;
+        }
+        if (barangay_user_is_nutrition_portal_admin($con, $userId)
+            || barangay_user_is_cnpc($con, $userId)
+            || barangay_user_is_barangay_nutrition_scholar($con, $userId)) {
+            return false;
+        }
+        $role = barangay_user_staff_role($con, $userId);
+
+        return in_array($role, [
+            STAFF_ROLE_BARANGAY_ADMIN,
+            STAFF_ROLE_BARANGAY_STAFF,
+            STAFF_ROLE_ADMIN,
+        ], true)
+            || (isset($_SESSION['user_type']) && in_array((string) $_SESSION['user_type'], ['admin', 'secretary'], true)
+                && barangay_user_barangay_id($con, $userId) !== null);
+    }
+}
+
+if (!function_exists('barangay_require_end_official_term')) {
+    function barangay_require_end_official_term(mysqli $con, string $message = 'You do not have permission to end official terms.'): void
+    {
+        barangay_require_permission(barangay_user_can_end_official_term($con), $message);
     }
 }
 
@@ -876,12 +1050,15 @@ if (!function_exists('barangay_bns_allowed_scripts')) {
             'nutritionBnpReport.php',
             'nutritionBnpPrint.php',
             'nutritionEoptPrint.php',
+            'nutritionEoptExportExcel.php',
+            'nutritionBnpExportExcel.php',
             'nutritionMellpiBarangayProfile.php',
             'nutritionReport.php',
             'nutritionPrintReport.php',
             'nutritionProfiles.php',
             'nutritionHubGuidePrint.php',
             'nutritionProcessFormPrint.php',
+            'nutritionFamilyMemberGrowth.php',
             'myProfile.php',
         ];
     }
@@ -972,34 +1149,20 @@ if (!function_exists('barangay_bns_admin_support_scripts')) {
 
 if (!function_exists('barangay_bns_admin_denied_mutation_scripts')) {
     /**
-     * Nutrition Admin (A) still cannot manage staff or save city settings/MELLPI city profile.
+     * Nutrition Admin (A) matches Nutrition Super Admin, so nothing here is denied.
      *
      * @return array<int, string>
      */
     function barangay_bns_admin_denied_mutation_scripts(): array
     {
-        return [
-            'saveNutritionSettings.php',
-            'saveNutritionMellpiCityProfile.php',
-            'staffAccounts.php',
-            'saveStaffAccount.php',
-            'deleteStaffAccount.php',
-            'staffAccountsTable.php',
-            'viewStaffAccount.php',
-            'resetStaffAccountPassword.php',
-        ];
+        return [];
     }
 }
 
 if (!function_exists('barangay_bns_admin_can_access_script')) {
     function barangay_bns_admin_can_access_script(string $script): bool
     {
-        if (in_array($script, barangay_bns_admin_denied_mutation_scripts(), true)) {
-            return false;
-        }
-
-        return in_array($script, barangay_bns_admin_allowed_scripts(), true)
-            || in_array($script, barangay_bns_admin_support_scripts(), true);
+        return barangay_nutrition_portal_admin_can_access_script($script);
     }
 }
 
@@ -1032,7 +1195,8 @@ if (!function_exists('barangay_bns_admin_city_wide_scripts')) {
 
 if (!function_exists('barangay_user_is_nutrition_portal_admin')) {
     /**
-     * Nutrition Hub Super Admin (SA) — city-wide nutrition only.
+     * Nutrition Hub Super Admin (SA) and Nutrition Admin (A).
+     * Nutrition Admin has the same Nutrition Hub powers as Nutrition Super Admin.
      */
     function barangay_user_is_nutrition_portal_admin(mysqli $con, string $userId): bool
     {
@@ -1046,7 +1210,8 @@ if (!function_exists('barangay_user_is_nutrition_portal_admin')) {
         }
 
         $role = barangay_user_staff_role($con, $userId);
-        if ($role === STAFF_ROLE_NUTRITION_SUPER_ADMIN) {
+        if ($role === STAFF_ROLE_NUTRITION_SUPER_ADMIN
+            || $role === STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR_ADMIN) {
             $cache[$userId] = true;
 
             return true;
@@ -1099,8 +1264,13 @@ if (!function_exists('barangay_barangay_hub_sa_denied_scripts')) {
             'nutritionPregnantFamiliesPrint.php',
             'nutritionSuperPregnantFamiliesPrint.php',
             'nutritionBnpReport.php',
+            'nutritionSchoolEntry.php',
             'nutritionBnpPrint.php',
             'nutritionEoptPrint.php',
+            'nutritionEoptExportExcel.php',
+            'nutritionBnpExportExcel.php',
+            'nutritionCityComparisonExportExcel.php',
+            'nutritionSuperDashboard.php',
             'nutritionReport.php',
             'nutritionPrintReport.php',
             'nutritionSettings.php',
@@ -1153,10 +1323,15 @@ if (!function_exists('barangay_nutrition_portal_admin_allowed_scripts')) {
                 'viewStaffAccount.php',
                 'resetStaffAccountPassword.php',
                 'staffBarangayPuroks.php',
+                'managePuroks.php',
+                'saveManagePurok.php',
                 'nutritionAccountProfile.php',
                 'saveProfile.php',
                 'nutritionProcessFormPrint.php',
                 'cityReportPack.php',
+                'nutritionSchoolEntry.php',
+                'nutritionCityComparisonExportExcel.php',
+                'nutritionSuperPrintReport.php',
             ]
         )));
     }
@@ -1195,7 +1370,11 @@ if (!function_exists('barangay_cnpc_allowed_scripts')) {
             'barangayHub.php',
             'selectBarangay.php',
             'nutritionSuperDashboard.php',
+            'nutritionSuperPrintReport.php',
+            'nutritionCityComparisonExportExcel.php',
             'nutritionAssess.php',
+            'nutritionSchoolEntry.php',
+            'nutritionSurveyRepair.php',
         ])));
     }
 }
@@ -1210,6 +1389,7 @@ if (!function_exists('barangay_cnpc_support_scripts')) {
             'deleteNutritionHouseholdSurvey.php',
             'updateNutritionHouseholdSurveyNames.php',
             'saveNutritionHouseholdSurvey.php',
+            'saveNutritionSettings.php',
             'nutritionStatusChildren.php',
         ])));
     }
@@ -1279,6 +1459,7 @@ if (!function_exists('barangay_enforce_staff_portal_access')) {
         $denied = [
             'backupRestore.php', 'backup.php', 'backupTable.php', 'restore.php', 'deleteFile.php',
             'staffAccounts.php', 'deleteStaffAccount.php', 'systemLog.php', 'systemLogsTable.php',
+            'systemLogsExport.php',
         ];
 
         if (in_array($script, $denied, true)) {

@@ -40,10 +40,15 @@ if (!barangay_user_can_access_nutrition_portal($con, $user_id)) {
     exit;
 }
 
+$nutritionScriptName = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+$nutritionCityPagesWithoutBarangay = [
+    'nutritionAccountProfile.php',
+    'nutritionSurveyRepair.php',
+];
 if ($isNutritionScholar) {
     // Assigned barangay is forced in barangay_enforce_admin_page_access.
-} elseif (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'nutritionAccountProfile.php') {
-    // City nutrition accounts can edit profile without an active barangay session.
+} elseif (in_array($nutritionScriptName, $nutritionCityPagesWithoutBarangay, true)) {
+    // City nutrition accounts can open these without an active barangay session.
 } elseif (barangay_user_can_open_nutrition_city_hub($con, $user_id) && barangay_session_id() === null) {
     header('Location: nutritionSuperDashboard.php');
     exit;

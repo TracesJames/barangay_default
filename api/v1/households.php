@@ -12,24 +12,15 @@ $override = trim((string) ($_GET['barangay_id'] ?? $body['barangay_id'] ?? ''));
 $ctx = nutrition_api_require_active_barangay($con, $auth, $override !== '' ? $override : null);
 
 $surveyId = trim((string) ($_GET['id'] ?? $body['id'] ?? ''));
-$filters = [];
-if (barangay_user_is_barangay_nutrition_scholar($con, $auth['user_id'])) {
-    $assigned = staff_assigned_purok_labels($con, $auth['user_id'], $ctx['barangay_id']);
-    if ($assigned !== []) {
-        $filters['purok_in'] = $assigned;
-    }
-}
+$filters = nutrition_apply_bns_report_filters($con, $auth['user_id'], $ctx['barangay_id']);
 
 if ($surveyId !== '') {
     $survey = nutrition_load_household_survey_by_id($con, $surveyId, $ctx['barangay_id']);
     if ($survey === null) {
         nutrition_api_error('Household survey not found.', 404);
     }
-    if (isset($filters['purok_in']) && is_array($filters['purok_in'])) {
-        $label = trim((string) ($survey['purok_label'] ?? ''));
-        if ($label !== '' && !in_array($label, $filters['purok_in'], true)) {
-            nutrition_api_error('Household survey not found.', 404);
-        }
+    if (!staff_user_can_access_purok($con, $auth['user_id'], (string) ($survey['purok_label'] ?? ''))) {
+        nutrition_api_error('Household survey not found.', 404);
     }
     $members = nutrition_list_household_family_members($con, $surveyId);
     $full = strtolower(trim((string) ($_GET['full'] ?? $body['full'] ?? '1'))) !== '0';

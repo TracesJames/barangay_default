@@ -5,11 +5,11 @@ include_once '../includes/auth_admin.php';
 require_once '../includes/partials/nutrition_init.php';
 require_once '../includes/nutrition_eopt_reports.php';
 
-$filters = [
+$filters = nutrition_apply_bns_report_filters($con, (string) $user_id, (string) $barangay_id, [
     'purok' => trim((string) ($_GET['purok'] ?? '')),
     'date_from' => trim((string) ($_GET['date_from'] ?? '')),
     'date_to' => trim((string) ($_GET['date_to'] ?? '')),
-];
+]);
 $calendarYear = (int) ($_GET['year'] ?? date('Y'));
 if ($calendarYear < 2000 || $calendarYear > 2100) {
     $calendarYear = (int) date('Y');

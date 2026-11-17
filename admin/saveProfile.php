@@ -114,12 +114,25 @@ try {
     }
 
     $changingPassword = ($new_password !== '' || $new_confirm_password !== '');
+    $forcePassword = !empty($_SESSION['force_password_change'])
+        || (function_exists('barangay_user_must_change_password')
+            && barangay_user_must_change_password($con, $user_id));
+    if ($forcePassword && !$changingPassword) {
+        $respond('error2', 'You must set a new password before continuing.', 400);
+    }
     if ($changingPassword) {
         if ($new_password !== $new_confirm_password) {
             $respond('error2', 'New password and confirmation do not match.', 400);
         }
-        if (strlen($new_password) < 8) {
-            $respond('error2', 'New password must be at least 8 characters.', 400);
+        $policyError = barangay_validate_password_policy(
+            $new_password,
+            (string) ($_POST['username'] ?? $_SESSION['username'] ?? '')
+        );
+        if ($policyError !== null) {
+            $respond('error2', $policyError, 400);
+        }
+        if (barangay_verify_password($new_password, $password_user)) {
+            $respond('error2', 'New password must be different from the current password.', 400);
         }
         $pass = barangay_hash_password($new_password);
     } else {
@@ -148,6 +161,11 @@ try {
         $respond('error', 'Could not save profile.', 500);
     }
     $stmt_update->close();
+
+    if ($changingPassword && function_exists('barangay_mark_password_changed')) {
+        barangay_mark_password_changed($con, $user_id, false);
+        unset($_SESSION['force_password_change']);
+    }
 
     $respond('ok', 'Profile updated.');
 } catch (Throwable $e) {

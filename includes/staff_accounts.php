@@ -448,8 +448,14 @@ if (!function_exists('staff_account_create')) {
             return ['ok' => false, 'error' => 'Please complete all required fields.'];
         }
 
-        if (strlen($username) < 4 || strlen($password) < 6) {
-            return ['ok' => false, 'error' => 'Username or password is too short.'];
+        if (strlen($username) < 4) {
+            return ['ok' => false, 'error' => 'Username is too short.'];
+        }
+        $policyError = function_exists('barangay_validate_password_policy')
+            ? barangay_validate_password_policy($password, $username)
+            : null;
+        if ($policyError !== null) {
+            return ['ok' => false, 'error' => $policyError];
         }
 
         if (staff_account_username_exists($con, $username)) {
@@ -602,6 +608,10 @@ if (!function_exists('staff_account_create')) {
             }
         }
 
+        if (function_exists('barangay_mark_password_changed')) {
+            barangay_mark_password_changed($con, $userId, true);
+        }
+
         $roleLabel = staff_account_role_label($role);
         staff_account_log_activity(
             $con,
@@ -663,11 +673,16 @@ if (!function_exists('staff_account_update')) {
 
         $password = $target['password'];
         $newPassword = trim((string) ($data['password'] ?? ''));
+        $passwordRotated = false;
         if ($newPassword !== '' && ($data['password_changed'] ?? '') === '1') {
-            if (strlen($newPassword) < 6) {
-                return ['ok' => false, 'error' => 'Password must be at least 6 characters.'];
+            $policyError = function_exists('barangay_validate_password_policy')
+                ? barangay_validate_password_policy($newPassword, $username)
+                : null;
+            if ($policyError !== null) {
+                return ['ok' => false, 'error' => $policyError];
             }
             $password = barangay_hash_password($newPassword);
+            $passwordRotated = true;
         }
 
         $image = (string) ($target['image'] ?? '');
@@ -797,6 +812,10 @@ if (!function_exists('staff_account_update')) {
             staff_set_purok_assignments($con, $userId, '', []);
         }
 
+        if ($passwordRotated && function_exists('barangay_mark_password_changed')) {
+            barangay_mark_password_changed($con, $userId, true);
+        }
+
         $roleNote = $roleChanged ? (' | ROLE ' . $currentRole . ' → ' . $newRole) : '';
         staff_account_log_activity(
             $con,
@@ -862,20 +881,26 @@ if (!function_exists('staff_account_reset_password')) {
             return ['ok' => false, 'error' => 'You are not allowed to reset this password.'];
         }
 
-        if (strlen($plainPassword) < 6) {
-            return ['ok' => false, 'error' => 'Password must be at least 6 characters.'];
+        $policyError = function_exists('barangay_validate_password_policy')
+            ? barangay_validate_password_policy($plainPassword, (string) ($target['username'] ?? ''))
+            : null;
+        if ($policyError !== null) {
+            return ['ok' => false, 'error' => $policyError];
         }
 
-        $role = staff_account_resolve_role($target);
-        $ok = false;
         $hash = barangay_hash_password($plainPassword);
         $stmt = $con->prepare('UPDATE users SET password = ? WHERE id = ?');
         $stmt->bind_param('ss', $hash, $userId);
         $stmt->execute();
         $ok = $stmt->affected_rows > 0;
+        $stmt->close();
 
         if (!$ok) {
             return ['ok' => false, 'error' => 'Password reset failed.'];
+        }
+
+        if (function_exists('barangay_mark_password_changed')) {
+            barangay_mark_password_changed($con, $userId, true);
         }
 
         staff_account_log_activity(

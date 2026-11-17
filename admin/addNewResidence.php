@@ -58,7 +58,12 @@ try {
     $add_nationality = $postString('add_nationality');
     $add_contact_number = $postString('add_contact_number');
     $add_email_address = $postString('add_email_address');
-    $add_address = $postString('add_address');
+    $purokResolved = residence_resolve_purok_from_post($con, (string) $barangay_id, $_POST);
+    if (($purokResolved['error'] ?? null) !== null) {
+        residence_exit_add_result('errorPurok');
+    }
+    $add_purok_id = (string) ($purokResolved['purok_id'] ?? '');
+    $add_address = (string) ($purokResolved['purok_label'] ?? $postString('add_address'));
     residence_require_minor_guardian_or_exit($_POST);
     $add_birth_place = $postString('add_birth_place');
     $add_municipality = $postString('add_municipality');
@@ -143,7 +148,8 @@ try {
         $add_single_parent,
         $date_added,
         $barangay_id,
-        $add_indigenous
+        $add_indigenous,
+        $add_purok_id !== '' ? $add_purok_id : null
     );
 
     if (barangay_column_exists($con, 'users', 'barangay_id')) {

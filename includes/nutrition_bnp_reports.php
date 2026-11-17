@@ -542,7 +542,17 @@ if (!function_exists('nutrition_bnp_family_profile_report')) {
 
         $counts['most_common_occupation'] = nutrition_bnp_occupation_summary($occupationCounts);
         $settings = nutrition_load_settings($con, $barangayId);
-        $bnsName = trim((string) ($settings['nutrition_officer'] ?? ''));
+        $bnsName = '';
+        if (function_exists('nutrition_prepared_by_signatory')) {
+            $bnsName = trim((string) (nutrition_prepared_by_signatory(
+                $con,
+                null,
+                (string) ($settings['nutrition_officer'] ?? '')
+            )['name'] ?? ''));
+        }
+        if ($bnsName === '') {
+            $bnsName = trim((string) ($settings['nutrition_officer'] ?? ''));
+        }
 
         return [
             'meta' => $meta,
@@ -552,7 +562,7 @@ if (!function_exists('nutrition_bnp_family_profile_report')) {
             'individuals' => $individuals,
             'bns_name' => $bnsName,
             'calendar_year' => (int) date('Y'),
-            'purok_options' => nutrition_list_household_puroks($con, $barangayId),
+            'purok_options' => nutrition_list_household_puroks($con, $barangayId, $filters),
         ];
     }
 }
@@ -616,6 +626,49 @@ if (!function_exists('nutrition_bnp_load_form_c1')) {
         }
 
         return $out;
+    }
+}
+
+if (!function_exists('nutrition_bnp_form_c1_school_keys')) {
+    /**
+     * BNP Form C1 items 16–20. Entered by hand; not counted from household surveys.
+     *
+     * @return array<int, string>
+     */
+    function nutrition_bnp_form_c1_school_keys(): array
+    {
+        return [
+            'daycare_public',
+            'daycare_private',
+            'elementary_public',
+            'elementary_private',
+            'kindergarten',
+            'grade1',
+            'school_weighed',
+            'school_weighing_pct',
+        ];
+    }
+}
+
+if (!function_exists('nutrition_user_can_edit_form_c1_school')) {
+    /**
+     * Manual entry — Educational institutions.
+     * Developer Account, Nutrition Super Admin, Nutrition Admin, and CNPC (assigned barangay).
+     */
+    function nutrition_user_can_edit_form_c1_school(mysqli $con, string $userId, string $barangayId): bool
+    {
+        if ($userId === '' || $barangayId === '') {
+            return false;
+        }
+        if (barangay_user_is_ssa($con, $userId) || barangay_user_is_nutrition_portal_admin($con, $userId)) {
+            return true;
+        }
+        if (barangay_user_is_cnpc($con, $userId)) {
+            return function_exists('staff_user_can_access_barangay')
+                && staff_user_can_access_barangay($con, $userId, $barangayId);
+        }
+
+        return false;
     }
 }
 
@@ -844,11 +897,22 @@ if (!function_exists('nutrition_bnp_all_hh_report')) {
 
         $settings = nutrition_load_settings($con, $barangayId);
         $formC1 = nutrition_bnp_load_form_c1($con, $barangayId);
+        $bnsName = '';
+        if (function_exists('nutrition_prepared_by_signatory')) {
+            $bnsName = trim((string) (nutrition_prepared_by_signatory(
+                $con,
+                null,
+                (string) ($settings['nutrition_officer'] ?? '')
+            )['name'] ?? ''));
+        }
+        if ($bnsName === '') {
+            $bnsName = trim((string) ($settings['nutrition_officer'] ?? ''));
+        }
 
         return [
             'meta' => nutrition_bnp_resolve_type('all_hh'),
             'calendar_year' => (int) date('Y'),
-            'bns_name' => trim((string) ($settings['nutrition_officer'] ?? '')),
+            'bns_name' => $bnsName,
             'indicators' => [
                 'actual_population' => $actualPopulation,
                 'actual_households' => $actualHouseholds,
@@ -882,7 +946,7 @@ if (!function_exists('nutrition_bnp_all_hh_report')) {
             ],
             'form_c1' => $formC1,
             'prf' => $prf,
-            'purok_options' => nutrition_list_household_puroks($con, $barangayId),
+            'purok_options' => nutrition_list_household_puroks($con, $barangayId, $filters),
         ];
     }
 }

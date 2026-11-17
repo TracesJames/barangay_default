@@ -2,6 +2,8 @@
 
 include_once '../connection.php';
 include_once '../includes/auth_admin.php';
+require_once '../includes/staff_permissions.php';
+barangay_require_end_official_term($con);
 try{
 
 
@@ -28,6 +30,11 @@ try{
   }catch(Exception $e){
     echo $e->getMessage();
   }
+
+$endTermBarangayId = (string) ($barangay_id ?? barangay_session_id() ?? '');
+$endTermChecklist = $endTermBarangayId !== ''
+    ? barangay_official_end_term_checklist($con, $endTermBarangayId)
+    : ['positions' => [], 'vacant' => [], 'overfilled' => [], 'missing_term' => [], 'active_count' => 0];
 
 ?>
 
@@ -590,10 +597,79 @@ input:checked + .slider .off{
     <section class="content mt-3">
       <div class="container-fluid">
 
+    <div class="card card-outline card-warning mb-3">
+      <div class="card-header">
+        <h3 class="card-title mb-0"><i class="fas fa-clipboard-check mr-2"></i>End-of-term checklist</h3>
+        <div class="card-tools">
+          <a href="allOfficial.php" class="btn btn-sm btn-outline-light">Active officials</a>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row text-sm">
+          <div class="col-md-3 mb-2">
+            <div class="ux-check-tile">
+              <div class="text-muted">Active officials</div>
+              <div class="h4 mb-0"><?= (int) ($endTermChecklist['active_count'] ?? 0) ?></div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-2">
+            <div class="ux-check-tile">
+              <div class="text-muted">Vacant seats</div>
+              <div class="h4 mb-0 text-warning"><?= count($endTermChecklist['vacant'] ?? []) ?></div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-2">
+            <div class="ux-check-tile">
+              <div class="text-muted">Overfilled positions</div>
+              <div class="h4 mb-0 text-danger"><?= count($endTermChecklist['overfilled'] ?? []) ?></div>
+            </div>
+          </div>
+          <div class="col-md-3 mb-2">
+            <div class="ux-check-tile">
+              <div class="text-muted">Missing / invalid term dates</div>
+              <div class="h4 mb-0 text-danger"><?= count($endTermChecklist['missing_term'] ?? []) ?></div>
+            </div>
+          </div>
+        </div>
+        <?php if (!empty($endTermChecklist['overfilled'])) : ?>
+        <div class="alert alert-danger mt-2 mb-2 py-2">
+          <strong>Duplicate / over-limit seats:</strong>
+          <?php foreach ($endTermChecklist['overfilled'] as $pos) : ?>
+            <?= barangay_h((string) ($pos['position'] ?? '')) ?>
+            (<?= (int) ($pos['filled'] ?? 0) ?>/<?= (int) ($pos['position_limit'] ?? 0) ?>);
+          <?php endforeach; ?>
+          End extras from <a href="allOfficial.php" class="alert-link">List of Official</a> before restoring.
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($endTermChecklist['missing_term'])) : ?>
+        <div class="alert alert-warning mt-2 mb-0 py-2">
+          <strong>Fix term dates before ending:</strong>
+          <ul class="mb-0 pl-3">
+            <?php foreach (array_slice($endTermChecklist['missing_term'], 0, 8) as $miss) : ?>
+            <li><?= barangay_h((string) ($miss['name'] ?? '')) ?> — <?= barangay_h((string) ($miss['position'] ?? '')) ?>
+              (<?= barangay_h((string) (($miss['term_from'] ?? '') . ' → ' . ($miss['term_to'] ?? ''))) ?>)</li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
+        <?php if (!empty($endTermChecklist['vacant'])) : ?>
+        <p class="text-muted mb-0 mt-2 small">
+          Vacant: <?php
+            $vacLabels = [];
+            foreach ($endTermChecklist['vacant'] as $pos) {
+                $vacLabels[] = (string) ($pos['position'] ?? '') . ' (' . (int) ($pos['available'] ?? 0) . ')';
+            }
+            echo barangay_h(implode(', ', $vacLabels));
+          ?>
+        </p>
+        <?php endif; ?>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-body">
           <fieldset>
-            <legend>NUMBER OF OFFICIAL <span id="total"></span></legend>
+            <legend>ENDED / ARCHIVED OFFICIALS <span id="total"></span></legend>
               <div class="table-responsive">
                 <table class="table table-striped table-hover " id="endOfficialTable" style="width: 100%;">
                   <thead class="bg-black text-uppercase">

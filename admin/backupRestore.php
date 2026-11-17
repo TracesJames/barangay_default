@@ -176,7 +176,8 @@ try{
   
                             protected function initializeDatabase() {
                             try {
-                              $conn = mysqli_connect($this->host, $this->username, $this->passwd, $this->dbName);
+                              $dbPort = defined('DB_PORT') ? (int) DB_PORT : 3000;
+                              $conn = mysqli_connect($this->host, $this->username, $this->passwd, $this->dbName, $dbPort);
                               if (mysqli_connect_errno()) {
                                   throw new Exception('ERROR connecting database: ' . mysqli_connect_error());
                                   die();

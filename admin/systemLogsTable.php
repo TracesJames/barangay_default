@@ -12,6 +12,9 @@ try {
     $statusFilter = trim((string) ($_REQUEST['status_filter'] ?? ''));
     $barangayFilter = trim((string) ($_REQUEST['barangay_filter'] ?? ''));
     $entityFilter = trim((string) ($_REQUEST['entity_filter'] ?? ''));
+    $userFilter = trim((string) ($_REQUEST['user_filter'] ?? ''));
+    $dateFrom = trim((string) ($_REQUEST['date_from'] ?? ''));
+    $dateTo = trim((string) ($_REQUEST['date_to'] ?? ''));
 
     $where = [];
     if ($statusFilter !== '') {
@@ -22,6 +25,15 @@ try {
     }
     if ($entityFilter !== '' && barangay_column_exists($con, 'activity_log', 'entity_type')) {
         $where[] = "activity_log.entity_type = '" . $con->real_escape_string($entityFilter) . "'";
+    }
+    if ($userFilter !== '' && barangay_column_exists($con, 'activity_log', 'user_id')) {
+        $where[] = "activity_log.user_id = '" . $con->real_escape_string($userFilter) . "'";
+    }
+    if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom) && barangay_column_exists($con, 'activity_log', 'created_at')) {
+        $where[] = "DATE(activity_log.created_at) >= '" . $con->real_escape_string($dateFrom) . "'";
+    }
+    if ($dateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo) && barangay_column_exists($con, 'activity_log', 'created_at')) {
+        $where[] = "DATE(activity_log.created_at) <= '" . $con->real_escape_string($dateTo) . "'";
     }
     if (!empty($_REQUEST['search']['value'])) {
         $search = datatables_sql_like($con, (string) $_REQUEST['search']['value']);

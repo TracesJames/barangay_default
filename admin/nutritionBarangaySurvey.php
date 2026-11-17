@@ -7,11 +7,11 @@ require_once '../includes/partials/nutrition_init.php';
 $activePage = 'barangay_survey';
 $nutritionPageTitle = 'Barangay Nutrition Survey';
 
-$filters = [
+$filters = nutrition_apply_bns_report_filters($con, (string) $user_id, (string) $barangay_id, [
     'purok' => trim((string) ($_GET['purok'] ?? '')),
     'date_from' => trim((string) ($_GET['date_from'] ?? '')),
     'date_to' => trim((string) ($_GET['date_to'] ?? '')),
-];
+]);
 
 $report = nutrition_household_consolidated_report($con, (string) $barangay_id, $filters);
 $nutritionIncludeScriptsCsrf = true;

@@ -41,7 +41,12 @@ $add_religion = $con->real_escape_string($_POST['add_religion']);
 $add_nationality = $con->real_escape_string($_POST['add_nationality']);
 $add_contact_number = $con->real_escape_string($_POST['add_contact_number']);
 $add_email_address = $con->real_escape_string($_POST['add_email_address']);
-$add_address = $con->real_escape_string($_POST['add_address']);
+$purokResolved = residence_resolve_purok_from_post($con, $add_barangay_id, $_POST);
+if (($purokResolved['error'] ?? null) !== null) {
+    exit('errorPurok');
+}
+$add_purok_id = (string) ($purokResolved['purok_id'] ?? '');
+$add_address = $con->real_escape_string((string) ($purokResolved['purok_label'] ?? ($_POST['add_address'] ?? '')));
 $add_birth_date = $con->real_escape_string($_POST['add_birth_date']);
 $add_birth_place = $con->real_escape_string($_POST['add_birth_place']);
 residence_require_minor_guardian_or_exit($_POST);
@@ -123,18 +128,21 @@ $stmt->close();
 residence_save_spouse($con, $number, $_POST, 'add_');
 residence_save_dependents($con, $number, $_POST, 'add_');
 
-$hasResidenceBarangayId = barangay_column_exists($con, 'residence_status', 'barangay_id');
-if ($hasResidenceBarangayId) {
-    $sql_residence_status = "INSERT INTO `residence_status` (`residence_id`, `barangay_id`, `status`, `voters`,`archive`,`pwd`,`pwd_info`,`single_parent`,`indigenous`,`senior`, `date_added`) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
-    $stmt_residence_status = $con->prepare($sql_residence_status) or die ($con->error);
-    $stmt_residence_status->bind_param('sssssssssss', $number, $add_barangay_id, $add_status, $add_voters, $archive, $add_pwd, $add_pwd_check, $add_single_parent, $add_indigenous, $senior, $date_added);
-} else {
-    $sql_residence_status = "INSERT INTO `residence_status` (`residence_id`, `status`, `voters`,`archive`,`pwd`,`pwd_info`,`single_parent`,`indigenous`,`senior`, `date_added`) VALUES (?,?,?,?,?,?,?,?,?,?)";
-    $stmt_residence_status = $con->prepare($sql_residence_status) or die ($con->error);
-    $stmt_residence_status->bind_param('ssssssssss', $number, $add_status, $add_voters, $archive, $add_pwd, $add_pwd_check, $add_single_parent, $add_indigenous, $senior, $date_added);
-}
-$stmt_residence_status->execute();
-$stmt_residence_status->close();
+residence_insert_status_row(
+    $con,
+    $number,
+    $add_status,
+    $add_voters,
+    $archive,
+    $add_pwd,
+    $add_pwd_check,
+    $senior,
+    $add_single_parent,
+    $date_added,
+    $add_barangay_id,
+    $add_indigenous,
+    $add_purok_id !== '' ? $add_purok_id : null
+);
 
 $date_activity = date("j-n-Y g:i A");
 $admin = strtoupper('RESIDENT') . ': REGISTER RESIDENT - ' . $number . ' | ' . $add_first_name . ' ' . $add_last_name . ' ' . $add_suffix . ' (' . $add_barangay . ')';
