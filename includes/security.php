@@ -45,6 +45,11 @@ if (!function_exists('barangay_send_security_headers')) {
         }
         $sent = true;
 
+        // Hide PHP fingerprint when expose_php cannot be changed at runtime.
+        if (function_exists('header_remove')) {
+            header_remove('X-Powered-By');
+        }
+
         // Clickjacking: SAMEORIGIN keeps AdminLTE iframes/print helpers working.
         header('X-Frame-Options: SAMEORIGIN');
         header('X-Content-Type-Options: nosniff');

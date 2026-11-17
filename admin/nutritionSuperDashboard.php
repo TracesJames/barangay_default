@@ -271,12 +271,13 @@ if ($nutritionRecommendations === []) {
   <link rel="stylesheet" href="../assets/dist/css/adminlte.min.css">
   <link rel="stylesheet" href="../assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="../assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
-  <link rel="stylesheet" href="../assets/css/super-dashboard.css?v=20260720b">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=20261117a">
+  <link rel="stylesheet" href="../assets/css/super-dashboard.css?v=20261117a">
 <?php require_once '../includes/head_csrf.php'; ?>
-  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20261116a">
+  <link rel="stylesheet" href="../assets/css/nutrition-dashboard.css?v=20261117a">
   <link rel="stylesheet" href="../assets/css/ux-polish.css?v=20261116a">
 </head>
-<body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-portal nutrition-portal nutrition-super-dashboard">
+<body class="hold-transition dark-mode sidebar-mini layout-footer-fixed barangay-portal nutrition-portal nutrition-super-dashboard barangay-dashboard">
 <div class="wrapper">
   <nav class="main-header navbar navbar-expand navbar-dark nutrition-navbar">
     <ul class="navbar-nav">
@@ -305,52 +306,68 @@ if ($nutritionRecommendations === []) {
     <section class="content pt-3">
       <div class="container-fluid">
         <div class="nutrition-welcome">
-          <div class="row align-items-center">
-            <div class="col-auto d-none d-md-block">
-              <img src="<?= barangay_h($brandLogo) ?>" alt="Valencia City" class="rounded-circle nutrition-welcome-logo">
-            </div>
-            <div class="col-lg-9">
-              <h1>Nutrition Portal</h1>
-              <p>City-wide nutrition profiling across all <?= number_format($barangayCount) ?> barangays in Valencia City, Bukidnon.</p>
-              <div class="nutrition-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
-              <div class="nutrition-actions">
-                <a href="barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-th-large"></i> Select Barangay
-                </a>
-                <a href="nutritionMellpiCityProfile.php" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-clipboard-list"></i> MELLPI City Profile
-                </a>
-                <a href="nutritionSuperPrintReport.php" target="_blank" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-print"></i> Print City Report
-                </a>
-                <a href="nutritionHubGuidePrint.php" target="_blank" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-file-pdf"></i> User Guide (PDF)
-                </a>
-                <a href="nutritionProcessFormPrint.php" target="_blank" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-clipboard-check"></i> Process Form (PDF)
-                </a>
-                <a href="nutritionSuperPregnantFamiliesPrint.php" target="_blank" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-female"></i> Pregnant Families
-                </a>
-                <a href="nutritionBnpReport.php?type=all_hh" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-book"></i> BNP 2026
-                </a>
-                <?php if ($isSuperAdmin) : ?>
-                <a href="staffAccounts.php?role=<?= STAFF_ROLE_BARANGAY_NUTRITION_SCHOLAR ?>" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-user-nurse"></i> BNS Accounts
-                </a>
-                <?php if (!$isNutritionPortalAdmin) : ?>
-                <a href="superDashboard.php" class="btn btn-sm btn-outline-light">
-                  <i class="fas fa-city"></i> Barangay Super Admin
-                </a>
-                <?php endif; ?>
-                <?php endif; ?>
+          <div class="dashboard-welcome-grid">
+            <div class="dashboard-welcome-brand">
+              <img src="<?= barangay_h($brandLogo) ?>" alt="City of Valencia" class="dashboard-welcome-logo nutrition-welcome-logo">
+              <div>
+                <p class="dashboard-eyebrow">Nutrition Hub · Super Admin</p>
+                <h1>City of Valencia</h1>
+                <p class="dashboard-welcome-meta">
+                  <?= number_format($barangayCount) ?> barangays · nutrition profiling
+                  <span class="dashboard-welcome-sep">·</span>
+                  Signed in as <?= barangay_h(ucfirst((string) $first_name_user)) ?>
+                  <?php if ($staffRoleLabel !== '') : ?>
+                  <span class="dashboard-welcome-sep">·</span>
+                  <?= barangay_h($staffRoleLabel) ?>
+                  <?php endif; ?>
+                </p>
+                <div class="nutrition-date dashboard-date"><i class="far fa-calendar-alt mr-1"></i> <?= date('l, F j, Y') ?></div>
               </div>
+            </div>
+            <div class="nutrition-actions dashboard-actions">
+              <a href="barangayHub.php?picker=1&amp;system=nutrition&amp;view=picker" class="btn btn-sm dashboard-action-primary">
+                <i class="fas fa-th-large"></i> Open barangay
+              </a>
+              <a href="nutritionSuperPrintReport.php" target="_blank" class="btn btn-sm">
+                <i class="fas fa-print"></i> City report
+              </a>
+              <a href="nutritionBnpReport.php?type=all_hh" class="btn btn-sm">
+                <i class="fas fa-book"></i> BNP
+              </a>
+              <?php if ($isSuperAdmin && !$isNutritionPortalAdmin) : ?>
+              <a href="superDashboard.php" class="btn btn-sm">
+                <i class="fas fa-city"></i> Hub
+              </a>
+              <?php endif; ?>
             </div>
           </div>
         </div>
 
-        <h2 class="nutrition-section-heading"><i class="fas fa-bolt mr-2"></i>Quick Actions</h2>
+        <div class="dashboard-section-label">Nutrition Hub</div>
+        <div class="dashboard-kpi-row">
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">Children</span>
+            <span class="dashboard-kpi-value"><?= number_format($childrenTotal) ?></span>
+            <span class="dashboard-kpi-hint"><?= barangay_h(nutrition_children_age_label()) ?></span>
+          </div>
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">Assessed</span>
+            <span class="dashboard-kpi-value"><?= number_format($assessedTotal) ?></span>
+            <span class="dashboard-kpi-hint"><?= barangay_h((string) $coveragePct) ?>% coverage</span>
+          </div>
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">At risk</span>
+            <span class="dashboard-kpi-value"><?= number_format($atRisk) ?></span>
+            <span class="dashboard-kpi-hint"><?= number_format($pendingTotal) ?> pending</span>
+          </div>
+          <div class="dashboard-kpi dashboard-kpi--nutrition">
+            <span class="dashboard-kpi-label">Surveys</span>
+            <span class="dashboard-kpi-value"><?= number_format($totalSurveys) ?></span>
+            <span class="dashboard-kpi-hint"><?= number_format((int) ($hubTotals['pregnant'] ?? 0)) ?> pregnant</span>
+          </div>
+        </div>
+
+        <h2 class="nutrition-section-heading">Quick actions</h2>
         <div class="nutrition-workflow-grid">
           <a href="nutritionMellpiCityProfile.php" class="nutrition-workflow-card">
             <span class="nutrition-workflow-card-icon"><i class="fas fa-clipboard-list"></i></span>

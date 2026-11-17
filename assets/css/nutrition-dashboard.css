@@ -211,37 +211,89 @@ body.barangay-portal.nutrition-portal .main-footer {
 }
 
 .nutrition-welcome {
-  background: var(--portal-nutrition-welcome);
-  border: 1px solid var(--portal-nutrition-card-border, rgba(0, 108, 53, 0.2));
-  border-radius: 1rem;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  background:
+    linear-gradient(135deg, rgba(6, 28, 18, 0.94) 0%, rgba(22, 101, 52, 0.55) 100%),
+    linear-gradient(160deg, #052e16 0%, #14532d 100%);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.25rem;
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(2, 8, 23, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.nutrition-welcome .dashboard-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(187, 247, 208, 0.92);
 }
 
 .nutrition-welcome h1 {
-  font-size: 1.65rem;
+  font-size: clamp(1.55rem, 2.4vw, 2rem);
   font-weight: 800;
-  color: var(--portal-nutrition-text);
-  margin-bottom: 0.35rem;
+  color: #fff !important;
+  margin: 0 0 0.35rem;
+  line-height: 1.15;
 }
 
 .nutrition-welcome p,
+.nutrition-welcome .dashboard-welcome-meta,
 .nutrition-date {
-  color: var(--portal-nutrition-text-muted);
+  color: rgba(220, 252, 231, 0.88);
+  margin: 0;
 }
 
-.nutrition-welcome-logo {
-  width: 72px;
-  height: 72px;
+.nutrition-welcome-logo,
+.nutrition-welcome .dashboard-welcome-logo {
+  width: 76px;
+  height: 76px;
   object-fit: cover;
-  border: 3px solid rgba(0, 108, 53, 0.35);
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  background: #052e16;
+  flex-shrink: 0;
 }
 
 .nutrition-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 0.45rem;
+  margin-top: 0;
+  justify-content: flex-end;
+  max-width: 28rem;
+  align-items: center;
+}
+
+.nutrition-actions .btn {
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 0.48rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(6, 28, 18, 0.4);
+  color: #fff;
+}
+
+.nutrition-actions .btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.nutrition-actions .dashboard-action-primary {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%) !important;
+  border-color: transparent !important;
+  color: #052e16 !important;
+}
+
+.nutrition-super-dashboard .dashboard-kpi--nutrition .dashboard-kpi-hint {
+  color: #86efac;
 }
 
 .nutrition-stats {

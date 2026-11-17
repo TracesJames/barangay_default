@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api/nutrition_api.dart';
@@ -19,9 +20,12 @@ class Session {
   static const _tokenKey = 'nutrition_api_token';
   static const _barangayKeyPrefix = 'nutrition_last_barangay_';
 
+  static const _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    token = prefs.getString(_tokenKey);
+    token = await _readToken();
     if (token != null && token!.isNotEmpty) {
       api.setToken(token);
       try {
@@ -34,11 +38,31 @@ class Session {
     }
   }
 
+  Future<String?> _readToken() async {
+    try {
+      final secure = await _secure.read(key: _tokenKey);
+      if (secure != null && secure.isNotEmpty) {
+        return secure;
+      }
+    } catch (_) {}
+
+    // One-time migration from older SharedPreferences storage.
+    final prefs = await SharedPreferences.getInstance();
+    final legacy = prefs.getString(_tokenKey);
+    if (legacy != null && legacy.isNotEmpty) {
+      await _secure.write(key: _tokenKey, value: legacy);
+      await prefs.remove(_tokenKey);
+      return legacy;
+    }
+    return null;
+  }
+
   Future<void> persistToken(String value) async {
     token = value;
     api.setToken(value);
+    await _secure.write(key: _tokenKey, value: value);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, value);
+    await prefs.remove(_tokenKey);
   }
 
   /// Drop a dead session and return the app to the login screen.
@@ -63,6 +87,7 @@ class Session {
     barangays = [];
     puroks = [];
     api.setToken(null);
+    await _secure.delete(key: _tokenKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }

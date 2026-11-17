@@ -58,6 +58,7 @@ $endTermChecklist = ($endTermBarangayId !== '' && function_exists('barangay_offi
   <link rel="stylesheet" href="../assets/plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">
   <link rel="stylesheet" href="../assets/plugins/select2/css/select2.min.css">
   <link rel="stylesheet" href="../assets/plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+  <link rel="stylesheet" href="../assets/css/dashboard.css?v=20261117a">
   <style>
     .dataTables_wrapper .dataTables_paginate .page-link {
       
@@ -336,7 +337,7 @@ input:checked + .slider .off{
  
 <?php require_once '../includes/head_csrf.php'; ?>
 </head>
-<body class="hold-transition dark-mode sidebar-mini barangay-portal">
+<body class="hold-transition dark-mode sidebar-mini barangay-portal barangay-dashboard">
 <div class="wrapper">
 
 <!-- Preloader -->
@@ -598,6 +599,29 @@ input:checked + .slider .off{
     <section class="content mt-3">
       <div class="container-fluid">
 
+    <div class="dashboard-welcome mb-3">
+      <div class="dashboard-welcome-grid">
+        <div class="dashboard-welcome-brand">
+          <div>
+            <p class="dashboard-eyebrow">Barangay Hub · Officials</p>
+            <h1><?= barangay_h((string) ($barangay ?? 'Barangay')) ?></h1>
+            <p class="dashboard-welcome-meta">
+              Active roster
+              <span class="dashboard-welcome-sep">·</span>
+              <span id="total">0</span> officials
+            </p>
+          </div>
+        </div>
+        <div class="dashboard-actions">
+          <a href="officialEndTerm.php" class="btn btn-sm"><i class="fas fa-user-clock"></i> End of term</a>
+          <a href="position.php" class="btn btn-sm"><i class="fas fa-user-tie"></i> Positions</a>
+          <button type="button" class="btn btn-sm dashboard-action-primary" data-toggle="modal" data-target="#newOfficialModal">
+            <i class="fas fa-plus"></i> New official
+          </button>
+        </div>
+      </div>
+    </div>
+
     <?php if (!empty($endTermChecklist['overfilled']) || !empty($endTermChecklist['missing_term'])) : ?>
     <div class="alert alert-warning">
       <strong>Before ending terms:</strong>
@@ -614,15 +638,13 @@ input:checked + .slider .off{
     </div>
     <?php endif; ?>
 
-    <div class="card">
-        <!-- <div class="card-header">
-            <div class="card-title">
-              <button type="button" class="btn bg-black elevation-5 btn-flat px-3" data-toggle="modal" data-target="#newOfficialModal"><i class="fas fa-plus"></i> NEW OFFICIAL</button>
-            </div>
-        </div> -->
+    <div class="card dashboard-panel">
+      <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-users mr-1"></i> Officials roster</h3>
+      </div>
       <div class="card-body">
-          <fieldset>
-            <legend>NUMBER OF OFFICIAL <span id="total"></span></legend>
+          <fieldset class="border-0 p-0 m-0">
+            <legend class="sr-only">Officials <span id="totalLegend"></span></legend>
               <div class="table-responsive mt-2">
                 <table class="table table-striped table-hover " id="officialTable" style="width: 100%;">
                   <thead class="bg-black text-uppercase">

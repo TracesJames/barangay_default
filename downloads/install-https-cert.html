@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Install HTTPS Certificate · City of Valencia Portal</title>
+  <style>
+    :root { --teal:#0d9488; --ink:#0f172a; --muted:#64748b; --bg:#f1f5f9; }
+    body { margin:0; font-family:Segoe UI,system-ui,sans-serif; background:var(--bg); color:var(--ink); }
+    .wrap { max-width:34rem; margin:0 auto; padding:1.5rem 1.25rem 3rem; }
+    h1 { font-size:1.35rem; margin:0 0 .5rem; }
+    p { color:var(--muted); line-height:1.5; }
+    .card { background:#fff; border-radius:14px; padding:1.25rem; box-shadow:0 8px 24px rgba(15,23,42,.08); margin:1rem 0; }
+    .btn { display:inline-block; background:var(--teal); color:#fff; text-decoration:none; font-weight:700;
+      padding:.7rem 1rem; border-radius:999px; margin:.25rem .35rem .25rem 0; }
+    .btn.secondary { background:#fff; color:var(--teal); border:1px solid var(--teal); }
+    ol { padding-left:1.2rem; line-height:1.55; }
+    code { background:#e2e8f0; padding:.1rem .35rem; border-radius:4px; font-size:.9em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Trust the portal HTTPS certificate</h1>
+    <p>Install this once on each phone so the Nutrition BNS app can use
+      <code>https://100.112.56.88</code> without certificate errors.</p>
+
+    <div class="card">
+      <a class="btn" href="valencia-portal-local.cer" download>Download certificate (.cer)</a>
+      <a class="btn secondary" href="valencia-portal-local.crt" download>Download (.crt)</a>
+    </div>
+
+    <div class="card">
+      <strong>Android</strong>
+      <ol>
+        <li>Open the downloaded file (Chrome → Downloads).</li>
+        <li>Choose <em>CA certificate</em> / <em>VPN &amp; app user certificate</em> when asked.</li>
+        <li>Confirm install. Unlock the phone if prompted.</li>
+        <li>Open the Nutrition BNS app and sign in.</li>
+      </ol>
+      <p style="margin:0;font-size:.9rem">Settings path (varies by brand):
+        Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate.</p>
+    </div>
+
+    <div class="card">
+      <strong>iPhone / iPad</strong>
+      <ol>
+        <li>Open the .crt link in Safari and allow the profile download.</li>
+        <li>Settings → Profile Downloaded → Install.</li>
+        <li>Settings → General → About → Certificate Trust Settings → enable full trust for this cert.</li>
+      </ol>
+    </div>
+  </div>
+</body>
+</html>

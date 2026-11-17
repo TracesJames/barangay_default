@@ -140,8 +140,11 @@ try {
     $con = $barangayConnect(DB_USER, DB_PASSWORD);
     $connectError = $con->connect_error ?: '';
     if ($connectError !== '') {
-        // Temporary fallback for local XAMPP if dedicated user is not ready yet.
-        if (DB_USER !== 'root') {
+        // Optional local-only fallback. Disabled by default for production hardening.
+        // Enable with env BARANGAY_ALLOW_ROOT_FALLBACK=1 (never on public hosts).
+        $allowRootFallback = getenv('BARANGAY_ALLOW_ROOT_FALLBACK') === '1'
+            || getenv('BARANGAY_ALLOW_ROOT_FALLBACK') === 'true';
+        if ($allowRootFallback && DB_USER !== 'root') {
             $fallback = $barangayConnect('root', '');
             if (!$fallback->connect_error) {
                 $con = $fallback;
